@@ -64,7 +64,7 @@ namespace LeagueGenMatchHistory
             Console.WriteLine("Querying Riot...");
             foreach (var gen in generators.Values)
             {
-                gen.DiscoverGameIds();
+                gen.DiscoverGameIds(false);
                 Settings.Save();
             }
 
@@ -273,7 +273,7 @@ table td.la.la { text-align: left; }
             };
         }
 
-        public void DiscoverGameIds()
+        public void DiscoverGameIds(bool full)
         {
             int count = 15;
             int index = 0;
@@ -293,6 +293,8 @@ table td.la.la { text-align: left; }
                     if (!Summoner.GamesAndReplays.ContainsKey(gameId))
                         Summoner.GamesAndReplays[gameId] = null;
 
+                if (!full)
+                    break;
                 if (index >= count)
                     break;
             }
