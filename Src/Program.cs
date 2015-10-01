@@ -38,9 +38,9 @@ namespace LeagueGenMatchHistory
             foreach (var file in new PathManager(Settings.EmailPath).GetFiles())
             {
                 var text = File.ReadAllText(file.FullName);
-                var decoded = RFC2047Decoder.ParseQuotedPrintable(Encoding.UTF8, text);
-                if (!decoded.Contains("admin@replay.gg"))
+                if (!text.Contains("admin@replay.gg"))
                     continue;
+                var decoded = RFC2047Decoder.ParseQuotedPrintable(Encoding.UTF8, text);
                 var detailsUrl = Regex.Match(decoded, @"details\s+<a\s+href=""(?<url>.*?)"">HERE</a>").Groups["url"].Value;
                 var replayUrl = Regex.Match(decoded, @"replay\s+<a\s+href=""(?<url>.*?)"">HERE</a>").Groups["url"].Value;
                 var subject = Regex.Match(decoded, @"Subject: (.*?)(?=\n[^ ])", RegexOptions.Singleline | RegexOptions.Multiline).Groups[1].Value.Replace("\r\n", "").Trim();
