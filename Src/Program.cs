@@ -206,6 +206,7 @@ td, th { padding: 0 6px; background: #fff; }
 th { border: 1px solid black; background: #ccc; }
 td.plr-top { padding-top: 4px; border-top: 1px solid black; text-align: right; }
 td.plr-bot { padding-bottom: 4px; }
+                table.stats tr:hover td { background: #d4eeff; }
 div.plrname { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 80%; float: left; }
 div.multi { float: right; }
 div.multi5 { font-weight: bold; background: #c21; color: #fff; padding: 0 6px; }
@@ -240,7 +241,7 @@ table td.ra.ra { text-align: right; }
             var result = new List<object>();
             var makeSummaryTable = Ut.Lambda((string label, IEnumerable<IGrouping<string, Player>> set) =>
             {
-                return new TABLE { class_ = "ra" }._(
+                return new TABLE { class_ = "ra stats" }._(
                     new TR(new TH(label) { rowspan = 2 }, new TH("Games") { rowspan = 2 }, new TH("Wins") { rowspan = 2 }, new TH("Losses") { rowspan = 2 }, new TH("Win%") { rowspan = 2 },
                         new TH("Kills/deaths/assists") { colspan = 6 }, new TH("Dmg to champs") { colspan = 2 }, new TH("Healing") { colspan = 2 },
                         new TH("CS @ 10m") { colspan = 2 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }),
