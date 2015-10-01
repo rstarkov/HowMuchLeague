@@ -139,10 +139,13 @@ namespace LeagueGenMatchHistory
 
         public void ProduceOutput()
         {
-            var output = new StringBuilder();
-            var result =
-                _games.Where(g => g.Type != "Custom").GroupBy(g => g.Map + ", " + g.Type).OrderByDescending(g => g.Count()).Select(grp => Ut.NewArray<object>(
-                    new H1(grp.Key),
+            var gameTypeSections = _games
+                .Where(g => g.Type != "Custom")
+                .GroupBy(g => g.Map + ", " + g.Type)
+                .OrderByDescending(g => g.Count())
+                .ToList();
+            var sections = gameTypeSections.Select(grp => Ut.NewArray<object>(
+                    new H1(grp.Key) { id = new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
                     genOverallStats(grp),
                     (
                         from pname in (Program.Settings.KnownPlayers.Concat(Summoner.Name).Distinct())
@@ -178,6 +181,16 @@ namespace LeagueGenMatchHistory
                         })
                     )
                 ));
+            var result = Ut.NewArray<object>(
+                new H1("Contents"),
+                new DIV { style = "text-align: center;" }._(new P { style = "text-align: left; display: inline-block;" }._(
+                    gameTypeSections.Select(grp => Ut.NewArray<object>(
+                        new A(grp.Key) { href = "#" + new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
+                        new BR()
+                    ))
+                )),
+                sections
+            );
             var outputFile = Program.Settings.OutputPathTemplate.Fmt(Summoner.Region, Summoner.Name);
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
             File.WriteAllText(outputFile, new HTML(new HEAD(new STYLELiteral(@"
