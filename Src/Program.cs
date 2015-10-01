@@ -165,7 +165,7 @@ namespace LeagueGenMatchHistory
                             var allies = g.Ally.Players.Select(plr => getPlayerHtml(plr)).ToList();
                             var enemies = g.Enemy.Players.Select(plr => getPlayerHtml(plr)).ToList();
                             return Ut.NewArray<object>(
-                                new TR(
+                                new TR { id = "game" + g.Id.ToString() }._(
                                     new TD { rowspan = 2, class_ = "nplr datetime" }._(new A(g.Date.ToString("dd/MM/yy"), new BR(), g.Date.ToString("HH:mm")) { href = g.DetailsUrl }),
                                     new TD { rowspan = 2, class_ = "nplr" }._(g.Duration.TotalMinutes.ToString("00") + ":" + g.Duration.Seconds.ToString("00")),
                                     new TD { rowspan = 2, class_ = "nplr " + g.Victory.NullTrueFalse("draw", "victory", "defeat") }._(g.Victory.NullTrueFalse("Draw", "Victory", "Defeat")),
@@ -257,17 +257,17 @@ table td.ra.ra { text-align: right; }
                         new TD("{0:0.0}".Fmt(g.Average(p => p.Kills / p.Game.Duration.TotalMinutes * 30))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.Deaths / p.Game.Duration.TotalMinutes * 30))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.Assists / p.Game.Duration.TotalMinutes * 30))),
-                        new TD("{0:0}".Fmt(g.Max(p => p.Kills))),
-                        new TD("{0:0}".Fmt(g.Max(p => p.Deaths))),
-                        new TD("{0:0}".Fmt(g.Max(p => p.Assists))),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.Kills), p => p.Kills.ToString("0"))),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.Deaths), p => p.Deaths.ToString("0"))),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.Assists), p => p.Assists.ToString("0"))),
                         new TD(g.Average(p => p.DamageToChampions / p.Game.Duration.TotalMinutes * 30).ToString("#,0")),
-                        new TD(g.Max(p => p.DamageToChampions).ToString("#,0")),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.DamageToChampions), p => p.DamageToChampions.ToString("#,0"))),
                         new TD(g.Average(p => p.TotalHeal / p.Game.Duration.TotalMinutes * 30).ToString("#,0")),
-                        new TD(g.Max(p => p.TotalHeal).ToString("#,0")),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.TotalHeal), p => p.TotalHeal.ToString("#,0"))),
                         new TD("{0:0}".Fmt(g.Average(p => p.CreepsAt10))),
-                        new TD("{0:0}".Fmt(g.Max(p => p.CreepsAt10))),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.CreepsAt10), p => p.CreepsAt10.ToString("0"))),
                         new TD("{0:0}".Fmt(g.Average(p => p.GoldAt10))),
-                        new TD("{0:0}".Fmt(g.Max(p => p.GoldAt10))),
+                        new TD(getGameValueAndLink(g.MaxElement(p => p.GoldAt10), p => p.GoldAt10.ToString("0"))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 5))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 4))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 3))),
@@ -284,6 +284,11 @@ table td.ra.ra { text-align: right; }
             result.Add(makeSummaryTable("Total", games.Select(g => g.Plr(playerName)).GroupBy(p => "Total")));
             var id = Rnd.NextBytes(8).ToHex();
             return Ut.NewArray<object>(new BUTTON("Show/hide stats for {0}".Fmt(playerName)) { onclick = "document.getElementById('{0}').style.display = (document.getElementById('{0}').style.display == 'none') ? 'block' : 'none';".Fmt(id) }, new DIV(result) { id = id, style = "display:none" });
+        }
+
+        private object getGameValueAndLink(Player linkTo, Func<Player, string> text)
+        {
+            return new A(text(linkTo)) { href = "#game" + linkTo.Game.Id };
         }
 
         private string fmtOrInf(double val)
