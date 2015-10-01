@@ -276,8 +276,12 @@ table td.ra.ra { text-align: right; }
                 );
             });
 
+            result.Add(new P(new B("Penta kills:"), games.Select(g => g.Plr(playerName)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
+            result.Add(new P(new B("Quadra kills:"), games.Select(g => g.Plr(playerName)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
+            result.Add(new P(new B("Triple kills:"), games.Select(g => g.Plr(playerName)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
+
             result.Add(new H4("{0} stats: by champion".Fmt(playerName)));
-            result.Add(makeSummaryTable("Champion", games.Select(g => g.Plr(playerName)).GroupBy(p => Program.Champions[p.ChampionId])));
+            result.Add(makeSummaryTable("Champion", games.Select(g => g.Plr(playerName)).GroupBy(p => p.Champion)));
             result.Add(new H4("{0} stats: by lane/role".Fmt(playerName)));
             result.Add(makeSummaryTable("Lane/role", games.Select(g => g.Plr(playerName)).GroupBy(p => (p.Lane == Lane.Top ? "Top" : p.Lane == Lane.Middle ? "Mid" : p.Lane == Lane.Jungle ? "JG" : "Bot") + (p.Role == Role.DuoCarry ? " adc" : p.Role == Role.DuoSupport ? " sup" : ""))));
             result.Add(new H4("{0} stats: total".Fmt(playerName)));
@@ -310,7 +314,7 @@ table td.ra.ra { text-align: right; }
                     "{0}/{1}/{2}".Fmt(plr.Kills, plr.Deaths, plr.Assists)),
                 new TD{class_="plr-bot "+plr.Name.Replace(" ", "")}._(
                     new DIV(plr.LargestMultiKill <= 1 ? "" : (plr.LargestMultiKill + "x")) { class_ = "multi multi" + plr.LargestMultiKill },
-                    Program.Champions[plr.ChampionId],
+                    plr.Champion,
                     " ", plr.Lane == Lane.Top ? "(top)" : plr.Lane == Lane.Middle ? "(mid)" : plr.Lane == Lane.Jungle ? "(jg)" : plr.Role == Role.DuoCarry ? "(adc)" : plr.Role == Role.DuoSupport ? "(sup)" : "(bot)")
             };
         }
@@ -510,6 +514,7 @@ table td.ra.ra { text-align: right; }
         public long AccountId, SummonerId;
         public string Name;
         public int ChampionId;
+        public string Champion { get { return Program.Champions[ChampionId]; } }
         public int Spell1Id, Spell2Id;
         public Role Role;
         public Lane Lane;
