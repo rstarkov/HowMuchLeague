@@ -224,11 +224,11 @@ table td.la.la { text-align: left; }
             {
                 return new TABLE { class_ = "ra" }._(
                     new TR(new TH(label) { rowspan = 2 }, new TH("Games") { rowspan = 2 }, new TH("Wins") { rowspan = 2 }, new TH("Losses") { rowspan = 2 }, new TH("Win%") { rowspan = 2 },
-                        new TH("Kills/deaths/assists") { colspan = 6 }, new TH("Max multi") { rowspan = 2 }, new TH("Dmg champ") { colspan = 2 },
-                        new TH("CS @ 10m") { colspan = 2 }, new TH("Gold @ 10m") { colspan = 2 }),
+                        new TH("Kills/deaths/assists") { colspan = 6 }, new TH("Dmg champ") { colspan = 2 },
+                        new TH("CS @ 10m") { colspan = 2 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }),
                     new TR(
                         new TH("Avg/30m") { colspan = 3 }, new TH("Max") { colspan = 3 }, new TH("Avg/30m"), new TH("Max"),
-                        new TH("Avg"), new TH("Max"), new TH("Avg"), new TH("Max")),
+                        new TH("Avg"), new TH("Max"), new TH("Avg"), new TH("Max"), new TH("5x"), new TH("4x+"), new TH("3x+"), new TH("2x+")),
                     set.OrderByDescending(g => g.Count()).Select(g => new TR(
                         new TD(g.Key) { class_ = "la" },
                         new TD(g.Count()),
@@ -241,13 +241,16 @@ table td.la.la { text-align: left; }
                         new TD("{0:0}".Fmt(g.Max(p => p.Kills))),
                         new TD("{0:0}".Fmt(g.Max(p => p.Deaths))),
                         new TD("{0:0}".Fmt(g.Max(p => p.Assists))),
-                        new TD(g.Max(p => p.LargestMultiKill)),
                         new TD(g.Average(p => p.DamageToChampions / p.Game.Duration.TotalMinutes * 30).ToString("#,0")),
                         new TD(g.Max(p => p.DamageToChampions).ToString("#,0")),
                         new TD("{0:0}".Fmt(g.Average(p => p.CreepsAt10))),
                         new TD("{0:0}".Fmt(g.Max(p => p.CreepsAt10))),
                         new TD("{0:0}".Fmt(g.Average(p => p.GoldAt10))),
-                        new TD("{0:0}".Fmt(g.Max(p => p.GoldAt10)))
+                        new TD("{0:0}".Fmt(g.Max(p => p.GoldAt10))),
+                        new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 5))),
+                        new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 4))),
+                        new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 3))),
+                        new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 2)))
                     ))
                 );
             });
@@ -260,6 +263,18 @@ table td.la.la { text-align: left; }
             result.Add(makeSummaryTable("Total", games.Select(g => g.Plr(playerName)).GroupBy(p => "Total")));
             var id = Rnd.NextBytes(8).ToHex();
             return Ut.NewArray<object>(new BUTTON("Show/hide stats for {0}".Fmt(playerName)) { onclick = "document.getElementById('{0}').style.display = (document.getElementById('{0}').style.display == 'none') ? 'block' : 'none';".Fmt(id) }, new DIV(result) { id = id, style = "display:none" });
+        }
+
+        private string fmtOrInf(double val)
+        {
+            if (double.IsPositiveInfinity(val))
+                return "∞";
+            else if (double.IsNegativeInfinity(val))
+                return "–∞";
+            else if (Math.Abs(val) < 10)
+                return val.ToString("0.0");
+            else
+                return val.ToString("0");
         }
 
         private static Tag[] getPlayerHtml(Player plr)
