@@ -21,6 +21,7 @@ namespace LeagueGenMatchHistory
         public string AccountId = null;
         public string SummonerId = null;
         public string AuthorizationHeader = null;
+        public string TimeZoneId = null;
         public Dictionary<string, string> GamesAndReplays = new Dictionary<string, string>();
     }
 }

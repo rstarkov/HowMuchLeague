@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -306,7 +307,7 @@ table td.la.la { text-align: left; }
     {
         public SummonerInfo Sm;
         public string Id;
-        public DateTime Date;
+        public DateTime Date, DateUtc;
         public TimeSpan Duration;
         public string DetailsUrl;
         public string ReplayUrl;
@@ -329,7 +330,8 @@ table td.la.la { text-align: left; }
             setMapAndType();
             DetailsUrl = "http://matchhistory.{0}.leagueoflegends.com/en/#match-details/{1}/{2}/{3}".Fmt(Sm.Region.ToLower(), Sm.RegionFull, Id, Sm.AccountId);
             ReplayUrl = replayUrl;
-            Date = (new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0)).ToLocalTime();
+            DateUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0);
+            Date = TimeZoneInfo.ConvertTimeFromUtc(DateUtc, TimeZoneInfo.FindSystemTimeZoneById(Sm.TimeZoneId));
             Duration = TimeSpan.FromSeconds(json["gameDuration"].GetInt());
             var players = json["participantIdentities"].GetList().Select(p =>
             {
