@@ -73,6 +73,7 @@ namespace LeagueGenMatchHistory
             {
                 gen.LoadGames();
                 gen.ProduceOutput();
+                gen.ProduceOutput(200);
             }
         }
     }
@@ -137,9 +138,11 @@ namespace LeagueGenMatchHistory
             return rawJson;
         }
 
-        public void ProduceOutput()
+        public void ProduceOutput(int limit = 999999)
         {
             var gameTypeSections = _games
+                .OrderByDescending(g => g.DateUtc)
+                .Take(limit)
                 .Where(g => g.Type != "Custom")
                 .GroupBy(g => g.Map + ", " + g.Type)
                 .OrderByDescending(g => g.Count())
@@ -191,9 +194,7 @@ namespace LeagueGenMatchHistory
                 )),
                 sections
             );
-            var outputFile = Program.Settings.OutputPathTemplate.Fmt(Summoner.Region, Summoner.Name);
-            Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
-            File.WriteAllText(outputFile, new HTML(new HEAD(new STYLELiteral(@"
+            var css = @"
 body { font-family: 'Open Sans', sans-serif; }
 body, td.sep { background: #eee; }
 table { border-collapse: collapse; border-bottom: 1px solid black; margin: 0 auto; }
@@ -215,9 +216,13 @@ td.defeat { background: #FF7954; }
 table.ra td { text-align: right; }
 table.la td { text-align: left; }
 table td.ra.ra { text-align: right; }
-table td.la.la { text-align: left; }
-            " + "\r\ntd." + Summoner.Name + " { background: #D1FECC; }\r\n"
- + Program.Settings.KnownPlayers.Where(plr => plr != Summoner.Name).Select(plr => "td." + plr.Replace(" ", "") + " { background: #6EFFFF; }\r\n").JoinString())), new BODY(result)).ToString());
+                table td.la.la { text-align: left; }";
+            css += "\r\n td." + Summoner.Name + " { background: #D1FECC; }\r\n";
+            css += Program.Settings.KnownPlayers.Where(plr => plr != Summoner.Name).Select(plr => "td." + plr.Replace(" ", "") + " { background: #6EFFFF; }\r\n").JoinString();
+
+            var outputFile = Program.Settings.OutputPathTemplate.Fmt(Summoner.Region, Summoner.Name, limit == 999999 ? "" : ("-" + limit));
+            Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
+            File.WriteAllText(outputFile, new HTML(new HEAD(new STYLELiteral(css)), new BODY(result)).ToString());
         }
 
         private object genOverallStats(IEnumerable<Game> games)
