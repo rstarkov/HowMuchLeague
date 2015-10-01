@@ -283,7 +283,7 @@ table td.la.la { text-align: left; }
                 var resp = _hc.Get(@"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={0}&endIndex={1}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313".Fmt(index, index + 15, Summoner.RegionFull, Summoner.AccountId));
                 var json = resp.Expect(HttpStatusCode.OK).DataJson;
 
-                Ut.Assert(json["accountId"].GetStringLenient() == Summoner.SummonerId);
+                Ut.Assert(json["accountId"].GetStringLenient() == Summoner.AccountId);
                 Ut.Assert(json["platformId"].GetString().EqualsNoCase(Summoner.Region) || json["platformId"].GetString().EqualsNoCase(Summoner.RegionFull));
 
                 index += 15;
