@@ -56,7 +56,7 @@ namespace LeagueGenMatchHistory
 
                 var summoner = Settings.Summoners.FirstOrDefault(sm => sm.RegionFull == regionFull && sm.SummonerId == summonerId);
                 if (summoner == null)
-                    throw new Exception("Found a replay.gg email for an unknown summoner: {0}, {1}, {2}".Fmt(summonerName, regionFull, summonerId));
+                    continue;
                 summoner.GamesAndReplays[gameId] = replayUrl;
             }
             Settings.Save();
