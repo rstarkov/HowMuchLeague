@@ -185,10 +185,11 @@ namespace LeagueGenMatchHistory
                     )
                 ));
             var result = Ut.NewArray<object>(
-                new H1("Contents"),
+                genGraphs(_games),
                 new DIV { style = "text-align: center;" }._(new P { style = "text-align: left; display: inline-block;" }._(
                     gameTypeSections.Select(grp => Ut.NewArray<object>(
                         new A(grp.Key) { href = "#" + new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
+                        " : " + grp.Count().ToString() + " games",
                         new BR()
                     ))
                 )),
@@ -276,9 +277,16 @@ table td.ra.ra { text-align: right; }
                 );
             });
 
+            result.Add(genGraphs(games));
+
             result.Add(new P(new B("Penta kills:"), games.Select(g => g.Plr(playerName)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
             result.Add(new P(new B("Quadra kills:"), games.Select(g => g.Plr(playerName)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
             result.Add(new P(new B("Triple kills:"), games.Select(g => g.Plr(playerName)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
+            var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly).Select(grp => grp.OrderBy(itm => itm.Date).Last().Victory.Value);
+            result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
+                byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
+                byLastWinLoss.Count(v => !v) / (double) byLastWinLoss.Count() * 100
+            )));
 
             result.Add(new H4("{0} stats: by champion".Fmt(playerName)));
             result.Add(makeSummaryTable("Champion", games.Select(g => g.Plr(playerName)).GroupBy(p => p.Champion)));
@@ -288,6 +296,68 @@ table td.ra.ra { text-align: right; }
             result.Add(makeSummaryTable("Total", games.Select(g => g.Plr(playerName)).GroupBy(p => "Total")));
             var id = Rnd.NextBytes(8).ToHex();
             return Ut.NewArray<object>(new BUTTON("Show/hide stats for {0}".Fmt(playerName)) { onclick = "document.getElementById('{0}').style.display = (document.getElementById('{0}').style.display == 'none') ? 'block' : 'none';".Fmt(id) }, new DIV(result) { id = id, style = "display:none" });
+        }
+
+        private object genGraphs(IEnumerable<Game> games)
+        {
+            var result = new List<object>();
+            var histoTimeOfDay = range(5, 24, 24).Select(h => Tuple.Create(h.ToString("00"), games.Count(g => g.Date.TimeOfDay.Hours == h)));
+            result.Add(makeHistogram(histoTimeOfDay, "Games by time of day"));
+            var firstDate = games.Min(g => g.Date.Date) + TimeSpan.FromHours(5);
+            //var histoGamesPerDay = Enumerable.Range(0, 11).Select(c => Tuple.Create(c == 10 ? "10+" : c.ToString(), Enumerable.Range(0, (int) (DateTime.Today - firstDate).TotalDays).Count(day => games.Count(g => g.Date.Date >= firstDate + TimeSpan.FromDays(day) && g.Date.Date <= firstDate + TimeSpan.FromDays(day + 1)) == c))).ToList();
+            var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => Tuple.Create(c == 12 ? "12+" : c.ToString(), games.GroupBy(g => g.DateDayOnly).Count(grp => grp.Count() == c))).ToList();
+            result.Add(makeHistogram(histoGamesPerDay, "Games played per day"));
+            var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), games.Count(g => (int) g.Date.DayOfWeek == dow))).ToList();
+            result.Add(makeHistogram(histoGamesByDayOfWeek, "Games played on ..."));
+            var histoGamesByDayOfWeek2 = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), games.GroupBy(g => g.DateDayOnly).Count(g => (int) g.Key.DayOfWeek == dow))).ToList();
+            result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
+            result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
+            return result;
+        }
+
+        private IEnumerable<int> range(int first, int count, int modulus = int.MaxValue)
+        {
+            return Enumerable.Range(first, count).Select(i => i % modulus);
+        }
+
+        private object makeHistogram(IEnumerable<Tuple<string, int>> data, string title)
+        {
+            int x = 10;
+            var sb = new StringBuilder();
+            double maxY = data.Max(pt => pt.Item2);
+            foreach (var pt in data)
+            {
+                double height = 100 * pt.Item2 / maxY;
+                sb.AppendFormat("<rect x='{0}' y='{1}' width='14' height='{2}' stroke-width=0 fill='#921'/>", x, 130 - height, height);
+                sb.AppendFormat("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='15' x='{0}' y='145' fill='#000'>{1}</text>", x + 7, pt.Item1);
+                x += 25;
+            }
+            return new RawTag("<svg width='{0}' height='150' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(x)
+                + "<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(x / 2, title)
+                + sb.ToString()
+                + "</g></svg>");
+        }
+
+        private object makeHistogram2(IEnumerable<double> boundaries, Func<double, double, int> getValue, string title)
+        {
+            var values = double.MinValue.Concat(boundaries).Concat(double.MaxValue).ConsecutivePairs(false).Select(p => getValue(p.Item1, p.Item2)).ToList();
+            var labels = boundaries.Select(b => b.ToString("0")).ToList();
+
+            int x = 10;
+            var sb = new StringBuilder();
+            double maxY = values.Max();
+            for (int i = 0; i < values.Count; i++)
+            {
+                double height = 100 * values[i] / maxY;
+                sb.AppendFormat("<rect x='{0}' y='{1}' width='14' height='{2}' stroke-width=0 fill='#921'/>", x, 130 - height, height);
+                if (i < labels.Count)
+                    sb.AppendFormat("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='15' x='{0}' y='145' fill='#000'>{1}</text>", x + 7 + 25 / 2, labels[i]);
+                x += 25;
+            }
+            return new RawTag("<svg width='{0}' height='150' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(x)
+                + "<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(x / 2, title)
+                + sb.ToString()
+                + "</g></svg>");
         }
 
         private object getGameValueAndLink(Player linkTo, Func<Player, string> text)
@@ -353,6 +423,7 @@ table td.ra.ra { text-align: right; }
         public SummonerInfo Sm;
         public string Id;
         public DateTime Date, DateUtc;
+        public DateTime DateDayOnly { get { return Date.TimeOfDay.TotalHours < 5 ? Date.Date.AddDays(-1) : Date.Date; } }
         public TimeSpan Duration;
         public string DetailsUrl;
         public string ReplayUrl;
