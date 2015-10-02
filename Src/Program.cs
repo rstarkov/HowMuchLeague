@@ -232,8 +232,10 @@ table td.ra.ra { text-align: right; }
             var result = new List<object>();
             var allOtherPlayers = games.SelectMany(g => g.Ally.Players.Concat(g.Enemy.Players)).Where(p => !Program.Settings.KnownPlayers.Contains(p.Name) && p.Name != Summoner.Name);
             var allOtherChamps = allOtherPlayers.GroupBy(p => p.ChampionId);
-            result.Add(new H4("Champions encountered (excluding our own selections)"));
-            result.Add(new P(allOtherChamps.OrderByDescending(g => g.Count()).Select(g => Program.Champions[g.Key] + ": " + g.Count()).JoinString(", ")));
+            result.Add(new P(new B("Champions by popularity: "), "(excluding ours) ", allOtherChamps.OrderByDescending(grp => grp.Count()).Select(g => g.First().Champion + ": " + g.Count()).JoinString(", ")));
+            var champsByWinRate = allOtherChamps.Select(grp => new { champ = grp.First().Champion, wins = grp.Count(p => p.Victory) / (double) grp.Count() * 100, total = grp.Count() }).OrderByDescending(x => x.wins).ToList();
+            result.Add(new P(new B("Best champions: "), "(seen 30+ times, excluding ours) ", champsByWinRate.Where(x => x.total >= 30 && x.wins > 55).Select(x => "{0}: {1:0}%".Fmt(x.champ, x.wins)).JoinString(", ")));
+            result.Add(new P(new B("Worst champions: "), "(seen 30+ times, excluding ours) ", champsByWinRate.Where(x => x.total >= 30 && x.wins < 45).Select(x => "{0}: {1:0}%".Fmt(x.champ, x.wins)).Reverse().JoinString(", ")));
             return result;
         }
 
@@ -586,6 +588,7 @@ table td.ra.ra { text-align: right; }
         public string Name;
         public int ChampionId;
         public string Champion { get { return Program.Champions[ChampionId]; } }
+        public bool Victory { get { return Team.Victory; } }
         public int Spell1Id, Spell2Id;
         public Role Role;
         public Lane Lane;
