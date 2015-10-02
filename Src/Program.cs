@@ -233,9 +233,35 @@ table td.ra.ra { text-align: right; }
             var allOtherPlayers = games.SelectMany(g => g.Ally.Players.Concat(g.Enemy.Players)).Where(p => !Program.Settings.KnownPlayers.Contains(p.Name) && p.Name != Summoner.Name);
             var allOtherChamps = allOtherPlayers.GroupBy(p => p.ChampionId);
             result.Add(new P(new B("Champions by popularity: "), "(excluding ours) ", allOtherChamps.OrderByDescending(grp => grp.Count()).Select(g => g.First().Champion + ": " + g.Count()).JoinString(", ")));
-            var champsByWinRate = allOtherChamps.Select(grp => new { champ = grp.First().Champion, wins = grp.Count(p => p.Victory) / (double) grp.Count() * 100, total = grp.Count() }).OrderByDescending(x => x.wins).ToList();
-            result.Add(new P(new B("Best champions: "), "(seen 30+ times, excluding ours) ", champsByWinRate.Where(x => x.total >= 30 && x.wins > 55).Select(x => "{0}: {1:0}%".Fmt(x.champ, x.wins)).JoinString(", ")));
-            result.Add(new P(new B("Worst champions: "), "(seen 30+ times, excluding ours) ", champsByWinRate.Where(x => x.total >= 30 && x.wins < 45).Select(x => "{0}: {1:0}%".Fmt(x.champ, x.wins)).Reverse().JoinString(", ")));
+            var otherChampStats =
+                (from grp in allOtherChamps
+                 let total = grp.Count()
+                 where total >= 30
+                 select new
+                 {
+                     total,
+                     champ = grp.First().Champion,
+                     wins = grp.Count(p => p.Victory) / (double) grp.Count() * 100,
+                     avgDamage30 = grp.Average(p => p.DamageToChampions / p.Game.Duration.TotalMinutes * 30),
+                     avgKills30 = grp.Average(p => p.Kills / p.Game.Duration.TotalMinutes * 30),
+                     avgDeaths30 = grp.Average(p => p.Deaths / p.Game.Duration.TotalMinutes * 30),
+                     supportCount = grp.Count(p => p.Role == Role.DuoSupport)
+                 }).ToList();
+            if (otherChampStats.Count >= 10)
+            {
+                result.Add(new P(new B("Best/worst by winrate: "), new SPAN("(seen 30+ times, excluding ours) ") { style = "color: #888;" }, new BR(),
+                    otherChampStats.Where(x => x.wins >= 55).OrderByDescending(x => x.wins).Select(x => "{0}: {1:0}%".Fmt(x.champ, x.wins)).JoinString(", "), " ... ",
+                    otherChampStats.Where(x => x.wins <= 45).OrderByDescending(x => x.wins).Select(x => "{0}: {1:0}%".Fmt(x.champ, x.wins)).JoinString(", ")));
+                result.Add(new P(new B("Best/worst by average damage per 30 minutes: "), new SPAN("(seen 30+ times, excluding ours and supports) ") { style = "color: #888;" }, new BR(),
+                    otherChampStats.OrderByDescending(x => x.avgDamage30).Take(6).Select(x => "{0}: {1:#,0}".Fmt(x.champ, x.avgDamage30)).JoinString(", "), " ... ",
+                    otherChampStats.OrderByDescending(x => x.avgDamage30).Where(x => x.supportCount < x.total / 3).TakeLast(6).Select(x => "{0}: {1:#,0}".Fmt(x.champ, x.avgDamage30)).JoinString(", ")));
+                result.Add(new P(new B("Best/worst by average kills per 30 minutes: "), new SPAN("(seen 30+ times, excluding ours and supports) ") { style = "color: #888;" }, new BR(),
+                    otherChampStats.OrderByDescending(x => x.avgKills30).Take(7).Select(x => "{0}: {1:0.0}".Fmt(x.champ, x.avgKills30)).JoinString(", "), " ... ",
+                    otherChampStats.OrderByDescending(x => x.avgKills30).Where(x => x.supportCount < x.total / 3).TakeLast(7).Select(x => "{0}: {1:0.0}".Fmt(x.champ, x.avgKills30)).JoinString(", ")));
+                result.Add(new P(new B("Best/worst by average deaths per 30 minutes: "), new SPAN("(seen 30+ times, excluding ours) ") { style = "color: #888;" }, new BR(),
+                    otherChampStats.OrderBy(x => x.avgDeaths30).Take(7).Select(x => "{0}: {1:0.0}".Fmt(x.champ, x.avgDeaths30)).JoinString(", "), " ... ",
+                    otherChampStats.OrderBy(x => x.avgDeaths30).TakeLast(7).Select(x => "{0}: {1:0.0}".Fmt(x.champ, x.avgDeaths30)).JoinString(", ")));
+            }
             return result;
         }
 
