@@ -196,31 +196,31 @@ namespace LeagueGenMatchHistory
                 sections
             );
             var css = @"
-body { font-family: 'Open Sans', sans-serif; }
-body, td.sep { background: #eee; }
-table { border-collapse: collapse; border-bottom: 1px solid black; margin: 0 auto; }
-h1, h4 { text-align: center; }
-td.nplr { border-top: 1px solid black; }
-td:last-child { border-right: 1px solid black; }
-td { border-left: 1px solid black; }
-td, th { padding: 0 6px; background: #fff; }
-th { border: 1px solid black; background: #ccc; }
-td.plr-top { padding-top: 4px; border-top: 1px solid black; text-align: right; }
-td.plr-bot { padding-bottom: 4px; }
+                body { font-family: 'Open Sans', sans-serif; }
+                body, td.sep { background: #eee; }
+                table { border-collapse: collapse; border-bottom: 1px solid black; margin: 0 auto; }
+                h1, h4 { text-align: center; }
+                td.nplr { border-top: 1px solid black; }
+                td:last-child { border-right: 1px solid black; }
+                td { border-left: 1px solid black; }
+                td, th { padding: 0 6px; background: #fff; }
+                th { border: 1px solid black; background: #ccc; }
+                td.plr-top { padding-top: 4px; border-top: 1px solid black; text-align: right; }
+                td.plr-bot { padding-bottom: 4px; }
                 table.stats tr:hover td { background: #d4eeff; }
-div.plrname { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 80%; float: left; }
-div.multi { float: right; }
-div.multi5 { font-weight: bold; background: #c21; color: #fff; padding: 0 6px; }
-div.multi4 { font-weight: bold; color: #c21; }
-td.datetime { text-align: center; }
-td.victory { background: #7DF93D; }
-td.defeat { background: #FF7954; }
-table.ra td { text-align: right; }
-table.la td { text-align: left; }
-table td.ra.ra { text-align: right; }
+                div.plrname { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 80%; float: left; }
+                div.multi { float: right; }
+                div.multi5 { font-weight: bold; background: #c21; color: #fff; padding: 0 6px; }
+                div.multi4 { font-weight: bold; color: #c21; }
+                td.datetime { text-align: center; }
+                td.victory { background: #7DF93D; }
+                td.defeat { background: #FF7954; }
+                table.ra td { text-align: right; }
+                table.la td { text-align: left; }
+                table td.ra.ra { text-align: right; }
                 table td.la.la { text-align: left; }";
             css += "\r\n td." + Summoner.Name + " { background: #D1FECC; }\r\n";
-            css += Program.Settings.KnownPlayers.Where(plr => plr != Summoner.Name).Select(plr => "td." + plr.Replace(" ", "") + " { background: #6EFFFF; }\r\n").JoinString();
+            css += Program.Settings.KnownPlayers.Where(plr => plr != Summoner.Name).Select(plr => "td.kp" + plr.Replace(" ", "") + " { background: #6EFFFF; }\r\n").JoinString();
 
             var outputFile = Program.Settings.OutputPathTemplate.Fmt(Summoner.Region, Summoner.Name, limit == 999999 ? "" : ("-" + limit));
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
@@ -408,9 +408,9 @@ table td.ra.ra { text-align: right; }
         private static Tag[] getPlayerHtml(Player plr)
         {
             return new[] {
-                new TD{class_="plr-top "+plr.Name.Replace(" ", "")}._(new DIV(plr.Name) { class_="plrname" },
+                new TD{class_="plr-top kp"+plr.Name.Replace(" ", "")}._(new DIV(plr.Name) { class_="plrname" },
                     "{0}/{1}/{2}".Fmt(plr.Kills, plr.Deaths, plr.Assists)),
-                new TD{class_="plr-bot "+plr.Name.Replace(" ", "")}._(
+                new TD{class_="plr-bot kp"+plr.Name.Replace(" ", "")}._(
                     new DIV(plr.LargestMultiKill <= 1 ? "" : (plr.LargestMultiKill + "x")) { class_ = "multi multi" + plr.LargestMultiKill },
                     plr.Champion,
                     " ", plr.Lane == Lane.Top ? "(top)" : plr.Lane == Lane.Middle ? "(mid)" : plr.Lane == Lane.Jungle ? "(jg)" : plr.Role == Role.DuoCarry ? "(adc)" : plr.Role == Role.DuoSupport ? "(sup)" : "(bot)")
