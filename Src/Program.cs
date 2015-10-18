@@ -214,7 +214,7 @@ namespace LeagueGenMatchHistory
                             return Ut.NewArray<object>(
                                 new TR { id = "game" + g.Id.ToString() }._(
                                     new TD { rowspan = 2, class_ = "nplr datetime" }._(new A(g.Date(Human.TimeZone).ToString("dd/MM/yy"), new BR(), g.Date(Human.TimeZone).ToString("HH:mm")) { href = g.DetailsUrl }),
-                                    new TD { rowspan = 2, class_ = "nplr" }._(g.Duration.TotalMinutes.ToString("00") + ":" + g.Duration.Seconds.ToString("00")),
+                                    new TD { rowspan = 2, class_ = "nplr" }._(minsec(g.Duration)),
                                     new TD { rowspan = 2, class_ = "nplr " + g.Victory.NullTrueFalse("draw", "victory", "defeat") }._(g.Victory.NullTrueFalse("Draw", "Victory", "Defeat")),
                                     new TD { rowspan = 2, class_ = "sep" },
                                     allies.Select(p => p[0]),
@@ -265,12 +265,19 @@ namespace LeagueGenMatchHistory
                 table.ra td { text-align: right; }
                 table.la td { text-align: left; }
                 table td.ra.ra { text-align: right; }
-                table td.la.la { text-align: left; }";
+                table td.la.la { text-align: left; }
+                .linelist { margin-left: 8px; }
+                .linelist:before { content: '\200B'; }\r\n";
             css += Program.AllKnownPlayers.Select(plr => "td.kp" + plr.Replace(" ", "") + (Human.SummonerNames.Contains(plr) ? " { background: #D1FECC; }\r\n" : " { background: #6EFFFF; }\r\n")).JoinString();
 
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
             File.WriteAllText(outputFile, new HTML(new HEAD(new META { charset = "utf-8" }, new STYLELiteral(css)), new BODY(result)).ToString());
             Console.WriteLine("done");
+        }
+
+        private string minsec(TimeSpan time)
+        {
+            return ((int) time.TotalMinutes).ToString("00") + ":" + time.Seconds.ToString("00");
         }
 
         private object genOverallStats(IEnumerable<Game> games)
@@ -353,9 +360,9 @@ namespace LeagueGenMatchHistory
 
             result.Add(genAllGameStats(games, playerId));
 
-            result.Add(new P(new B("Penta kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
-            result.Add(new P(new B("Quadra kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
-            result.Add(new P(new B("Triple kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, style = "margin-left: 8px;" })));
+            result.Add(new P(new B("Penta kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, class_ = "linelist" })));
+            result.Add(new P(new B("Quadra kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, class_ = "linelist" })));
+            result.Add(new P(new B("Triple kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, class_ = "linelist" })));
             var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(Human.TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
             result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
                 byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
@@ -391,6 +398,9 @@ namespace LeagueGenMatchHistory
             result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(Human.TimeZone) <= d).Select(g => g.Plr(playerId).Champion).Distinct().Count())).ToList()));
 
             result.Add(new P(new B("Total games: "), games.Count().ToString("#,0")));
+            result.Add(new P(new B("Longest and shortest:"),
+                games.OrderByDescending(g => g.Duration).Take(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = "#game" + g.Id, class_ = "linelist" }, new SUP(g.MicroType) }), new SPAN("...") { class_ = "linelist" },
+                games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = "#game" + g.Id, class_ = "linelist" }, new SUP(g.MicroType) })));
             result.Add(new P(new B("Played 10+ times: "),
                 (from champ in Program.Champions.Values let c = games.Count(g => g.Plr(playerId).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
             result.Add(new P(new B("Played 3-9 times: "),
@@ -538,6 +548,7 @@ namespace LeagueGenMatchHistory
         public Player Plr(string summonerName) { return Ally.Players.Single(p => p.Name == summonerName); }
         public Player Plr(HumanInfo human) { return Ally.Players.Single(p => human.SummonerNames.Contains(p.Name)); }
         public Player Plr(object playerId) { return playerId is string ? Plr(playerId as string) : playerId is HumanInfo ? Plr(playerId as HumanInfo) : Ut.Throw<Player>(new Exception()); }
+        public string MicroType { get { return Regex.Matches((Map == "Summoner's Rift" ? "" : " " + Map) + " " + Type, @"\s\(?(.)").Cast<Match>().Select(m => m.Groups[1].Value).JoinString(); } }
 
         public Game(JsonDict json, SummonerInfo summoner, string replayUrl)
         {
