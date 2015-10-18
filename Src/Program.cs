@@ -9,6 +9,8 @@ using RT.TagSoup;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
+using RT.Util.Paths;
+using Stratosphere.Imap;
 
 // Assumptions:
 // - a human may have accounts with identical names in several regions (but in this case some stats will be grouped together - fixable if this is ever a concern)
@@ -42,6 +44,7 @@ namespace LeagueGenMatchHistory
                 Champions[kvp.Value["key"].GetIntLenient()] = kvp.Value["name"].GetString();
 
             // Locate replay URLs by scanning through all emails
+#if !DEBUG
             Console.WriteLine("Scanning emails...");
             foreach (var file in new PathManager(Settings.EmailPath).GetFiles())
             {
@@ -75,6 +78,7 @@ namespace LeagueGenMatchHistory
                 gen.DiscoverGameIds(false);
                 Settings.Save();
             }
+#endif
 
             foreach (var gen in generators.Values)
             {
