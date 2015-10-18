@@ -389,6 +389,15 @@ namespace LeagueGenMatchHistory
             result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
             result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
             result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(Human.TimeZone) <= d).Select(g => g.Plr(playerId).Champion).Distinct().Count())).ToList()));
+
+            result.Add(new P(new B("Total games: "), games.Count().ToString("#,0")));
+            result.Add(new P(new B("Played 10+ times: "),
+                (from champ in Program.Champions.Values let c = games.Count(g => g.Plr(playerId).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
+            result.Add(new P(new B("Played 3-9 times: "),
+                (from champ in Program.Champions.Values let c = games.Count(g => g.Plr(playerId).Champion == champ) where c >= 3 && c <= 9 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
+            result.Add(new P(new B("Played 1-2 times: "), Program.Champions.Values.Where(champ => { int c = games.Count(g => g.Plr(playerId).Champion == champ); return c >= 1 && c <= 2; }).Order().JoinString(", ")));
+            result.Add(new P(new B("Never played: "), Program.Champions.Values.Where(champ => !games.Any(g => g.Plr(playerId).Champion == champ)).Order().JoinString(", ")));
+
             return result;
         }
 
