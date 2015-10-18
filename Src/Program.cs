@@ -388,7 +388,22 @@ namespace LeagueGenMatchHistory
             var histoGamesByDayOfWeek2 = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), gamesByDay.Count(g => (int) g.Key.DayOfWeek == dow))).ToList();
             result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
             result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
+            result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(Human.TimeZone) <= d).Select(g => g.Plr(playerId).Champion).Distinct().Count())).ToList()));
             return result;
+        }
+
+        private object makePlotXY(string title, List<Tuple<double, double>> data)
+        {
+            double width = 400;
+            double height = 150;
+            var sb = new StringBuilder();
+            double maxX = data.Max(pt => pt.Item1);
+            double maxY = data.Max(pt => pt.Item2);
+            return new RawTag("<svg width='{0}' height='{1}' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(width, height)
+                + "<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(width / 2, title)
+                + "<text xml:space='preserve' text-anchor='left' font-family='Open Sans, Arial, sans-serif' font-size='17' x='10' y='20' fill='#000' dominant-baseline='hanging'>{0}</text>".Fmt(maxY.ToString())
+                + "<polyline fill='none' stroke='#921' points='{0}' />".Fmt(data.Select(d => "{0:0.000},{1:0.000}".Fmt(d.Item1 / maxX * (width - 20) + 10, (maxY - d.Item2) / maxY * (height - 40) + 30)).JoinString(" "))
+                + "</g></svg>");
         }
 
         private IEnumerable<int> range(int first, int count, int modulus = int.MaxValue)
