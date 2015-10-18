@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -10,8 +9,6 @@ using RT.TagSoup;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
-using RT.Util.Paths;
-using Stratosphere.Imap;
 
 // Assumptions:
 // - a human may have accounts with identical names in several regions (but in this case some stats will be grouped together - fixable if this is ever a concern)
@@ -706,6 +703,11 @@ namespace LeagueGenMatchHistory
         public int LargestMultiKill;
         public int CreepsAt10, CreepsAt20, CreepsAt30;
         public int GoldAt10, GoldAt20, GoldAt30;
+
+        public override string ToString()
+        {
+            return Name + " - " + Champion;
+        }
     }
 
     enum Lane { Top, Jungle, Middle, Bottom }
