@@ -75,6 +75,8 @@ namespace LeagueGenMatchHistory
             Console.WriteLine("Querying Riot...");
             foreach (var gen in generators.Values)
             {
+                if (gen.Summoner.AuthorizationHeader == "")
+                    continue;
                 gen.DiscoverGameIds(false);
                 Settings.Save();
             }
