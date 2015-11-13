@@ -192,9 +192,7 @@ namespace LeagueGenMatchHistory
                                     new TD { rowspan = 2, class_ = "sep" },
                                     allies.Select(p => p[0]),
                                     new TD { rowspan = 2, class_ = "sep" },
-                                    enemies.Select(p => p[0]),
-                                    new TD { rowspan = 2, class_ = "sep" },
-                                    new TD { class_ = "nplr", rowspan = 2 }._(g.ReplayUrl.NullOr(replayUrl => new A("replay") { href = replayUrl }))
+                                    enemies.Select(p => p[0])
                                 ),
                                 new TR(
                                     allies.Select(p => p[1]),
