@@ -9,8 +9,6 @@ using RT.TagSoup;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
-using RT.Util.Paths;
-using Stratosphere.Imap;
 
 // Assumptions:
 // - a human may have accounts with identical names in several regions (but in this case some stats will be grouped together - fixable if this is ever a concern)
@@ -31,7 +29,6 @@ namespace LeagueGenMatchHistory
             Settings.KnownPlayers.RemoveWhere(name => Settings.Humans.Any(h => h.SummonerNames.Contains(name)));
             Settings.Save();
             Directory.CreateDirectory(Path.Combine(Settings.MatchHistoryPath, "json"));
-            Directory.CreateDirectory(Path.Combine(Settings.MatchHistoryPath, "emails"));
 
             AllKnownPlayers = Settings.KnownPlayers.Concat(Settings.Humans.SelectMany(h => h.SummonerNames)).ToHashSet();
             foreach (var sm in Settings.Summoners)
@@ -43,35 +40,8 @@ namespace LeagueGenMatchHistory
             foreach (var kvp in champs["data"].GetDict())
                 Champions[kvp.Value["key"].GetIntLenient()] = kvp.Value["name"].GetString();
 
-            // Locate replay URLs by scanning through all emails
-#if !DEBUG
-            Console.WriteLine("Scanning emails...");
-            foreach (var file in new PathManager(Settings.EmailPath).GetFiles())
-            {
-                var text = File.ReadAllText(file.FullName);
-                if (!text.Contains("admin@replay.gg"))
-                    continue;
-                var decoded = RFC2047Decoder.ParseQuotedPrintable(Encoding.UTF8, text);
-                var detailsUrl = Regex.Match(decoded, @"details\s+<a\s+href=""(?<url>.*?)"">HERE</a>").Groups["url"].Value;
-                var replayUrl = Regex.Match(decoded, @"replay\s+<a\s+href=""(?<url>.*?)"">HERE</a>").Groups["url"].Value;
-                var subject = Regex.Match(decoded, @"Subject: (.*?)(?=\n[^ ])", RegexOptions.Singleline | RegexOptions.Multiline).Groups[1].Value.Replace("\r\n", "").Trim();
-                Console.WriteLine(subject);
-                var subj = Regex.Match(subject, @"(?<name>.*?) \((?<champ>.*?)\) - (?<map>.*?) \((?<type>.*?)\) - (?<wl>\w+) - ");
-                var summonerName = subj.Groups["name"].Value;
-                var url = Regex.Match(detailsUrl, @"http://matchhistory.(?<regionShort>[^.]+).leagueoflegends.com/.*?/#match-details/(?<regionFull>[^/]+)/(?<id>.*?)/(?<summId>.*?)$");
-                var region = url.Groups["regionShort"].Value.ToUpper();
-                var regionFull = url.Groups["regionFull"].Value.ToUpper();
-                var gameId = url.Groups["id"].Value;
-                var summonerId = url.Groups["summId"].Value;
-
-                var summoner = Settings.Summoners.FirstOrDefault(sm => sm.RegionFull == regionFull && sm.SummonerId.ToString() == summonerId);
-                if (summoner == null)
-                    continue;
-                summoner.GamesAndReplays[gameId] = replayUrl;
-            }
-            Settings.Save();
-
             // Load known game IDs by querying Riot
+#if !DEBUG
             Console.WriteLine("Querying Riot...");
             foreach (var gen in generators.Values)
             {
