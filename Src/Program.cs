@@ -347,6 +347,8 @@ namespace LeagueGenMatchHistory
             result.Add(new P(new B("Quadra kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, class_ = "linelist" })));
             result.Add(new P(new B("Triple kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, class_ = "linelist" })));
             result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => g.Plr(playerId)).Where(p => p.WardsPlaced >= p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => new A(p.Champion) { href = "#game" + p.Game.Id, class_ = "linelist" })));
+            result.Add(new P(new B("#1 by damage:"), games.Select(g => g.Plr(playerId)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => new A(p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k") { href = "#game" + p.Game.Id, class_ = "linelist" })));
+            result.Add(new P(new B("#1 by kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => new A(p.Champion, " ", p.Kills) { href = "#game" + p.Game.Id, class_ = "linelist" })));
             var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(Human.TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
             result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
                 byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
