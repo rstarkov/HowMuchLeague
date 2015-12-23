@@ -703,6 +703,19 @@ namespace LeagueGenMatchHistory
             throw new Exception();
         }
 
+        public int TeamRankOf(Func<Player, double> prop)
+        {
+            var groups = Game.Ally.Players.GroupBy(p => prop(p)).OrderByDescending(g => g.Key).Select(g => new { count = g.Count(), containsThis = g.Contains(this) }).ToList();
+            int rank = 1;
+            foreach (var g in groups)
+            {
+                if (g.containsThis)
+                    return rank;
+                rank += g.count;
+            }
+            throw new Exception();
+        }
+
         public override string ToString()
         {
             return Name + " - " + Champion;
