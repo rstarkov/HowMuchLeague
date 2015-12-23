@@ -297,11 +297,11 @@ namespace LeagueGenMatchHistory
             {
                 return new TABLE { class_ = "ra stats" }._(
                     new TR(new TH(label) { rowspan = 2 }, new TH("Games") { rowspan = 2 }, new TH("Wins") { rowspan = 2 }, new TH("Losses") { rowspan = 2 }, new TH("Win%") { rowspan = 2 },
-                        new TH("Kills/deaths/assists") { colspan = 6 }, new TH("Dmg to champs") { colspan = 4 }, new TH("Healing") { colspan = 2 },
-                        new TH("CS @ 10m") { colspan = 2 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }, new TH("Wards") { colspan = 4 }),
+                        new TH("Kills/deaths/assists/particip.") { colspan = 7 }, new TH("Dmg to champs") { colspan = 4 }, new TH("Healing") { colspan = 2 },
+                        new TH("CS @ 10m") { colspan = 4 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }, new TH("Wards") { colspan = 4 }),
                     new TR(
-                        new TH("Avg/30m") { colspan = 3 }, new TH("Max") { colspan = 3 }, new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg/30m"), new TH("Max"),
-                        new TH("Avg"), new TH("Max"), new TH("Avg"), new TH("Max"), new TH("5x"), new TH("4x+"), new TH("3x+"), new TH("2x+"), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %")),
+                        new TH("Avg/30m") { colspan = 3 }, new TH("Max") { colspan = 3 }, new TH("Part."), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg/30m"), new TH("Max"),
+                        new TH("Avg"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg"), new TH("Max"), new TH("5x"), new TH("4x+"), new TH("3x+"), new TH("2x+"), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %")),
                     set.OrderByDescending(g => g.Count()).Select(g => new TR(
                         new TD(g.Key) { class_ = "la" },
                         new TD(g.Count()),
@@ -314,6 +314,7 @@ namespace LeagueGenMatchHistory
                         new TD(getGameValueAndLink(g.MaxElement(p => p.Kills), p => p.Kills.ToString("0"))),
                         new TD(getGameValueAndLink(g.MaxElement(p => p.Deaths), p => p.Deaths.ToString("0"))),
                         new TD(getGameValueAndLink(g.MaxElement(p => p.Assists), p => p.Assists.ToString("0"))),
+                        new TD("{0:0}%".Fmt(g.Average(p => p.KillParticipation))),
                         new TD(g.Average(p => p.DamageToChampions / p.Game.Duration.TotalMinutes * 30).ToString("#,0")),
                         new TD(getGameValueAndLink(g.MaxElement(p => p.DamageToChampions), p => p.DamageToChampions.ToString("#,0"))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.RankOf(pp => pp.DamageToChampions)))),
@@ -322,6 +323,8 @@ namespace LeagueGenMatchHistory
                         new TD(getGameValueAndLink(g.MaxElement(p => p.TotalHeal), p => p.TotalHeal.ToString("#,0"))),
                         new TD("{0:0}".Fmt(g.Average(p => p.CreepsAt10))),
                         new TD(getGameValueAndLink(g.MaxElement(p => p.CreepsAt10), p => p.CreepsAt10.ToString("0"))),
+                        new TD("{0:0.0}".Fmt(g.Average(p => p.RankOf(pp => pp.CreepsAt10)))),
+                        new TD("{0:0}%".Fmt(g.Count(p => p.RankOf(pp => pp.CreepsAt10) == 1) / (double) g.Count() * 100)),
                         new TD("{0:0}".Fmt(g.Average(p => p.GoldAt10))),
                         new TD(getGameValueAndLink(g.MaxElement(p => p.GoldAt10), p => p.GoldAt10.ToString("0"))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 5))),
@@ -714,6 +717,11 @@ namespace LeagueGenMatchHistory
                 rank += g.count;
             }
             throw new Exception();
+        }
+
+        public double KillParticipation
+        {
+            get { return (Kills + Assists) / (double) Game.Ally.Players.Sum(p => p.Kills) * 100; }
         }
 
         public override string ToString()
