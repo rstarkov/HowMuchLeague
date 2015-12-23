@@ -113,7 +113,6 @@ namespace LeagueGenMatchHistory
                 if (json != null)
                     _games.Add(new Game(json, Summoner, kvp.Value));
             }
-            _games.RemoveAll(g => g.Type == "Custom");
         }
 
         public JsonDict LoadGameJson(string gameId)
