@@ -382,6 +382,12 @@ namespace LeagueGenMatchHistory
             result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
             result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
             result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(Human.TimeZone) <= d).Select(g => g.Plr(playerId).Champion).Distinct().Count())).ToList()));
+            var plotWardProgress = games.Select(g => g.Enemy.Players.Sum(p => p.WardsPlaced / g.Duration.TotalMinutes * 30.0)).ToList();
+            plotWardProgress.Reverse();
+            result.Add(makePlotY("Wards over time by enemy team", plotWardProgress, runningAverage(plotWardProgress, 29).ToList()));
+            var plotGameDurationProgress = games.Select(g => g.Duration.TotalMinutes).ToList();
+            plotGameDurationProgress.Reverse();
+            result.Add(makePlotY("Game duration over time", plotGameDurationProgress, runningAverage(plotGameDurationProgress, 49).ToList()));
 
             result.Add(new P(new B("Total games: "), games.Count().ToString("#,0")));
             result.Add(new P(new B("Longest and shortest:"),
@@ -397,18 +403,54 @@ namespace LeagueGenMatchHistory
             return result;
         }
 
-        private object makePlotXY(string title, List<Tuple<double, double>> data)
+        private IEnumerable<double> runningAverage(IEnumerable<double> series, int n)
+        {
+            if (n > series.Count())
+                n = series.Count() - 1;
+            var window = new Queue<double>();
+            foreach (var pt in series)
+            {
+                window.Enqueue(pt);
+                while (window.Count > n)
+                    window.Dequeue();
+                //if ((window.Count & 1) == (n & 1))
+                if (window.Count > n / 2)
+                    yield return window.Average();
+            }
+            while (window.Count > 0)
+            {
+                window.Dequeue();
+                //if ((window.Count & 1) == (n & 1))
+                if (window.Count > n / 2)
+                    yield return window.Average();
+            }
+        }
+
+        private object makePlotXY(string title, params List<Tuple<double, double>>[] datas)
         {
             double width = 400;
             double height = 150;
             var sb = new StringBuilder();
-            double maxX = data.Max(pt => pt.Item1);
-            double maxY = data.Max(pt => pt.Item2);
-            return new RawTag("<svg width='{0}' height='{1}' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(width, height)
-                + "<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(width / 2, title)
-                + "<text xml:space='preserve' text-anchor='left' font-family='Open Sans, Arial, sans-serif' font-size='17' x='10' y='20' fill='#000' dominant-baseline='hanging'>{0}</text>".Fmt(maxY.ToString())
-                + "<polyline fill='none' stroke='#921' points='{0}' />".Fmt(data.Select(d => "{0:0.000},{1:0.000}".Fmt(d.Item1 / maxX * (width - 20) + 10, (maxY - d.Item2) / maxY * (height - 40) + 30)).JoinString(" "))
-                + "</g></svg>");
+            double maxX = datas.Max(data => data.Max(pt => pt.Item1));
+            double maxY = datas.Max(data => data.Max(pt => pt.Item2));
+            var result = new StringBuilder();
+            result.Append("<svg width='{0}' height='{1}' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(width, height));
+            result.Append("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(width / 2, title));
+            result.Append("<text xml:space='preserve' text-anchor='left' font-family='Open Sans, Arial, sans-serif' font-size='17' x='10' y='20' fill='#000' dominant-baseline='hanging'>{0:0.#}</text>".Fmt(maxY));
+            var colors = new[] { "#921", "#14f", "#1a2" }.ToQueue();
+            foreach (var data in datas)
+            {
+                var color = colors.Dequeue();
+                result.Append("<polyline fill='none' stroke='{0}' points='{1}' />".Fmt(color, data.Select(d => "{0:0.000},{1:0.000}".Fmt(d.Item1 / maxX * (width - 20) + 10, (maxY - d.Item2) / maxY * (height - 40) + 30)).JoinString(" ")));
+                colors.Enqueue(color);
+            }
+            result.Append("</g></svg>");
+            return new RawTag(result.ToString());
+        }
+
+        private object makePlotY(string title, params List<double>[] datas)
+        {
+            return makePlotXY(title, datas.Select(data => data.Select((p, i) => Tuple.Create((double) i, p)).ToList()).ToArray());
         }
 
         private IEnumerable<int> range(int first, int count, int modulus = int.MaxValue)
