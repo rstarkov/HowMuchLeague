@@ -353,6 +353,8 @@ namespace LeagueGenMatchHistory
                 byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
                 byLastWinLoss.Count(v => !v) / (double) byLastWinLoss.Count() * 100
             )));
+            result.Add(new P(new B("Longest win streaks: "), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(3).JoinString(", ")));
+            result.Add(new P(new B("Longest loss streaks: "), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(3).JoinString(", ")));
 
             var name = playerId is HumanInfo ? (playerId as HumanInfo).Name : (string) playerId;
             result.Add(new H4("{0} stats: by champion".Fmt(name)));
