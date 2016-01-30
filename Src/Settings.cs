@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using RT.Util;
 using RT.Util.Serialization;
+using RT.Util.ExtensionMethods;
 
 namespace LeagueGenMatchHistory
 {
@@ -27,6 +28,11 @@ namespace LeagueGenMatchHistory
 
         [ClassifyIgnore]
         public HumanInfo Human;
+
+        public override string ToString()
+        {
+            return "{0}/{1} ({2})".Fmt(Name, Region, Human == null ? "?" : Human.Name);
+        }
     }
 
     class HumanInfo
@@ -34,5 +40,10 @@ namespace LeagueGenMatchHistory
         public string Name = null;
         public string TimeZone = null;
         public HashSet<string> SummonerNames = new HashSet<string>();
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }
