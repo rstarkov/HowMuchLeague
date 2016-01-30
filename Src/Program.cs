@@ -13,7 +13,7 @@ using RT.Util.Json;
 // Assumptions:
 // - a human may have accounts with identical names in several regions (but in this case some stats will be grouped together - fixable if this is ever a concern)
 // - no other people have accounts with the same names in _any_ region as any defined humans
-// - the mapping is true, so no games can contain more than one of the multiple accounts belonging to the same human
+// - the summoner-to-human mapping is genuine, i.e. no games can contain more than one of the multiple accounts belonging to the same human
 
 namespace LeagueGenMatchHistory
 {
@@ -32,7 +32,10 @@ namespace LeagueGenMatchHistory
 
             AllKnownPlayers = Settings.KnownPlayers.Concat(Settings.Humans.SelectMany(h => h.SummonerNames)).ToHashSet();
             foreach (var sm in Settings.Summoners)
+            {
                 sm.Human = Settings.Humans.Single(h => h.SummonerNames.Contains(sm.Name));
+                sm.PastNames.Add(sm.Name);
+            }
             var generators = Settings.Summoners.ToDictionary(sm => sm, sm => new Generator(sm));
 
             // Load champion id to name map
@@ -141,7 +144,7 @@ namespace LeagueGenMatchHistory
             var rawJson = json == "404" ? null : JsonDict.Parse(json);
             if (rawJson == null)
                 return null;
-            Ut.Assert(rawJson["participantIdentities"].GetList().Any(l => l["player"]["summonerName"].GetString() == Summoner.Name));
+            Ut.Assert(rawJson["participantIdentities"].GetList().Any(l => Summoner.PastNames.Contains(l["player"]["summonerName"].GetString())));
             return rawJson;
         }
 
@@ -187,7 +190,7 @@ namespace LeagueGenMatchHistory
                                 new TR { id = "game" + g.Id.ToString() }._(
                                     new TD { rowspan = 2, class_ = "nplr datetime" }._(new A(g.Date(Human.TimeZone).ToString("dd/MM/yy"), new BR(), g.Date(Human.TimeZone).ToString("HH:mm")) { href = g.DetailsUrl }),
                                     new TD { rowspan = 2, class_ = "nplr" }._(minsec(g.Duration)),
-                                    new TD { rowspan = 2, class_ = "nplr " + g.Victory.NullTrueFalse("draw", "victory", "defeat") }._(g.Victory.NullTrueFalse("Draw", "Victory", "Defeat")),
+                                    new TD { rowspan = 2, class_ = "nplr " + NullTrueFalse(g.Victory, "draw", "victory", "defeat") }._(NullTrueFalse(g.Victory, "Draw", "Victory", "Defeat")),
                                     new TD { rowspan = 2, class_ = "sep" },
                                     allies.Select(p => p[0]),
                                     new TD { rowspan = 2, class_ = "sep" },
@@ -243,6 +246,11 @@ namespace LeagueGenMatchHistory
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
             File.WriteAllText(outputFile, new HTML(new HEAD(new META { charset = "utf-8" }, new STYLELiteral(css)), new BODY(result)).ToString());
             Console.WriteLine("done");
+        }
+
+        private T NullTrueFalse<T>(bool? input, T ifNull, T ifTrue, T ifFalse)
+        {
+            return input == null ? ifNull : input.Value ? ifTrue : ifFalse;
         }
 
         private string minsec(TimeSpan time)

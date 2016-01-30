@@ -21,6 +21,7 @@ namespace LeagueGenMatchHistory
         public string Region = null;
         public string RegionFull = null;
         public string Name = null;
+        public HashSet<string> PastNames = new HashSet<string>();
         public long AccountId = -1;
         public long SummonerId = -1;
         public string AuthorizationHeader = null;
