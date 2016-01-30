@@ -544,7 +544,7 @@ namespace LeagueGenMatchHistory
             while (true)
             {
                 Console.WriteLine("{0}/{1}: retrieving games at {2} of {3}".Fmt(Summoner.Name, Summoner.Region, index, count));
-                var resp = _hc.Get(@"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={0}&endIndex={1}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313".Fmt(index, index + 15, Summoner.RegionFull, Summoner.AccountId));
+                var resp = _hc.Get(@"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={0}&endIndex={1}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313&queue=400&queue=410".Fmt(index, index + 15, Summoner.RegionFull, Summoner.AccountId));
                 var json = resp.Expect(HttpStatusCode.OK).DataJson;
 
                 Ut.Assert(json["accountId"].GetLongLenient() == Summoner.AccountId);
@@ -677,6 +677,7 @@ namespace LeagueGenMatchHistory
                 case 11: Map = "Summoner's Rift"; break;
                 case 12: Map = "Howling Abyss"; break;
                 case 14: Map = "Butcher's Bridge"; break;
+                default: throw new Exception("Unknown map: " + MapId);
             }
             string queueMap = null;
             switch (QueueId)
@@ -684,8 +685,10 @@ namespace LeagueGenMatchHistory
                 case 0: Type = "Custom"; break;
                 case 8: Type = "3v3"; queueMap = "Twisted Treeline"; break;
                 case 2: Type = "5v5 Blind Pick"; queueMap = "Summoner's Rift"; break;
-                case 14: Type = "5v5 Draft Pick"; queueMap = "Summoner's Rift"; break;
-                case 4: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break;
+                case 14:
+                case 400: Type = "5v5 Draft Pick"; queueMap = "Summoner's Rift"; break; // 400: new dynamic queue draft
+                case 4:
+                case 410: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break; // 410: new dynamic queue draft
                 case 6: Type = "5v5 Ranked Premade"; queueMap = "Summoner's Rift"; break;
                 case 9: Type = "3v3 Ranked Premade"; queueMap = "Summoner's Rift"; break;
                 case 41: Type = "3v3 Ranked Team"; break;
@@ -715,6 +718,7 @@ namespace LeagueGenMatchHistory
                 case 300: Type = "King Poro"; break;
                 case 310: Type = "Nemesis"; break;
                 case 313: Type = "Black Market Brawlers"; break;
+                default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)
                 Ut.Assert(Map == queueMap);
