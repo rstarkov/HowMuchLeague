@@ -137,6 +137,7 @@ namespace LeagueGenMatchHistory
                     var data = resp.Expect(HttpStatusCode.OK).DataString;
                     var tryJson = JsonDict.Parse(data);
                     Ut.Assert(tryJson["participantIdentities"].GetList().Any(l => l["player"]["summonerName"].GetString() == Summoner.Name)); // a bit redundant, but makes sure we don't save this if something went wrong
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
                     File.WriteAllText(path, data);
                 }
             }
