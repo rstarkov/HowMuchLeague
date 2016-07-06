@@ -255,10 +255,10 @@ namespace LeagueGenMatchHistory
             return new DIV { style = "text-align: center;" }._(new P { style = "text-align: left; display: inline-block;" }._(
                     gameTypeSections.Select(grp => Ut.NewArray<object>(
                         new A(grp.Key) { href = "#" + new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
-                        " : " + grp.Count().ToString() + " games",
+                        $" : {grp.Count():#,0} games, {grp.Sum(g => g.Duration.TotalHours):#,0} hours",
                         new BR()
                     ))
-                            ));
+            ));
         }
 
         private string getCss()
@@ -287,6 +287,7 @@ namespace LeagueGenMatchHistory
                 table.la td { text-align: left; }
                 table td.ra.ra { text-align: right; }
                 table td.la.la { text-align: left; }
+                .hspace { margin-right: 25px; }
                 .linelist { margin-left: 8px; }
                 .linelist:before { content: '\200B'; }\r\n";
             css += Program.AllKnownPlayers.Select(plr => "td.kp" + plr.Replace(" ", "") + (Human.SummonerNames.Contains(plr) ? " { background: #D1FECC; }\r\n" : " { background: #6EFFFF; }\r\n")).JoinString();
@@ -442,7 +443,11 @@ namespace LeagueGenMatchHistory
             plotGameDurationProgress.Reverse();
             result.Add(makePlotY("Game duration over time", plotGameDurationProgress, runningAverage(plotGameDurationProgress, 49).ToList()));
 
-            result.Add(new P(new B("Total games: "), games.Count().ToString("#,0")));
+            result.Add(new P(
+                new B("Total games: "), games.Count().ToString("#,0"), new SPAN { class_ = "hspace" },
+                new B("Total duration: "), games.Sum(g => g.Duration.TotalHours).ToString("#,0 hours"), new SPAN { class_ = "hspace" },
+                new B("Avg per day: "), (games.Sum(g => g.Duration.TotalHours) / (games.Max(g => g.DateUtc) - games.Min(g => g.DateUtc)).TotalDays).ToString("0.0 hours")
+            ));
             result.Add(new P(new B("Longest and shortest:"),
                 games.OrderByDescending(g => g.Duration).Take(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) }), new SPAN("...") { class_ = "linelist" },
                 games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) })));
@@ -501,7 +506,7 @@ namespace LeagueGenMatchHistory
             return new RawTag(result.ToString());
         }
 
-        private object makePlotY(string title, params List<double>[] datas)
+        private object makePlotY(string title, params IEnumerable<double>[] datas)
         {
             return makePlotXY(title, datas.Select(data => data.Select((p, i) => Tuple.Create((double) i, p)).ToList()).ToArray());
         }
