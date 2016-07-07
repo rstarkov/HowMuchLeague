@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
-using RT.Util.Json;
-using RT.Util.ExtensionMethods;
-using RT.Util.Serialization;
 using RT.Util;
+using RT.Util.Dialogs;
+using RT.Util.ExtensionMethods;
+using RT.Util.Json;
+using RT.Util.Serialization;
 
 namespace LeagueGenMatchHistory
 {
@@ -262,6 +265,109 @@ namespace LeagueGenMatchHistory
             }
             if (queueMap != null)
                 Ut.Assert(Map == queueMap);
+        }
+    }
+
+    public class LeagueData
+    {
+        private HClient _hc;
+        private SummonerInfo _summoner;
+        public List<Game> Games = new List<Game>();
+
+        public LeagueData(SummonerInfo summoner)
+        {
+            if (summoner == null)
+                throw new ArgumentNullException(nameof(summoner));
+            _summoner = summoner;
+            _hc = new HClient();
+            _hc.ReqAccept = "application/json, text/javascript, */*; q=0.01";
+            _hc.ReqAcceptLanguage = "en-GB,en;q=0.5";
+            _hc.ReqUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0";
+            _hc.ReqReferer = "http://matchhistory.{0}.leagueoflegends.com/en/".Fmt(_summoner.Region.ToLower());
+            _hc.ReqHeaders[HttpRequestHeader.Host] = "acs.leagueoflegends.com";
+            _hc.ReqHeaders["DNT"] = "1";
+            _hc.ReqHeaders["Region"] = _summoner.Region.ToUpper();
+            _hc.ReqHeaders["Authorization"] = _summoner.AuthorizationHeader;
+            _hc.ReqHeaders["Origin"] = "http://matchhistory.{0}.leagueoflegends.com".Fmt(_summoner.Region.ToLower());
+        }
+
+        public void LoadGames()
+        {
+            foreach (var kvp in _summoner.GamesAndReplays)
+            {
+                var json = LoadGameJson(kvp.Key);
+                if (json != null)
+                    Games.Add(new Game(json, _summoner));
+            }
+        }
+
+        public JsonDict LoadGameJson(string gameId)
+        {
+            var fullHistoryUrl = "https://acs.leagueoflegends.com/v1/stats/game/{0}/{1}?visiblePlatformId={0}&visibleAccountId={2}".Fmt(_summoner.RegionFull, gameId, _summoner.AccountId);
+            var path = Path.Combine(Program.Settings.MatchHistoryPath, "json", _summoner.RegionFull.ToLower() + "-" + _summoner.AccountId, fullHistoryUrl.FilenameCharactersEscape());
+            if (File.Exists(path))
+                Console.WriteLine("Loading cached " + fullHistoryUrl + " ...");
+            else
+            {
+                Console.WriteLine("Retrieving " + fullHistoryUrl + " ...");
+                var resp = _hc.Get(fullHistoryUrl);
+                if (resp.StatusCode == HttpStatusCode.NotFound)
+                    File.WriteAllText(path, "404");
+                else
+                {
+                    var data = resp.Expect(HttpStatusCode.OK).DataString;
+                    var tryJson = JsonDict.Parse(data);
+                    Ut.Assert(tryJson["participantIdentities"].GetList().Any(l => _summoner.PastNames.Contains(l["player"]["summonerName"].GetString()))); // a bit redundant, but makes sure we don't save this if something went wrong
+                    Directory.CreateDirectory(Path.GetDirectoryName(path));
+                    File.WriteAllText(path, data);
+                }
+            }
+            var json = File.ReadAllText(path);
+            var rawJson = json == "404" ? null : JsonDict.Parse(json);
+            if (rawJson == null)
+                return null;
+            Ut.Assert(rawJson["participantIdentities"].GetList().Any(l => _summoner.PastNames.Contains(l["player"]["summonerName"].GetString())));
+            return rawJson;
+        }
+
+        public void DiscoverGameIds(bool full)
+        {
+            if (_summoner == null)
+                throw new Exception("Not supported for multi-account generators");
+            int count = 15;
+            int index = 0;
+            while (true)
+            {
+                retry:;
+                Console.WriteLine("{0}/{1}: retrieving games at {2} of {3}".Fmt(_summoner.Name, _summoner.Region, index, count));
+                var resp = _hc.Get(@"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={0}&endIndex={1}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313&queue=400&queue=410".Fmt(index, index + 15, _summoner.RegionFull, _summoner.AccountId));
+                if (resp.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    var result = InputBox.GetLine($"Please enter Authorization header value for {_summoner.Region}/{_summoner.Name}:", _hc.ReqHeaders["Authorization"], "League Gen Match History");
+                    if (result == null)
+                        return;
+                    _summoner.AuthorizationHeader = _hc.ReqHeaders["Authorization"] = result;
+                    Program.Settings.SaveLoud();
+                    goto retry;
+                }
+                var json = resp.Expect(HttpStatusCode.OK).DataJson;
+
+                Ut.Assert(json["accountId"].GetLongLenient() == _summoner.AccountId);
+                Ut.Assert(json["platformId"].GetString().EqualsNoCase(_summoner.Region) || json["platformId"].GetString().EqualsNoCase(_summoner.RegionFull));
+
+                index += 15;
+                count = json["games"]["gameCount"].GetInt();
+
+                foreach (var gameId in json["games"]["games"].GetList().Select(js => js["gameId"].GetLong().ToString()))
+                    if (!_summoner.GamesAndReplays.ContainsKey(gameId))
+                        _summoner.GamesAndReplays[gameId] = null;
+
+                if (!full)
+                    break;
+                if (index >= count)
+                    break;
+            }
+            Console.WriteLine("{0}/{1}: done.".Fmt(_summoner.Name, _summoner.Region));
         }
     }
 }

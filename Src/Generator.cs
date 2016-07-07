@@ -2,58 +2,29 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
 using RT.TagSoup;
 using RT.Util;
-using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
 
 namespace LeagueGenMatchHistory
 {
-    //public class LeagueStatsGenerator
-    //{
-    //    /// <summary>
-    //    ///     Specifies how many recent games should be included in the recent games stats. Set to null to disable recent
-    //    ///     game stats generation.</summary>
-    //    public int? RecentGameStatsCount { get; set; } = 200;
-
-    //    public LeagueStatsResult Generate(
-    //}
-
-    //public class LeagueStatsResult
-    //{
-    //}
     class Generator
     {
         public SummonerInfo Summoner;
         public HumanInfo Human;
         private List<Game> _games = new List<Game>();
-        private HClient _hc;
 
         public Generator(SummonerInfo summoner)
         {
             Summoner = summoner;
             Human = summoner.Human;
-
-            _hc = new HClient();
-            _hc.ReqAccept = "application/json, text/javascript, */*; q=0.01";
-            _hc.ReqAcceptLanguage = "en-GB,en;q=0.5";
-            _hc.ReqUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0";
-            _hc.ReqReferer = "http://matchhistory.{0}.leagueoflegends.com/en/".Fmt(Summoner.Region.ToLower());
-            _hc.ReqHeaders[HttpRequestHeader.Host] = "acs.leagueoflegends.com";
-            _hc.ReqHeaders["DNT"] = "1";
-            _hc.ReqHeaders["Region"] = Summoner.Region.ToUpper();
-            _hc.ReqHeaders["Authorization"] = Summoner.AuthorizationHeader;
-            _hc.ReqHeaders["Origin"] = "http://matchhistory.{0}.leagueoflegends.com".Fmt(Summoner.Region.ToLower());
         }
 
         public Generator(HumanInfo human, IEnumerable<Generator> generators)
         {
             Summoner = null;
             Human = human;
-            _hc = null;
             _games = generators
                 .SelectMany(g => g._games)
                 .GroupBy(g => g.Id).Select(grp => grp.First())
@@ -65,43 +36,7 @@ namespace LeagueGenMatchHistory
         {
             if (Summoner == null)
                 throw new Exception("Not supported for multi-account generators");
-            foreach (var kvp in Summoner.GamesAndReplays)
-            {
-                var json = LoadGameJson(kvp.Key);
-                if (json != null)
-                    _games.Add(new Game(json, Summoner));
-            }
-        }
-
-        public JsonDict LoadGameJson(string gameId)
-        {
-            if (Summoner == null)
-                throw new Exception("Not supported for multi-account generators");
-            var fullHistoryUrl = "https://acs.leagueoflegends.com/v1/stats/game/{0}/{1}?visiblePlatformId={0}&visibleAccountId={2}".Fmt(Summoner.RegionFull, gameId, Summoner.AccountId);
-            var path = Path.Combine(Program.Settings.MatchHistoryPath, "json", Summoner.RegionFull.ToLower() + "-" + Summoner.AccountId, fullHistoryUrl.FilenameCharactersEscape());
-            if (File.Exists(path))
-                Console.WriteLine("Loading cached " + fullHistoryUrl + " ...");
-            else
-            {
-                Console.WriteLine("Retrieving " + fullHistoryUrl + " ...");
-                var resp = _hc.Get(fullHistoryUrl);
-                if (resp.StatusCode == HttpStatusCode.NotFound)
-                    File.WriteAllText(path, "404");
-                else
-                {
-                    var data = resp.Expect(HttpStatusCode.OK).DataString;
-                    var tryJson = JsonDict.Parse(data);
-                    Ut.Assert(tryJson["participantIdentities"].GetList().Any(l => Summoner.PastNames.Contains(l["player"]["summonerName"].GetString()))); // a bit redundant, but makes sure we don't save this if something went wrong
-                    Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    File.WriteAllText(path, data);
-                }
-            }
-            var json = File.ReadAllText(path);
-            var rawJson = json == "404" ? null : JsonDict.Parse(json);
-            if (rawJson == null)
-                return null;
-            Ut.Assert(rawJson["participantIdentities"].GetList().Any(l => Summoner.PastNames.Contains(l["player"]["summonerName"].GetString())));
-            return rawJson;
+            _games = new LeagueData(Summoner).Games;
         }
 
         private List<IGrouping<string, Game>> getGameTypeSections(int limit)
@@ -552,46 +487,6 @@ namespace LeagueGenMatchHistory
                     plr.Champion,
                     " ", plr.Lane == Lane.Top ? "(top)" : plr.Lane == Lane.Middle ? "(mid)" : plr.Lane == Lane.Jungle ? "(jg)" : plr.Role == Role.DuoCarry ? "(adc)" : plr.Role == Role.DuoSupport ? "(sup)" : "(bot)")
             };
-        }
-
-        public void DiscoverGameIds(bool full)
-        {
-            if (Summoner == null)
-                throw new Exception("Not supported for multi-account generators");
-            int count = 15;
-            int index = 0;
-            while (true)
-            {
-                retry:;
-                Console.WriteLine("{0}/{1}: retrieving games at {2} of {3}".Fmt(Summoner.Name, Summoner.Region, index, count));
-                var resp = _hc.Get(@"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={0}&endIndex={1}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313&queue=400&queue=410".Fmt(index, index + 15, Summoner.RegionFull, Summoner.AccountId));
-                if (resp.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    var result = InputBox.GetLine($"Please enter Authorization header value for {Summoner.Region}/{Summoner.Name}:", _hc.ReqHeaders["Authorization"], "League Gen Match History");
-                    if (result == null)
-                        return;
-                    Summoner.AuthorizationHeader = _hc.ReqHeaders["Authorization"] = result;
-                    Program.Settings.SaveLoud();
-                    goto retry;
-                }
-                var json = resp.Expect(HttpStatusCode.OK).DataJson;
-
-                Ut.Assert(json["accountId"].GetLongLenient() == Summoner.AccountId);
-                Ut.Assert(json["platformId"].GetString().EqualsNoCase(Summoner.Region) || json["platformId"].GetString().EqualsNoCase(Summoner.RegionFull));
-
-                index += 15;
-                count = json["games"]["gameCount"].GetInt();
-
-                foreach (var gameId in json["games"]["games"].GetList().Select(js => js["gameId"].GetLong().ToString()))
-                    if (!Summoner.GamesAndReplays.ContainsKey(gameId))
-                        Summoner.GamesAndReplays[gameId] = null;
-
-                if (!full)
-                    break;
-                if (index >= count)
-                    break;
-            }
-            Console.WriteLine("{0}/{1}: done.".Fmt(Summoner.Name, Summoner.Region));
         }
 
         public string GetGameLink(Game game)
