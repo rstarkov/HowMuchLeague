@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using RT.Util;
-using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
 using RT.Util.Serialization;
@@ -21,26 +20,6 @@ namespace LeagueGenMatchHistory
         public override string ToString()
         {
             return Name;
-        }
-    }
-
-    public class SummonerInfo
-    {
-        public string Region = null;
-        public string RegionFull = null;
-        public string Name = null;
-        public HashSet<string> PastNames = new HashSet<string>();
-        public long AccountId = -1;
-        public long SummonerId = -1;
-        public string AuthorizationHeader = null;
-        public Dictionary<string, string> GamesAndReplays = new Dictionary<string, string>();
-
-        [ClassifyIgnore]
-        public HumanInfo Human;
-
-        public override string ToString()
-        {
-            return "{0}/{1} ({2})".Fmt(Name, Region, Human == null ? "?" : Human.Name);
         }
     }
 
@@ -127,6 +106,7 @@ namespace LeagueGenMatchHistory
         public Team Ally, Enemy;
         public Player Plr(string summonerName) { return Ally.Players.Single(p => p.Name == summonerName); }
         public Player Plr(HumanInfo human) { return Ally.Players.Single(p => human.SummonerNames.Contains(p.Name)); }
+        public Player Plr(long id) { return Ally.Players.Single(p => p.SummonerId == id || p.AccountId == id); }
         public Player Plr(object playerId) { return playerId is string ? Plr(playerId as string) : playerId is HumanInfo ? Plr(playerId as HumanInfo) : Ut.Throw<Player>(new Exception()); }
         public string MicroType { get { return Regex.Matches((Map == "Summoner's Rift" ? "" : " " + Map) + " " + Type, @"\s\(?(.)").Cast<Match>().Select(m => m.Groups[1].Value).JoinString(); } }
         public IEnumerable<Player> AllPlayers() { return Enemy.Players.Concat(Ally.Players); }
@@ -138,8 +118,8 @@ namespace LeagueGenMatchHistory
             MapId = json["mapId"].GetInt();
             QueueId = json["queueId"].GetInt();
             setMapAndType();
-            DetailsUrl = "http://matchhistory.{0}.leagueoflegends.com/en/#match-details/{1}/{2}/{3}".Fmt(summoner.Region.ToLower(), summoner.RegionFull, Id, summoner.AccountId);
-            DateUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0);
+            DetailsUrl = "http://matchhistory.{0}.leagueoflegends.com/en/#match-details/{1}/{2}/{3}".Fmt(summoner.Region.ToLower(), summoner.RegionServer, Id, summoner.AccountId);
+            DateUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0);
             Duration = TimeSpan.FromSeconds(json["gameDuration"].GetInt());
             var players = json["participantIdentities"].GetList().Select(p =>
             {
@@ -268,106 +248,227 @@ namespace LeagueGenMatchHistory
         }
     }
 
-    public class LeagueData
+    public class SummonerInfo
     {
-        private HClient _hc;
-        private SummonerInfo _summoner;
-        public List<Game> Games = new List<Game>();
+        public string Region { get; private set; }
+        public long AccountId { get; private set; }
+        public long SummonerId { get; private set; }
 
-        public LeagueData(SummonerInfo summoner)
+        public string AuthorizationHeader { get; private set; }
+
+        private HashSet<string> _GameIds = new HashSet<string>();
+
+        public string RegionServer { get { return Region.SubstringSafe(0, 3) + "1"; } }
+
+        /// <summary>Summoner Name as deduced from the most recent game on record. Null until games are loaded.</summary>
+        [ClassifyIgnore]
+        public string Name { get; private set; }
+
+        /// <summary>All Summoner Names as deduced from all the game on record. Null until games are loaded.</summary>
+        [ClassifyIgnore]
+        public HashSet<string> PastNames { get; private set; }
+
+        /// <summary>All games played by this summoner. This list is read-only.</summary>
+        [ClassifyIgnore]
+        public IList<Game> Games { get; private set; }
+
+        [ClassifyIgnore]
+        private string _filename;
+
+        public override string ToString()
         {
-            if (summoner == null)
-                throw new ArgumentNullException(nameof(summoner));
-            _summoner = summoner;
-            _hc = new HClient();
-            _hc.ReqAccept = "application/json, text/javascript, */*; q=0.01";
-            _hc.ReqAcceptLanguage = "en-GB,en;q=0.5";
-            _hc.ReqUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0";
-            _hc.ReqReferer = "http://matchhistory.{0}.leagueoflegends.com/en/".Fmt(_summoner.Region.ToLower());
-            _hc.ReqHeaders[HttpRequestHeader.Host] = "acs.leagueoflegends.com";
-            _hc.ReqHeaders["DNT"] = "1";
-            _hc.ReqHeaders["Region"] = _summoner.Region.ToUpper();
-            _hc.ReqHeaders["Authorization"] = _summoner.AuthorizationHeader;
-            _hc.ReqHeaders["Origin"] = "http://matchhistory.{0}.leagueoflegends.com".Fmt(_summoner.Region.ToLower());
+            return $"{Region}/{AccountId} ({Name ?? "?"})";
         }
 
-        public void LoadGames()
+        private SummonerInfo() { } // for Classify
+
+        /// <summary>
+        ///     Constructs a new instance by loading an existing summoner data file.</summary>
+        /// <param name="filename">
+        ///     File to load the summoner data from. This filename is also used to save summoner data and to infer the
+        ///     directory name for API response cache.</param>
+        public SummonerInfo(string filename)
         {
-            foreach (var kvp in _summoner.GamesAndReplays)
+            if (filename == null)
+                throw new ArgumentNullException(nameof(filename));
+            _filename = filename;
+            if (!File.Exists(_filename))
+                throw new ArgumentException($"Summoner data file not found: \"{filename}\".", nameof(filename));
+            ClassifyXml.DeserializeFileIntoObject(filename, this);
+            if (Region == null || AccountId == 0 || SummonerId == 0)
+                throw new InvalidOperationException($"Summoner data file does not contain the minimum required data.");
+            Region = Region.ToUpper();
+        }
+
+        /// <summary>
+        ///     Constructs a new instance from scratch as well as the accompanying data file.</summary>
+        /// <param name="filename">
+        ///     File to save the summoner data to. An exception is thrown if the file already exists. This filename is also
+        ///     used to save summoner data and to infer the directory name for API response cache.</param>
+        public SummonerInfo(string filename, string region, long accountId, long summonerId)
+            : this(filename)
+        {
+            if (filename == null)
+                throw new ArgumentNullException(nameof(filename));
+            if (region == null)
+                throw new ArgumentNullException(nameof(region));
+            _filename = filename;
+            Region = region.ToUpper();
+            AccountId = accountId;
+            SummonerId = summonerId;
+            if (File.Exists(_filename))
+                throw new ArgumentException($"Summoner data file already exists: \"{filename}\".", nameof(filename));
+            save();
+        }
+
+        /// <summary>
+        ///     Loads game data cached by an earlier call to <see cref="LoadGamesOnline"/> without accessing Riot servers.</summary>
+        public void LoadGamesOffline()
+        {
+            var games = new List<Game>();
+            foreach (var gameId in _GameIds)
             {
-                var json = LoadGameJson(kvp.Key);
+                var json = loadGameJson(gameId, null, null, null);
                 if (json != null)
-                    Games.Add(new Game(json, _summoner));
+                    games.Add(new Game(json, this));
+            }
+            postLoad(games);
+        }
+
+        /// <summary>
+        ///     Loads game data. Queries Riot servers to retrieve any new games, caches them, and loads all the previously
+        ///     cached games.</summary>
+        /// <param name="getAuthHeader">
+        ///     Invoked if Riot responds with a "not authorized" response. Should return an updated Authorization header for
+        ///     this summoner.</param>
+        /// <param name="logger">
+        ///     An optional function invoked to log progress.</param>
+#warning TODO: async
+        public void LoadGamesOnline(Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
+        {
+            var hClient = new HClient();
+            hClient.ReqAccept = "application/json, text/javascript, */*; q=0.01";
+            hClient.ReqAcceptLanguage = "en-GB,en;q=0.5";
+            hClient.ReqUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0";
+            hClient.ReqReferer = $"http://matchhistory.{Region.ToLower()}.leagueoflegends.com/en/";
+            hClient.ReqHeaders[HttpRequestHeader.Host] = "acs.leagueoflegends.com";
+            hClient.ReqHeaders["DNT"] = "1";
+            hClient.ReqHeaders["Region"] = Region.ToUpper();
+            hClient.ReqHeaders["Authorization"] = AuthorizationHeader;
+            hClient.ReqHeaders["Origin"] = $"http://matchhistory.{Region.ToLower()}.leagueoflegends.com";
+
+            discoverGameIds(false, hClient, getAuthHeader, logger);
+
+            var games = new List<Game>();
+            foreach (var gameId in _GameIds)
+            {
+                var json = loadGameJson(gameId, hClient, getAuthHeader, logger);
+                if (json != null)
+                    games.Add(new Game(json, this));
+            }
+            postLoad(games);
+        }
+
+        private void postLoad(List<Game> games)
+        {
+            games.Sort(CustomComparer<Game>.By(g => g.DateUtc));
+            Games = games.AsReadOnly();
+            Name = Games.Last().Plr(SummonerId).Name;
+            PastNames = Games.Select(g => g.Plr(SummonerId).Name).ToHashSet();
+        }
+
+        private void save()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_filename));
+            ClassifyXml.SerializeToFile(this, _filename);
+        }
+
+        private HResponse retryOnAuthHeaderFail(string url, HClient hClient, Func<SummonerInfo, string> getAuthHeader)
+        {
+            while (true)
+            {
+                var resp = hClient.Get(url);
+                if (resp.StatusCode != HttpStatusCode.Unauthorized)
+                    return resp;
+
+                var newHeader = getAuthHeader(this);
+                if (newHeader == null)
+                    return null;
+                AuthorizationHeader = newHeader;
+                hClient.ReqHeaders["Authorization"] = newHeader;
+                save();
             }
         }
 
-        public JsonDict LoadGameJson(string gameId)
+        private JsonDict loadGameJson(string gameId, HClient hClient, Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
         {
-            var fullHistoryUrl = "https://acs.leagueoflegends.com/v1/stats/game/{0}/{1}?visiblePlatformId={0}&visibleAccountId={2}".Fmt(_summoner.RegionFull, gameId, _summoner.AccountId);
-            var path = Path.Combine(Program.Settings.MatchHistoryPath, "json", _summoner.RegionFull.ToLower() + "-" + _summoner.AccountId, fullHistoryUrl.FilenameCharactersEscape());
+            // If visibleAccountId isn't equal to Account ID of any of the players in the match, participantIdentities will not contain any identities at all.
+            // If it is but the AuthorizationHeader isn't valid for that Account ID, only that player's info will be populated in participantIdentities.
+            // Full participantIdentities are returned only if the visibleAccountId was a participant in the match and is logged in via AuthorizationHeader.
+            var fullHistoryUrl = $"https://acs.leagueoflegends.com/v1/stats/game/{RegionServer}/{gameId}?visiblePlatformId={RegionServer}&visibleAccountId={AccountId}";
+            var path = Path.Combine(Path.GetDirectoryName(_filename), Path.GetFileNameWithoutExtension(_filename), fullHistoryUrl.FilenameCharactersEscape());
+            string rawJson = null;
             if (File.Exists(path))
-                Console.WriteLine("Loading cached " + fullHistoryUrl + " ...");
+            {
+                logger?.Invoke("Loading cached " + fullHistoryUrl + " ...");
+                rawJson = File.ReadAllText(path);
+            }
             else
             {
-                Console.WriteLine("Retrieving " + fullHistoryUrl + " ...");
-                var resp = _hc.Get(fullHistoryUrl);
+                logger?.Invoke("Retrieving " + fullHistoryUrl + " ...");
+                var resp = retryOnAuthHeaderFail(fullHistoryUrl, hClient, getAuthHeader);
                 if (resp.StatusCode == HttpStatusCode.NotFound)
                     File.WriteAllText(path, "404");
                 else
                 {
                     var data = resp.Expect(HttpStatusCode.OK).DataString;
                     var tryJson = JsonDict.Parse(data);
-                    Ut.Assert(tryJson["participantIdentities"].GetList().Any(l => _summoner.PastNames.Contains(l["player"]["summonerName"].GetString()))); // a bit redundant, but makes sure we don't save this if something went wrong
+                    assertHasParticipantIdentities(tryJson);
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
                     File.WriteAllText(path, data);
                 }
             }
-            var json = File.ReadAllText(path);
-            var rawJson = json == "404" ? null : JsonDict.Parse(json);
-            if (rawJson == null)
-                return null;
-            Ut.Assert(rawJson["participantIdentities"].GetList().Any(l => _summoner.PastNames.Contains(l["player"]["summonerName"].GetString())));
-            return rawJson;
+            var json = rawJson == "404" ? null : JsonDict.Parse(rawJson);
+            if (json != null)
+                assertHasParticipantIdentities(json);
+            return json;
         }
 
-        public void DiscoverGameIds(bool full)
+        private void assertHasParticipantIdentities(JsonDict json)
         {
-            if (_summoner == null)
-                throw new Exception("Not supported for multi-account generators");
-            int count = 15;
+            if (!json["participantIdentities"].GetList().All(id => id.ContainsKey("participantId") && id.ContainsKey("player") && id["player"].ContainsKey("summonerName") 
+                && (id["player"].ContainsKey("summonerId") || id["player"].Safe["accountId"].GetIntSafe() == 0)))
+                throw new Exception("Match history JSON does not contain all participant identities.");
+        }
+
+        private void discoverGameIds(bool full, HClient hClient, Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
+        {
+            int step = 15;
+            int count = step;
             int index = 0;
             while (true)
             {
-                retry:;
-                Console.WriteLine("{0}/{1}: retrieving games at {2} of {3}".Fmt(_summoner.Name, _summoner.Region, index, count));
-                var resp = _hc.Get(@"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={0}&endIndex={1}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313&queue=400&queue=410".Fmt(index, index + 15, _summoner.RegionFull, _summoner.AccountId));
-                if (resp.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    var result = InputBox.GetLine($"Please enter Authorization header value for {_summoner.Region}/{_summoner.Name}:", _hc.ReqHeaders["Authorization"], "League Gen Match History");
-                    if (result == null)
-                        return;
-                    _summoner.AuthorizationHeader = _hc.ReqHeaders["Authorization"] = result;
-                    Program.Settings.SaveLoud();
-                    goto retry;
-                }
-                var json = resp.Expect(HttpStatusCode.OK).DataJson;
+                logger?.Invoke("{0}/{1}: retrieving games at {2} of {3}".Fmt(Name, Region, index, count));
+                var url = $"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={index}&endIndex={index + step}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313&queue=400&queue=410";
+                var json = retryOnAuthHeaderFail(url, hClient, getAuthHeader).Expect(HttpStatusCode.OK).DataJson;
 
-                Ut.Assert(json["accountId"].GetLongLenient() == _summoner.AccountId);
-                Ut.Assert(json["platformId"].GetString().EqualsNoCase(_summoner.Region) || json["platformId"].GetString().EqualsNoCase(_summoner.RegionFull));
+                Ut.Assert(json["accountId"].GetLongLenient() == AccountId);
+                Ut.Assert(json["platformId"].GetString().EqualsNoCase(Region) || json["platformId"].GetString().EqualsNoCase(RegionServer));
 
-                index += 15;
+                index += step;
                 count = json["games"]["gameCount"].GetInt();
 
+                bool anyNew = false;
                 foreach (var gameId in json["games"]["games"].GetList().Select(js => js["gameId"].GetLong().ToString()))
-                    if (!_summoner.GamesAndReplays.ContainsKey(gameId))
-                        _summoner.GamesAndReplays[gameId] = null;
+                    anyNew |= _GameIds.Add(gameId);
 
-                if (!full)
-                    break;
                 if (index >= count)
                     break;
+                if (!anyNew && !full)
+                    break;
             }
-            Console.WriteLine("{0}/{1}: done.".Fmt(_summoner.Name, _summoner.Region));
+            logger?.Invoke($"{Name}/{Region}: done.");
+            save();
         }
     }
 }

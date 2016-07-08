@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using RT.TagSoup;
 using RT.Util;
+using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueGenMatchHistory
@@ -13,12 +14,12 @@ namespace LeagueGenMatchHistory
     {
         public SummonerInfo Summoner;
         public HumanInfo Human;
-        private List<Game> _games = new List<Game>();
+        private IList<Game> _games;
 
-        public Generator(SummonerInfo summoner)
+        public Generator(SummonerInfo summoner,  HumanInfo human)
         {
             Summoner = summoner;
-            Human = summoner.Human;
+            Human = human;
         }
 
         public Generator(HumanInfo human, IEnumerable<Generator> generators)
@@ -36,7 +37,11 @@ namespace LeagueGenMatchHistory
         {
             if (Summoner == null)
                 throw new Exception("Not supported for multi-account generators");
-            _games = new LeagueData(Summoner).Games;
+            Summoner.LoadGamesOnline(
+                sm => InputBox.GetLine($"Please enter Authorization header value for {sm.Region}/{sm.Name}:", sm.AuthorizationHeader, "League Gen Match History"),
+                str => Console.WriteLine(str)
+            );
+            _games = Summoner.Games;
         }
 
         private List<IGrouping<string, Game>> getGameTypeSections(int limit)

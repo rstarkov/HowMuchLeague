@@ -21,17 +21,17 @@ namespace LeagueGenMatchHistory
         static void Main(string[] args)
         {
             SettingsUtil.LoadSettings(out Settings);
-            Settings.KnownPlayers.RemoveWhere(name => Settings.Humans.Any(h => h.SummonerNames.Contains(name)));
             Settings.Save();
             Directory.CreateDirectory(Path.Combine(Settings.MatchHistoryPath, "json"));
 
             AllKnownPlayers = Settings.KnownPlayers.Concat(Settings.Humans.SelectMany(h => h.SummonerNames)).ToHashSet();
             foreach (var sm in Settings.Summoners)
             {
-                sm.Human = Settings.Humans.Single(h => h.SummonerNames.Contains(sm.Name));
+#warning TODO: reinstate summoner/human linkage
+                //sm.Human = Settings.Humans.Single(h => h.SummonerNames.Contains(sm.Name));
                 sm.PastNames.Add(sm.Name);
             }
-            var generators = Settings.Summoners.ToDictionary(sm => sm, sm => new Generator(sm));
+            var generators = Settings.Summoners.ToDictionary(sm => sm, sm => new Generator(sm, null /* here too */));
 
             // Load champion id to name map
             var champs = JsonDict.Parse(File.ReadAllText(Path.Combine(Settings.MatchHistoryPath, "champions.json")));
