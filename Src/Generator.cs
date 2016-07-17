@@ -209,7 +209,7 @@ namespace LeagueGenMatchHistory
                  {
                      total,
                      champ = grp.First().Champion,
-                     wins = grp.Count(p => p.Victory) / (double) grp.Count() * 100,
+                     wins = grp.Count(p => p.Team.Victory) / (double) grp.Count() * 100,
                      avgDamage30 = grp.Average(p => p.DamageToChampions / p.Game.Duration.TotalMinutes * 30),
                      avgKills30 = grp.Average(p => p.Kills / p.Game.Duration.TotalMinutes * 30),
                      avgDeaths30 = grp.Average(p => p.Deaths / p.Game.Duration.TotalMinutes * 30),

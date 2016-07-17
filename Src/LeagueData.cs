@@ -29,29 +29,48 @@ namespace LeagueGenMatchHistory
 
     public class Team
     {
-        public bool Victory;
-        public List<Player> Players;
+        public Game Game { get; private set; }
+        public bool Victory { get; private set; }
+        public IList<Player> Players { get; private set; }
+
+        internal Team(JsonValue json, Dictionary<int, JsonValue> participants, Dictionary<int, JsonValue> identities, Game game)
+        {
+            Game = game;
+            Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
+            Players = participants.Values.Select(p => new Player(p, identities[p["participantId"].GetInt()], game, this))
+                .OrderBy(p => p.Lane).ThenBy(p => p.Role)
+                .ToList().AsReadOnly();
+        }
     }
 
     public class Player
     {
-        public Team Team;
-        public Game Game;
-        public int ParticipantId, TeamId;
-        public long AccountId, SummonerId;
-        public string Name;
-        public int ChampionId;
+        public Game Game { get; private set; }
+        public Team Team { get; private set; }
+        public int TeamId { get; private set; }
+        public long AccountId { get; private set; }
+        public long SummonerId { get; private set; }
+        public string Name { get; private set; }
+        public int ChampionId { get; private set; }
         public string Champion { get { return Program.Champions[ChampionId]; } }
-        public bool Victory { get { return Team.Victory; } }
-        public int Spell1Id, Spell2Id;
-        public Role Role;
-        public Lane Lane;
-        public int Kills, Deaths, Assists;
-        public int DamageToChampions, TotalHeal, TotalDamageTaken;
-        public int LargestMultiKill;
-        public int WardsPlaced;
-        public int CreepsAt10, CreepsAt20, CreepsAt30;
-        public int GoldAt10, GoldAt20, GoldAt30;
+        public int Spell1Id { get; private set; }
+        public int Spell2Id { get; private set; }
+        public Role Role { get; private set; }
+        public Lane Lane { get; private set; }
+        public int Kills { get; private set; }
+        public int Deaths { get; private set; }
+        public int Assists { get; private set; }
+        public int DamageToChampions { get; private set; }
+        public int TotalHeal { get; private set; }
+        public int TotalDamageTaken { get; private set; }
+        public int LargestMultiKill { get; private set; }
+        public int WardsPlaced { get; private set; }
+        public int CreepsAt10 { get; private set; }
+        public int CreepsAt20 { get; private set; }
+        public int CreepsAt30 { get; private set; }
+        public int GoldAt10 { get; private set; }
+        public int GoldAt20 { get; private set; }
+        public int GoldAt30 { get; private set; }
 
         public int RankOf(Func<Player, double> prop)
         {
@@ -88,22 +107,68 @@ namespace LeagueGenMatchHistory
         {
             return Name + " - " + Champion;
         }
+
+        internal Player(JsonValue participant, JsonValue identity, Game game, Team team)
+        {
+            Game = game;
+            Team = team;
+
+            AccountId = identity["player"]["accountId"].GetLong();
+            SummonerId = identity["player"].ContainsKey("summonerId") ? identity["player"]["summonerId"].GetLong() : -1; // -1 when it's a bot
+            Name = identity["player"]["summonerName"].GetString();
+
+            TeamId = participant["teamId"].GetInt();
+            ChampionId = participant["championId"].GetInt();
+            Spell1Id = participant["spell1Id"].GetInt();
+            Spell2Id = participant["spell2Id"].GetInt();
+            var role = participant["timeline"]["role"].GetString();
+            Role = role == "DUO" ? Role.Duo : role == "DUO_CARRY" ? Role.DuoCarry : role == "DUO_SUPPORT" ? Role.DuoSupport : role == "SOLO" ? Role.Solo : role == "NONE" ? Role.None : Ut.Throw<Role>(new Exception());
+            var lane = participant["timeline"]["lane"].GetString();
+            Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : Ut.Throw<Lane>(new Exception());
+            var stats = participant["stats"].GetDict();
+            Kills = stats["kills"].GetInt();
+            Deaths = stats["deaths"].GetInt();
+            Assists = stats["assists"].GetInt();
+            DamageToChampions = stats["totalDamageDealtToChampions"].GetInt();
+            TotalHeal = stats["totalHeal"].GetInt();
+            TotalDamageTaken = stats["totalDamageTaken"].GetInt();
+            LargestMultiKill = stats["largestMultiKill"].GetInt();
+            WardsPlaced = stats.ContainsKey("wardsPlaced") ? stats["wardsPlaced"].GetInt() : 0;
+            var timeline = participant["timeline"].GetDict();
+            if (game.Duration > TimeSpan.FromMinutes(10))
+            {
+                CreepsAt10 = (int) (timeline["creepsPerMinDeltas"]["0-10"].GetDouble() * 10);
+                GoldAt10 = (int) (timeline["goldPerMinDeltas"]["0-10"].GetDouble() * 10);
+            }
+            if (game.Duration > TimeSpan.FromMinutes(20))
+            {
+                CreepsAt20 = CreepsAt10 + (int) (timeline["creepsPerMinDeltas"]["10-20"].GetDouble() * 10);
+                GoldAt20 = GoldAt10 + (int) (timeline["goldPerMinDeltas"]["10-20"].GetDouble() * 10);
+            }
+            if (game.Duration > TimeSpan.FromMinutes(30))
+            {
+                CreepsAt30 = CreepsAt20 + (int) (timeline["creepsPerMinDeltas"]["20-30"].GetDouble() * 10);
+                GoldAt30 = GoldAt20 + (int) (timeline["goldPerMinDeltas"]["20-30"].GetDouble() * 10);
+            }
+        }
     }
 
     public class Game
     {
-        public string Id;
-        public DateTime DateUtc;
-        public TimeSpan Duration;
+        public SummonerInfo Summoner { get; private set; }
+        public string Id { get; private set; }
+        public DateTime DateUtc { get; private set; }
+        public TimeSpan Duration { get; private set; }
         public DateTime Date(string timeZoneId) { return TimeZoneInfo.ConvertTimeFromUtc(DateUtc, TimeZoneInfo.FindSystemTimeZoneById(timeZoneId)); }
         public DateTime DateDayOnly(string timeZoneId) { var d = Date(timeZoneId); return d.TimeOfDay.TotalHours < 5 ? d.Date.AddDays(-1) : d.Date; }
-        public string DetailsUrl;
-        public int MapId;
-        public int QueueId;
-        public string Map;
-        public string Type;
+        public string DetailsUrl { get; private set; }
+        public int MapId { get; private set; }
+        public int QueueId { get; private set; }
+        public string Map { get; private set; }
+        public string Type { get; private set; }
         public bool? Victory { get { return Ally.Victory ? true : Enemy.Victory ? false : (bool?) null; } }
-        public Team Ally, Enemy;
+        public Team Ally { get; private set; }
+        public Team Enemy { get; private set; }
         public Player Plr(string summonerName) { return Ally.Players.Single(p => p.Name == summonerName); }
         public Player Plr(HumanInfo human) { return Ally.Players.Single(p => human.SummonerNames.Contains(p.Name)); }
         public Player Plr(long id) { return Ally.Players.Single(p => p.SummonerId == id || p.AccountId == id); }
@@ -114,6 +179,7 @@ namespace LeagueGenMatchHistory
 
         internal Game(JsonDict json, SummonerInfo summoner)
         {
+            Summoner = summoner;
             Id = json["gameId"].GetLong().ToString();
             MapId = json["mapId"].GetInt();
             QueueId = json["queueId"].GetInt();
@@ -121,70 +187,17 @@ namespace LeagueGenMatchHistory
             DetailsUrl = "http://matchhistory.{0}.leagueoflegends.com/en/#match-details/{1}/{2}/{3}".Fmt(summoner.Region.ToLower(), summoner.RegionServer, Id, summoner.AccountId);
             DateUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0);
             Duration = TimeSpan.FromSeconds(json["gameDuration"].GetInt());
-            var players = json["participantIdentities"].GetList().Select(p =>
-            {
-                var result = new Player();
-                result.ParticipantId = p["participantId"].GetInt();
-                result.AccountId = p["player"]["accountId"].GetLong();
-                result.SummonerId = p["player"].ContainsKey("summonerId") ? p["player"]["summonerId"].GetLong() : -1; // -1 when it's a bot
-                result.Name = p["player"]["summonerName"].GetString();
-                return result;
-            }).ToDictionary(plr => plr.ParticipantId);
-            foreach (var p in json["participants"].GetList())
-            {
-                var pp = players[p["participantId"].GetInt()];
-                pp.TeamId = p["teamId"].GetInt();
-                pp.ChampionId = p["championId"].GetInt();
-                pp.Spell1Id = p["spell1Id"].GetInt();
-                pp.Spell2Id = p["spell2Id"].GetInt();
-                var role = p["timeline"]["role"].GetString();
-                pp.Role = role == "DUO" ? Role.Duo : role == "DUO_CARRY" ? Role.DuoCarry : role == "DUO_SUPPORT" ? Role.DuoSupport : role == "SOLO" ? Role.Solo : role == "NONE" ? Role.None : Ut.Throw<Role>(new Exception());
-                var lane = p["timeline"]["lane"].GetString();
-                pp.Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : Ut.Throw<Lane>(new Exception());
-                var stats = p["stats"].GetDict();
-                pp.Kills = stats["kills"].GetInt();
-                pp.Deaths = stats["deaths"].GetInt();
-                pp.Assists = stats["assists"].GetInt();
-                pp.DamageToChampions = stats["totalDamageDealtToChampions"].GetInt();
-                pp.TotalHeal = stats["totalHeal"].GetInt();
-                pp.TotalDamageTaken = stats["totalDamageTaken"].GetInt();
-                pp.LargestMultiKill = stats["largestMultiKill"].GetInt();
-                pp.WardsPlaced = stats.ContainsKey("wardsPlaced") ? stats["wardsPlaced"].GetInt() : 0;
-                var timeline = p["timeline"].GetDict();
-                if (Duration > TimeSpan.FromMinutes(10))
-                {
-                    pp.CreepsAt10 = (int) (timeline["creepsPerMinDeltas"]["0-10"].GetDouble() * 10);
-                    pp.GoldAt10 = (int) (timeline["goldPerMinDeltas"]["0-10"].GetDouble() * 10);
-                }
-                if (Duration > TimeSpan.FromMinutes(20))
-                {
-                    pp.CreepsAt20 = pp.CreepsAt10 + (int) (timeline["creepsPerMinDeltas"]["10-20"].GetDouble() * 10);
-                    pp.GoldAt20 = pp.GoldAt10 + (int) (timeline["goldPerMinDeltas"]["10-20"].GetDouble() * 10);
-                }
-                if (Duration > TimeSpan.FromMinutes(30))
-                {
-                    pp.CreepsAt30 = pp.CreepsAt20 + (int) (timeline["creepsPerMinDeltas"]["20-30"].GetDouble() * 10);
-                    pp.GoldAt30 = pp.GoldAt20 + (int) (timeline["goldPerMinDeltas"]["20-30"].GetDouble() * 10);
-                }
-            }
-            var teams = players.Values.GroupBy(p => p.TeamId).ToDictionary(g => g.Key, g => new
-            {
-                Team = new Team { Players = g.OrderBy(p => p.Lane).ThenBy(p => p.Role).ToList() },
-                Json = json["teams"].GetList().Single(t => t["teamId"].GetInt() == g.First().TeamId)
-            });
+
+            var teams =
+                (from team in json["teams"].GetList()
+                 let participants = json["participants"].GetList().Where(p => p["teamId"].GetInt() == team["teamId"].GetInt()).ToDictionary(p => p["participantId"].GetInt())
+                 let identities = json["participantIdentities"].GetList().Where(pi => participants.ContainsKey(pi["participantId"].GetInt())).ToDictionary(pi => pi["participantId"].GetInt())
+                 select new Team(team, participants, identities, this)
+                ).ToList();
             Ut.Assert(teams.Count == 2);
-            var ourTeamId = players.Values.Single(p => p.SummonerId == summoner.SummonerId).TeamId;
-            Ally = teams[ourTeamId].Team;
-            Enemy = teams[teams.Keys.Where(k => k != ourTeamId).Single()].Team;
-            foreach (var t in teams.Values)
-            {
-                t.Team.Victory = t.Json["win"].GetString() == "Win" ? true : t.Json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
-                foreach (var p in t.Team.Players)
-                {
-                    p.Team = t.Team;
-                    p.Game = this;
-                }
-            }
+
+            Ally = teams.Single(t => t.Players.Any(p => p.SummonerId == summoner.SummonerId));
+            Enemy = teams.Single(t => t != Ally);
         }
 
         private void setMapAndType()
@@ -266,7 +279,7 @@ namespace LeagueGenMatchHistory
 
         /// <summary>All Summoner Names as deduced from all the game on record. Null until games are loaded.</summary>
         [ClassifyIgnore]
-        public HashSet<string> PastNames { get; private set; }
+        public IList<string> PastNames { get; private set; }
 
         /// <summary>All games played by this summoner. This list is read-only.</summary>
         [ClassifyIgnore]
@@ -374,7 +387,7 @@ namespace LeagueGenMatchHistory
             games.Sort(CustomComparer<Game>.By(g => g.DateUtc));
             Games = games.AsReadOnly();
             Name = Games.Last().Plr(SummonerId).Name;
-            PastNames = Games.Select(g => g.Plr(SummonerId).Name).ToHashSet();
+            PastNames = Games.Select(g => g.Plr(SummonerId).Name).ToList().AsReadOnly();
         }
 
         private void save()
@@ -436,7 +449,7 @@ namespace LeagueGenMatchHistory
 
         private void assertHasParticipantIdentities(JsonDict json)
         {
-            if (!json["participantIdentities"].GetList().All(id => id.ContainsKey("participantId") && id.ContainsKey("player") && id["player"].ContainsKey("summonerName") 
+            if (!json["participantIdentities"].GetList().All(id => id.ContainsKey("participantId") && id.ContainsKey("player") && id["player"].ContainsKey("summonerName")
                 && (id["player"].ContainsKey("summonerId") || id["player"].Safe["accountId"].GetIntSafe() == 0)))
                 throw new Exception("Match history JSON does not contain all participant identities.");
         }
