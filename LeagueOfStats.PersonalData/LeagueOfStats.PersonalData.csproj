@@ -1,66 +1,54 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LeagueGenMatchHistory</RootNamespace>
-    <AssemblyName>LeagueGenMatchHistory</AssemblyName>
+    <RootNamespace>LeagueOfStats.PersonalData</RootNamespace>
+    <AssemblyName>LeagueOfStats.PersonalData</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
     <OutputPath>..\Builds\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>..\Builds\$(Configuration)\obj-$(AssemblyName)\</IntermediateOutputPath>
     <BaseIntermediateOutputPath>..\Builds\$(Configuration)\obj-$(AssemblyName)\</BaseIntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="RT.TagSoup, Version=1.0.1610.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.TagSoup.1.0.1610.0\lib\net40-Client\RT.TagSoup.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="RT.Util, Version=1.0.1521.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.Util.1.0.1521.0\lib\net40-Client\RT.Util.dll</HintPath>
+    <Reference Include="RT.Util, Version=1.0.1530.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.Util.1.0.1530\lib\net40-client\RT.Util.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Generator.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="StaticData.cs" />
+    <Compile Include="SummonerData.cs" />
+    <Compile Include="MatchData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Settings.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\LeagueOfStats.PersonalData\LeagueOfStats.PersonalData.csproj">
-      <Project>{f295eddd-ae28-49d5-a6b1-b64f6cb27c6d}</Project>
-      <Name>LeagueOfStats.PersonalData</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

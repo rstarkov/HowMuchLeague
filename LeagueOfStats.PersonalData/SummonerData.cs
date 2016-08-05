@@ -8,7 +8,7 @@ using RT.Util.ExtensionMethods;
 using RT.Util.Json;
 using RT.Util.Serialization;
 
-namespace LeagueGenMatchHistory
+namespace LeagueOfStats.PersonalData
 {
     public class HumanInfo
     {

@@ -6,7 +6,7 @@ using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
 
-namespace LeagueGenMatchHistory
+namespace LeagueOfStats.PersonalData
 {
     public enum Lane { Top, Jungle, Middle, Bottom }
 
@@ -37,7 +37,7 @@ namespace LeagueGenMatchHistory
         public long SummonerId { get; private set; }
         public string Name { get; private set; }
         public int ChampionId { get; private set; }
-        public string Champion { get { return Program.Champions[ChampionId]; } }
+        public string Champion { get { return LeagueStaticData.Champions[ChampionId].Name; } }
         public int Spell1Id { get; private set; }
         public int Spell2Id { get; private set; }
         public Role Role { get; private set; }
@@ -160,7 +160,6 @@ namespace LeagueGenMatchHistory
         public Player Plr(object playerId) { return playerId is string ? Plr(playerId as string) : playerId is HumanInfo ? Plr(playerId as HumanInfo) : Ut.Throw<Player>(new Exception()); }
         public string MicroType { get { return Regex.Matches((Map == "Summoner's Rift" ? "" : " " + Map) + " " + Type, @"\s\(?(.)").Cast<Match>().Select(m => m.Groups[1].Value).JoinString(); } }
         public IEnumerable<Player> AllPlayers() { return Enemy.Players.Concat(Ally.Players); }
-        public IEnumerable<Player> OtherPlayers() { return AllPlayers().Where(p => !Program.AllKnownPlayers.Contains(p.Name)); }
 
         internal Game(JsonDict json, SummonerInfo summoner)
         {

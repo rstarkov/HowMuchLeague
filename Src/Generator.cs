@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using LeagueOfStats.PersonalData;
 using RT.TagSoup;
 using RT.Util;
 using RT.Util.Dialogs;
@@ -198,7 +199,7 @@ namespace LeagueGenMatchHistory
         private object genOverallStats(IEnumerable<Game> games)
         {
             var result = new List<object>();
-            var allOtherChamps = games.SelectMany(g => g.OtherPlayers()).GroupBy(p => p.ChampionId);
+            var allOtherChamps = games.SelectMany(g => g.AllPlayers().Where(p => !Program.AllKnownPlayers.Contains(p.Name))).GroupBy(p => p.ChampionId);
             result.Add(new P(new B("Champions by popularity: "), "(excluding ours) ", allOtherChamps.OrderByDescending(grp => grp.Count()).Select(g => g.First().Champion + ": " + g.Count()).JoinString(", ")));
             int cutoff = Math.Min(30, games.Count() / 3);
             var otherChampStats =
@@ -346,11 +347,11 @@ namespace LeagueGenMatchHistory
                 games.OrderByDescending(g => g.Duration).Take(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) }), new SPAN("...") { class_ = "linelist" },
                 games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) })));
             result.Add(new P(new B("Played 10+ times: "),
-                (from champ in Program.Champions.Values let c = games.Count(g => g.Plr(playerId).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
+                (from champId in LeagueStaticData.Champions.Keys let c = games.Count(g => g.Plr(playerId).ChampionId == champId) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champId, c)).JoinString(", ")));
             result.Add(new P(new B("Played 3-9 times: "),
-                (from champ in Program.Champions.Values let c = games.Count(g => g.Plr(playerId).Champion == champ) where c >= 3 && c <= 9 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
-            result.Add(new P(new B("Played 1-2 times: "), Program.Champions.Values.Where(champ => { int c = games.Count(g => g.Plr(playerId).Champion == champ); return c >= 1 && c <= 2; }).Order().JoinString(", ")));
-            result.Add(new P(new B("Never played: "), Program.Champions.Values.Where(champ => !games.Any(g => g.Plr(playerId).Champion == champ)).Order().JoinString(", ")));
+                (from champId in LeagueStaticData.Champions.Keys let c = games.Count(g => g.Plr(playerId).ChampionId == champId) where c >= 3 && c <= 9 orderby c descending select "{0}: {1:#,0}".Fmt(champId, c)).JoinString(", ")));
+            result.Add(new P(new B("Played 1-2 times: "), LeagueStaticData.Champions.Keys.Where(champId => { int c = games.Count(g => g.Plr(playerId).ChampionId == champId); return c >= 1 && c <= 2; }).Order().JoinString(", ")));
+            result.Add(new P(new B("Never played: "), LeagueStaticData.Champions.Keys.Where(champId => !games.Any(g => g.Plr(playerId).ChampionId == champId)).Order().JoinString(", ")));
 
             return result;
         }

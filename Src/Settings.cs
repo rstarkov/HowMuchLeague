@@ -2,6 +2,7 @@
 using RT.Util;
 using RT.Util.Serialization;
 using RT.Util.ExtensionMethods;
+using LeagueOfStats.PersonalData;
 
 namespace LeagueGenMatchHistory
 {
