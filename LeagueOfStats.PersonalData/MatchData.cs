@@ -154,10 +154,7 @@ namespace LeagueOfStats.PersonalData
         public bool? Victory { get { return Ally.Victory ? true : Enemy.Victory ? false : (bool?) null; } }
         public Team Ally { get; private set; }
         public Team Enemy { get; private set; }
-        public Player Plr(string summonerName) { return Ally.Players.Single(p => p.Name == summonerName); }
-        public Player Plr(HumanInfo human) { return Ally.Players.Single(p => human.SummonerNames.Contains(p.Name)); }
         public Player Plr(long id) { return Ally.Players.Single(p => p.SummonerId == id || p.AccountId == id); }
-        public Player Plr(object playerId) { return playerId is string ? Plr(playerId as string) : playerId is HumanInfo ? Plr(playerId as HumanInfo) : Ut.Throw<Player>(new Exception()); }
         public string MicroType { get { return Regex.Matches((Map == "Summoner's Rift" ? "" : " " + Map) + " " + Type, @"\s\(?(.)").Cast<Match>().Select(m => m.Groups[1].Value).JoinString(); } }
         public IEnumerable<Player> AllPlayers() { return Enemy.Players.Concat(Ally.Players); }
 

@@ -10,18 +10,6 @@ using RT.Util.Serialization;
 
 namespace LeagueOfStats.PersonalData
 {
-    public class HumanInfo
-    {
-        public string Name = null;
-        public string TimeZone = null;
-        public HashSet<string> SummonerNames = new HashSet<string>();
-
-        public override string ToString()
-        {
-            return Name;
-        }
-    }
-
     public class SummonerInfo
     {
         public string Region { get; private set; }
@@ -40,11 +28,11 @@ namespace LeagueOfStats.PersonalData
 
         /// <summary>All Summoner Names as deduced from all the game on record. Null until games are loaded.</summary>
         [ClassifyIgnore]
-        public IList<string> PastNames { get; private set; }
+        public IReadOnlyList<string> PastNames { get; private set; }
 
         /// <summary>All games played by this summoner. This list is read-only.</summary>
         [ClassifyIgnore]
-        public IList<Game> Games { get; private set; }
+        public IReadOnlyList<Game> Games { get; private set; }
 
         [ClassifyIgnore]
         private string _filename;
@@ -194,11 +182,11 @@ namespace LeagueOfStats.PersonalData
                     File.WriteAllText(path, "404");
                 else
                 {
-                    var data = resp.Expect(HttpStatusCode.OK).DataString;
-                    var tryJson = JsonDict.Parse(data);
+                    rawJson = resp.Expect(HttpStatusCode.OK).DataString;
+                    var tryJson = JsonDict.Parse(rawJson);
                     assertHasParticipantIdentities(tryJson);
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    File.WriteAllText(path, data);
+                    File.WriteAllText(path, rawJson);
                 }
             }
             var json = rawJson == "404" ? null : JsonDict.Parse(rawJson);

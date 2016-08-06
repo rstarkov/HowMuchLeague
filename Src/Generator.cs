@@ -6,65 +6,40 @@ using System.Text;
 using LeagueOfStats.PersonalData;
 using RT.TagSoup;
 using RT.Util;
-using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueGenMatchHistory
 {
     class Generator
     {
-        public SummonerInfo Summoner;
-        public HumanInfo Human;
-        private IList<Game> _games;
-
-        public Generator(SummonerInfo summoner,  HumanInfo human)
+        public HashSet<long> ThisPlayerAccountIds;
+        public HashSet<long> KnownPlayersAccountIds;
+        public string TimeZone;
+        public string GamesTableFilename;
+        private List<Game> _games;
+        public IEnumerable<Game> Games
         {
-            Summoner = summoner;
-            Human = human;
-        }
-
-        public Generator(HumanInfo human, IEnumerable<Generator> generators)
-        {
-            Summoner = null;
-            Human = human;
-            _games = generators
-                .SelectMany(g => g._games)
-                .GroupBy(g => g.Id).Select(grp => grp.First())
-                .Where(g => g.Ally.Players.Any(p => human.SummonerNames.Contains(p.Name)))
-                .ToList();
-        }
-
-        public void LoadGames()
-        {
-            if (Summoner == null)
-                throw new Exception("Not supported for multi-account generators");
-            Summoner.LoadGamesOnline(
-                sm => InputBox.GetLine($"Please enter Authorization header value for {sm.Region}/{sm.Name}:", sm.AuthorizationHeader, "League Gen Match History"),
-                str => Console.WriteLine(str)
-            );
-            _games = Summoner.Games;
+            get { return _games; }
+            set { _games = value.Where(g => g.Duration > TimeSpan.FromMinutes(4) /* remakes */).OrderByDescending(g => g.DateUtc).ToList(); }
         }
 
         private List<IGrouping<string, Game>> getGameTypeSections(int limit)
         {
             return _games
-                .OrderByDescending(g => g.DateUtc)
                 .Take(limit)
                 .GroupBy(g => g.Map + ", " + g.Type)
                 .OrderByDescending(g => g.Count())
                 .ToList();
         }
 
-        private string GetGamesTableFilename()
+        private Player thisPlayer(Game game)
         {
-            return Summoner == null
-                ? Program.Settings.OutputPathTemplate.Fmt("Games-All", Human.Name, "")
-                : Program.Settings.OutputPathTemplate.Fmt("Games-" + Summoner.Region, Summoner.Name, "");
+            return game.AllPlayers().SingleOrDefault(p => ThisPlayerAccountIds.Contains(p.AccountId));
         }
 
         public void ProduceGamesTable()
         {
-            var outputFile = GetGamesTableFilename();
+            var outputFile = GamesTableFilename;
             Console.Write("Producing output file: " + outputFile + " ... ");
             var gameTypeSections = getGameTypeSections(999999);
             var sections = gameTypeSections.Select(grp => Ut.NewArray<object>(
@@ -77,7 +52,7 @@ namespace LeagueGenMatchHistory
                             var enemies = g.Enemy.Players.Select(plr => getPlayerHtml(plr)).ToList();
                             return Ut.NewArray<object>(
                                 new TR { id = "game" + g.Id.ToString() }._(
-                                    new TD { rowspan = 2, class_ = "nplr datetime" }._(new A(g.Date(Human.TimeZone).ToString("dd/MM/yy"), new BR(), g.Date(Human.TimeZone).ToString("HH:mm")) { href = g.DetailsUrl }),
+                                    new TD { rowspan = 2, class_ = "nplr datetime" }._(new A(g.Date(TimeZone).ToString("dd/MM/yy"), new BR(), g.Date(TimeZone).ToString("HH:mm")) { href = g.DetailsUrl }),
                                     new TD { rowspan = 2, class_ = "nplr" }._(minsec(g.Duration)),
                                     new TD { rowspan = 2, class_ = "nplr " + NullTrueFalse(g.Victory, "draw", "victory", "defeat") }._(NullTrueFalse(g.Victory, "Draw", "Victory", "Defeat")),
                                     new TD { rowspan = 2, class_ = "sep" },
@@ -103,38 +78,19 @@ namespace LeagueGenMatchHistory
             Console.WriteLine("done");
         }
 
-        public void ProduceStats(int limit = 999999)
+        public void ProduceStats(string outputFile, int limit = 999999)
         {
-            var outputFile = Summoner == null
-                ? Program.Settings.OutputPathTemplate.Fmt("All", Human.Name, limit == 999999 ? "" : ("-" + limit))
-                : Program.Settings.OutputPathTemplate.Fmt(Summoner.Region, Summoner.Name, limit == 999999 ? "" : ("-" + limit));
             Console.Write("Producing output file: " + outputFile + " ... ");
             var gameTypeSections = getGameTypeSections(limit);
-            var sections = gameTypeSections.Select(grp => Ut.NewArray<object>(
-                    new H1(grp.Key) { id = new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
-                    genOverallStats(grp),
-                    (
-                        from human in Program.Settings.Humans
-                        let gamesWithThisHuman = grp.Where(g => g.Ally.Players.Any(pp => human.SummonerNames.Contains(pp.Name)))
-                        let count = gamesWithThisHuman.Count()
-                        where count > 10
-                        orderby count descending
-                        select genStats(human, gamesWithThisHuman)
-                    ),
-                    new BR(),
-                    (
-                        from pname in (Program.AllKnownPlayers)
-                        let gamesWithThisPlayer = grp.Where(g => g.Ally.Players.Any(pp => pp.Name == pname))
-                        let count = gamesWithThisPlayer.Count()
-                        where count > 10
-                        orderby count descending
-                        select genStats(pname, gamesWithThisPlayer)
-                    )
-                ));
             var result = Ut.NewArray(
-                genAllGameStats(_games, Human),
+                genAllGameStats(_games.Take(limit)),
                 getContents(gameTypeSections),
-                sections
+                gameTypeSections.Select(grp => Ut.NewArray<object>(
+                    new H1(grp.Key) { id = new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
+                    genPerModeSummary(grp),
+                    genAllGameStats(grp),
+                    genPerModeDetail(grp)
+                ))
             );
             var css = getCss();
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
@@ -182,7 +138,7 @@ namespace LeagueGenMatchHistory
                 .hspace { margin-right: 25px; }
                 .linelist { margin-left: 8px; }
                 .linelist:before { content: '\200B'; }\r\n";
-            css += Program.AllKnownPlayers.Select(plr => "td.kp" + plr.Replace(" ", "") + (Human.SummonerNames.Contains(plr) ? " { background: #D1FECC; }\r\n" : " { background: #6EFFFF; }\r\n")).JoinString();
+            css += KnownPlayersAccountIds.Select(accId => $"td.kp{accId}" + (ThisPlayerAccountIds.Contains(accId) ? " { background: #D1FECC; }\r\n" : " { background: #6EFFFF; }\r\n")).JoinString();
             return css;
         }
 
@@ -196,10 +152,10 @@ namespace LeagueGenMatchHistory
             return ((int) time.TotalMinutes).ToString("00") + ":" + time.Seconds.ToString("00");
         }
 
-        private object genOverallStats(IEnumerable<Game> games)
+        private object genPerModeSummary(IEnumerable<Game> games)
         {
             var result = new List<object>();
-            var allOtherChamps = games.SelectMany(g => g.AllPlayers().Where(p => !Program.AllKnownPlayers.Contains(p.Name))).GroupBy(p => p.ChampionId);
+            var allOtherChamps = games.SelectMany(g => g.AllPlayers().Where(p => !KnownPlayersAccountIds.Contains(p.AccountId))).GroupBy(p => p.ChampionId);
             result.Add(new P(new B("Champions by popularity: "), "(excluding ours) ", allOtherChamps.OrderByDescending(grp => grp.Count()).Select(g => g.First().Champion + ": " + g.Count()).JoinString(", ")));
             int cutoff = Math.Min(30, games.Count() / 3);
             var otherChampStats =
@@ -234,7 +190,7 @@ namespace LeagueGenMatchHistory
             return result;
         }
 
-        private object genStats(object playerId, IEnumerable<Game> games)
+        private object genPerModeDetail(IEnumerable<Game> games)
         {
             var result = new List<object>();
             var makeSummaryTable = Ut.Lambda((string label, IEnumerable<IGrouping<string, Player>> set) =>
@@ -283,51 +239,47 @@ namespace LeagueGenMatchHistory
                 );
             });
 
-            result.Add(genAllGameStats(games, playerId));
-
             result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
 
-            result.Add(new P(new B("Penta kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Quadra kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Triple kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => g.Plr(playerId)).Where(p => p.WardsPlaced >= p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("#1 by damage:"), games.Select(g => g.Plr(playerId)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => new A(p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k") { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("#1 by kills:"), games.Select(g => g.Plr(playerId)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => new A(p.Champion, " ", p.Kills) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(Human.TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
+            result.Add(new P(new B("Penta kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Quadra kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Triple kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced >= p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("#1 by damage:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => new A(p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k") { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("#1 by kills:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => new A(p.Champion, " ", p.Kills) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
             result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
                 byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
                 byLastWinLoss.Count(v => !v) / (double) byLastWinLoss.Count() * 100
             )));
-            result.Add(new P(new B("Longest win streaks: "), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(3).JoinString(", ")));
-            result.Add(new P(new B("Longest loss streaks: "), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(3).JoinString(", ")));
+            result.Add(new P(new B("Longest win streaks: "), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
+            result.Add(new P(new B("Longest loss streaks: "), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
 
-            var name = playerId is HumanInfo ? (playerId as HumanInfo).Name : (string) playerId;
-            result.Add(new H4("{0} stats: by champion".Fmt(name)));
-            result.Add(makeSummaryTable("Champion", games.Select(g => g.Plr(playerId)).GroupBy(p => p.Champion)));
-            result.Add(new H4("{0} stats: by lane/role".Fmt(name)));
-            result.Add(makeSummaryTable("Lane/role", games.Select(g => g.Plr(playerId)).GroupBy(p => (p.Lane == Lane.Top ? "Top" : p.Lane == Lane.Middle ? "Mid" : p.Lane == Lane.Jungle ? "JG" : "Bot") + (p.Role == Role.DuoCarry ? " adc" : p.Role == Role.DuoSupport ? " sup" : ""))));
-            result.Add(new H4("{0} stats: total".Fmt(name)));
-            result.Add(makeSummaryTable("Total", games.Select(g => g.Plr(playerId)).GroupBy(p => "Total")));
-            var id = Rnd.NextBytes(8).ToHex();
-            return Ut.NewArray<object>(new BUTTON("Show/hide stats for {0}".Fmt(name)) { onclick = "document.getElementById('{0}').style.display = (document.getElementById('{0}').style.display == 'none') ? 'block' : 'none';".Fmt(id) }, new DIV(result) { id = id, style = "display:none" });
+            result.Add(new H4("By champion"));
+            result.Add(makeSummaryTable("Champion", games.Select(g => thisPlayer(g)).GroupBy(p => p.Champion)));
+            result.Add(new H4("By lane/role"));
+            result.Add(makeSummaryTable("Lane/role", games.Select(g => thisPlayer(g)).GroupBy(p => (p.Lane == Lane.Top ? "Top" : p.Lane == Lane.Middle ? "Mid" : p.Lane == Lane.Jungle ? "JG" : "Bot") + (p.Role == Role.DuoCarry ? " adc" : p.Role == Role.DuoSupport ? " sup" : ""))));
+            result.Add(new H4("Total"));
+            result.Add(makeSummaryTable("Total", games.Select(g => thisPlayer(g)).GroupBy(p => "Total")));
+            return result;
         }
 
-        private object genAllGameStats(IEnumerable<Game> games, object playerId)
+        private object genAllGameStats(IEnumerable<Game> games)
         {
             var result = new List<object>();
-            var histoTimeOfDay = range(5, 24, 24).Select(h => Tuple.Create(h.ToString("00"), games.Count(g => g.Date(Human.TimeZone).TimeOfDay.Hours == h)));
+            var histoTimeOfDay = range(5, 24, 24).Select(h => Tuple.Create(h.ToString("00"), games.Count(g => g.Date(TimeZone).TimeOfDay.Hours == h)));
             result.Add(makeHistogram(histoTimeOfDay, "Games by time of day"));
-            var gamesByDay = games.GroupBy(g => g.DateDayOnly(Human.TimeZone)).OrderBy(g => g.Key).ToList();
+            var gamesByDay = games.GroupBy(g => g.DateDayOnly(TimeZone)).OrderBy(g => g.Key).ToList();
             var firstDay = gamesByDay[0].Key;
             var dates = gamesByDay.Select(g => g.Key).ToList();
             var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => Tuple.Create(c == 12 ? "12+" : c.ToString(), gamesByDay.Count(grp => grp.Count() == c))).ToList();
             result.Add(makeHistogram(histoGamesPerDay, "Games played per day"));
-            var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), games.Count(g => (int) g.Date(Human.TimeZone).DayOfWeek == dow))).ToList();
+            var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), games.Count(g => (int) g.Date(TimeZone).DayOfWeek == dow))).ToList();
             result.Add(makeHistogram(histoGamesByDayOfWeek, "Games played on ..."));
             var histoGamesByDayOfWeek2 = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), gamesByDay.Count(g => (int) g.Key.DayOfWeek == dow))).ToList();
             result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
             result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
-            result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(Human.TimeZone) <= d).Select(g => g.Plr(playerId).Champion).Distinct().Count())).ToList()));
+            result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(TimeZone) <= d).Select(g => thisPlayer(g).Champion).Distinct().Count())).ToList()));
             var plotWardProgress = games.Select(g => g.Enemy.Players.Sum(p => p.WardsPlaced / g.Duration.TotalMinutes * 30.0)).ToList();
             plotWardProgress.Reverse();
             result.Add(makePlotY("Wards over time by enemy team", plotWardProgress, runningAverage(plotWardProgress, 29).ToList()));
@@ -346,12 +298,13 @@ namespace LeagueGenMatchHistory
             result.Add(new P(new B("Longest and shortest:"),
                 games.OrderByDescending(g => g.Duration).Take(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) }), new SPAN("...") { class_ = "linelist" },
                 games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) })));
+            var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).ToList();
             result.Add(new P(new B("Played 10+ times: "),
-                (from champId in LeagueStaticData.Champions.Keys let c = games.Count(g => g.Plr(playerId).ChampionId == champId) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champId, c)).JoinString(", ")));
+                (from champ in champions let c = games.Count(g => thisPlayer(g).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
             result.Add(new P(new B("Played 3-9 times: "),
-                (from champId in LeagueStaticData.Champions.Keys let c = games.Count(g => g.Plr(playerId).ChampionId == champId) where c >= 3 && c <= 9 orderby c descending select "{0}: {1:#,0}".Fmt(champId, c)).JoinString(", ")));
-            result.Add(new P(new B("Played 1-2 times: "), LeagueStaticData.Champions.Keys.Where(champId => { int c = games.Count(g => g.Plr(playerId).ChampionId == champId); return c >= 1 && c <= 2; }).Order().JoinString(", ")));
-            result.Add(new P(new B("Never played: "), LeagueStaticData.Champions.Keys.Where(champId => !games.Any(g => g.Plr(playerId).ChampionId == champId)).Order().JoinString(", ")));
+                (from champ in champions let c = games.Count(g => thisPlayer(g).Champion == champ) where c >= 3 && c <= 9 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
+            result.Add(new P(new B("Played 1-2 times: "), champions.Where(champ => { int c = games.Count(g => thisPlayer(g).Champion == champ); return c >= 1 && c <= 2; }).Order().JoinString(", ")));
+            result.Add(new P(new B("Never played: "), champions.Where(champ => !games.Any(g => thisPlayer(g).Champion == champ)).Order().JoinString(", ")));
 
             return result;
         }
@@ -399,6 +352,7 @@ namespace LeagueGenMatchHistory
             double width = 400;
             double height = 150;
             var sb = new StringBuilder();
+            datas = datas.Where(d => d.Count > 0).ToArray();
             double maxX = datas.Max(data => data.Max(pt => pt.Item1));
             double maxY = datas.Max(data => data.Max(pt => pt.Item2));
             var result = new StringBuilder();
@@ -486,18 +440,18 @@ namespace LeagueGenMatchHistory
         private static Tag[] getPlayerHtml(Player plr)
         {
             return new[] {
-                new TD{class_="plr-top kp"+plr.Name.Replace(" ", "")}._(new DIV(plr.Name) { class_="plrname" },
+                new TD{class_ = $"plr-top kp{plr.AccountId}" }._(new DIV(plr.Name) { class_="plrname" },
                     "{0}/{1}/{2}".Fmt(plr.Kills, plr.Deaths, plr.Assists)),
-                new TD{class_="plr-bot kp"+plr.Name.Replace(" ", "")}._(
+                new TD{class_ = $"plr-bot kp{plr.AccountId}" }._(
                     new DIV(plr.LargestMultiKill <= 1 ? "" : (plr.LargestMultiKill + "x")) { class_ = "multi multi" + plr.LargestMultiKill },
                     plr.Champion,
                     " ", plr.Lane == Lane.Top ? "(top)" : plr.Lane == Lane.Middle ? "(mid)" : plr.Lane == Lane.Jungle ? "(jg)" : plr.Role == Role.DuoCarry ? "(adc)" : plr.Role == Role.DuoSupport ? "(sup)" : "(bot)")
             };
         }
 
-        public string GetGameLink(Game game)
+        private string GetGameLink(Game game)
         {
-            return Path.GetFileName(GetGamesTableFilename()) + "#game" + game.Id;
+            return Path.GetFileName(GamesTableFilename) + "#game" + game.Id;
         }
     }
 }

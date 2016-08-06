@@ -43,7 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="StaticData.cs" />
-    <Compile Include="SummonerData.cs" />
+    <Compile Include="SummonerInfo.cs" />
     <Compile Include="MatchData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

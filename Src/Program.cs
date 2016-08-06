@@ -1,66 +1,59 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using LeagueOfStats.PersonalData;
-using RT.Util;
 using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
-
-// Assumptions:
-// - a human may have accounts with identical names in several regions (but in this case some stats will be grouped together - fixable if this is ever a concern)
-// - no other people have accounts with the same names in _any_ region as any defined humans
-// - the summoner-to-human mapping is genuine, i.e. no games can contain more than one of the multiple accounts belonging to the same human
+using RT.Util.Serialization;
 
 namespace LeagueGenMatchHistory
 {
     class Program
     {
         public static Settings Settings;
-        public static HashSet<string> AllKnownPlayers;
 
         static void Main(string[] args)
         {
-            SettingsUtil.LoadSettings(out Settings);
-            Settings.Save();
-            Directory.CreateDirectory(Path.Combine(Settings.MatchHistoryPath, "json"));
+            Console.WriteLine($"Loading settings from {args[0]}...");
+            Settings = ClassifyXml.DeserializeFile<Settings>(args[0]);
+            ClassifyXml.SerializeToFile(Settings, args[0]);
+            Directory.CreateDirectory(Path.Combine(Settings.DataPath, "Static"));
+            Directory.CreateDirectory(Path.Combine(Settings.DataPath, "Summoners"));
 
-            AllKnownPlayers = Settings.KnownPlayers.Concat(Settings.Humans.SelectMany(h => h.SummonerNames)).ToHashSet();
-            foreach (var sm in Settings.Summoners)
-            {
-#warning TODO: reinstate summoner/human linkage
-                //sm.Human = Settings.Humans.Single(h => h.SummonerNames.Contains(sm.Name));
-                sm.PastNames.Add(sm.Name);
-            }
-            var generators = Settings.Summoners.ToDictionary(sm => sm, sm => new Generator(sm, null /* here too */));
-
-            // Load known game IDs by querying Riot
-#if !DEBUG
-            Console.WriteLine("Querying Riot...");
-            foreach (var gen in generators.Values)
-            {
-                if (gen.Summoner.AuthorizationHeader == "")
-                    continue;
-                gen.DiscoverGameIds(false);
-                Settings.Save();
-            }
-#endif
-
-            foreach (var gen in generators.Values)
-                gen.LoadGames();
-            foreach (var gen in generators.Values)
-            {
-                gen.ProduceGamesTable();
-                gen.ProduceStats();
-                gen.ProduceStats(200);
-            }
+            LeagueStaticData.Load(Path.Combine(Settings.DataPath, "Static"));
             foreach (var human in Settings.Humans)
+                human.Summoners = human.SummonerIds.Where(si => si.LoadData).Select(si => new SummonerInfo(Path.Combine(Settings.DataPath, "Summoners", $"{si.RegionServer.ToLower()}-{si.AccountId}.xml"))).ToList();
+            foreach (var summoner in Settings.Humans.SelectMany(h => h.Summoners))
             {
-                var gen = new Generator(human, generators.Values);
-                gen.ProduceGamesTable();
-                gen.ProduceStats();
-                gen.ProduceStats(200);
+                Console.WriteLine($"Loading game data for {summoner}");
+                if (summoner.AuthorizationHeader == "")
+                    summoner.LoadGamesOffline();
+                else
+                    summoner.LoadGamesOnline(
+                        sm => InputBox.GetLine($"Please enter Authorization header value for {sm.Region}/{sm.Name}:", sm.AuthorizationHeader, "League of Stats"),
+                        str => Console.WriteLine(str));
+            }
+
+            var generator = new Generator();
+            generator.KnownPlayersAccountIds = Settings.Humans.SelectMany(h => h.SummonerIds).Select(s => s.AccountId).ToHashSet();
+            foreach (var human in Settings.Humans.Where(h => h.Summoners.Count > 0))
+            {
+                generator.TimeZone = human.TimeZone;
+                generator.Games = human.Summoners.SelectMany(s => s.Games).ToList();
+                generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToHashSet();
+                generator.GamesTableFilename = Settings.OutputPathTemplate.Fmt("Games-All", human.Name, "");
+                generator.ProduceGamesTable();
+                generator.ProduceStats(Settings.OutputPathTemplate.Fmt("All", human.Name, ""));
+                generator.ProduceStats(Settings.OutputPathTemplate.Fmt("All", human.Name, "-200"), 200);
+                foreach (var summoner in human.Summoners)
+                {
+                    generator.Games = summoner.Games.ToList();
+                    generator.ThisPlayerAccountIds = new[] { summoner.AccountId }.ToHashSet();
+                    generator.GamesTableFilename = Settings.OutputPathTemplate.Fmt("Games-" + summoner.Region, summoner.Name, "");
+                    generator.ProduceGamesTable();
+                    generator.ProduceStats(Settings.OutputPathTemplate.Fmt(summoner.Region, summoner.Name, ""));
+                    generator.ProduceStats(Settings.OutputPathTemplate.Fmt(summoner.Region, summoner.Name, "-200"), 200);
+                }
             }
         }
     }
