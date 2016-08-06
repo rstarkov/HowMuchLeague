@@ -8,7 +8,7 @@ using RT.TagSoup;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 
-namespace LeagueGenMatchHistory
+namespace LeagueOfStats.CmdGen
 {
     class Generator
     {

@@ -2,7 +2,7 @@
 using LeagueOfStats.PersonalData;
 using RT.Util.Serialization;
 
-namespace LeagueGenMatchHistory
+namespace LeagueOfStats.CmdGen
 {
     class Settings
     {

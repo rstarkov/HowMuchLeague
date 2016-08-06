@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueGenMatchHistory", "Src\LeagueGenMatchHistory.csproj", "{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.CmdGen", "LeagueOfStats.CmdGen\LeagueOfStats.CmdGen.csproj", "{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.PersonalData", "LeagueOfStats.PersonalData\LeagueOfStats.PersonalData.csproj", "{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}"
 EndProject

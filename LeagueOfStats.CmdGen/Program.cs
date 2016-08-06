@@ -6,7 +6,7 @@ using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 using RT.Util.Serialization;
 
-namespace LeagueGenMatchHistory
+namespace LeagueOfStats.CmdGen
 {
     class Program
     {

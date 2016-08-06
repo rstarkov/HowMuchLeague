@@ -7,8 +7,8 @@
     <ProjectGuid>{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LeagueGenMatchHistory</RootNamespace>
-    <AssemblyName>LeagueGenMatchHistory</AssemblyName>
+    <RootNamespace>LeagueOfStats.CmdGen</RootNamespace>
+    <AssemblyName>LeagueOfStats.CmdGen</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <OutputPath>..\Builds\$(Configuration)\</OutputPath>
