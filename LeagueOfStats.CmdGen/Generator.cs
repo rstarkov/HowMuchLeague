@@ -137,8 +137,9 @@ namespace LeagueOfStats.CmdGen
                 table td.la.la { text-align: left; }
                 .hspace { margin-right: 25px; }
                 .linelist { margin-left: 8px; }
-                .linelist:before { content: '\200B'; }\r\n";
-            css += KnownPlayersAccountIds.Select(accId => $"td.kp{accId}" + (ThisPlayerAccountIds.Contains(accId) ? " { background: #D1FECC; }\r\n" : " { background: #6EFFFF; }\r\n")).JoinString();
+                .linelist:before { content: '\200B'; }";
+            css += KnownPlayersAccountIds.Select(accId => $"\r\n                td.kp{accId}" + (ThisPlayerAccountIds.Contains(accId) ? " { background: #D1FECC; }" : " { background: #6EFFFF; }")).JoinString();
+            css += "\r\n";
             return css;
         }
 
