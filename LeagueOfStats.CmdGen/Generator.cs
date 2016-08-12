@@ -194,6 +194,24 @@ namespace LeagueOfStats.CmdGen
         private object genPerModeDetail(IEnumerable<Game> games)
         {
             var result = new List<object>();
+
+            result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
+
+            result.Add(new P(new B("Perfect games:"), games.Select(g => thisPlayer(g)).Where(p => p.Deaths == 0).Select(p => new A($"{p.Champion} {p.Kills}/{p.Assists}") { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Penta kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Quadra kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Triple kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced >= p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("#1 by damage:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => new A(p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k") { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("#1 by kills:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => new A(p.Champion, " ", p.Kills) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
+            result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
+                byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
+                byLastWinLoss.Count(v => !v) / (double) byLastWinLoss.Count() * 100
+            )));
+            result.Add(new P(new B("Longest win streaks: "), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
+            result.Add(new P(new B("Longest loss streaks: "), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
+
             var makeSummaryTable = Ut.Lambda((string label, IEnumerable<IGrouping<string, Player>> set) =>
             {
                 return new TABLE { class_ = "ra stats" }._(
@@ -239,22 +257,6 @@ namespace LeagueOfStats.CmdGen
                     ))
                 );
             });
-
-            result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
-
-            result.Add(new P(new B("Penta kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Quadra kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Triple kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced >= p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("#1 by damage:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => new A(p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k") { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("#1 by kills:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => new A(p.Champion, " ", p.Kills) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
-            result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
-                byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
-                byLastWinLoss.Count(v => !v) / (double) byLastWinLoss.Count() * 100
-            )));
-            result.Add(new P(new B("Longest win streaks: "), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
-            result.Add(new P(new B("Longest loss streaks: "), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
 
             result.Add(new H4("By champion"));
             result.Add(makeSummaryTable("Champion", games.Select(g => thisPlayer(g)).GroupBy(p => p.Champion)));
