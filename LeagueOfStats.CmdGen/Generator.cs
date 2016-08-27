@@ -137,6 +137,8 @@ namespace LeagueOfStats.CmdGen
                 table td.la.la { text-align: left; }
                 .hspace { margin-right: 25px; }
                 .linelist { margin-left: 8px; }
+                a.win, a.win:visited { color: #1A9B1B; }
+                a.loss, a.loss:visited { color: #B02424; }
                 .linelist:before { content: '\200B'; }";
             css += KnownPlayersAccountIds.Select(accId => $"\r\n                td.kp{accId}" + (ThisPlayerAccountIds.Contains(accId) ? " { background: #D1FECC; }" : " { background: #6EFFFF; }")).JoinString();
             css += "\r\n";
@@ -197,13 +199,13 @@ namespace LeagueOfStats.CmdGen
 
             result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
 
-            result.Add(new P(new B("Perfect games:"), games.Select(g => thisPlayer(g)).Where(p => p.Deaths == 0).Select(p => new A($"{p.Champion} {p.Kills}/{p.Assists}") { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Penta kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Quadra kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Triple kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced >= p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => new A(p.Champion) { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("#1 by damage:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => new A(p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k") { href = GetGameLink(p.Game), class_ = "linelist" })));
-            result.Add(new P(new B("#1 by kills:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => new A(p.Champion, " ", p.Kills) { href = GetGameLink(p.Game), class_ = "linelist" })));
+            result.Add(new P(new B("Perfect games:"), games.Select(g => thisPlayer(g)).Where(p => p.Deaths == 0).Select(p => GetGameLink(p.Game, $"{p.Champion} {p.Kills}/{p.Assists}").AddClass("linelist"))));
+            result.Add(new P(new B("Penta kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
+            result.Add(new P(new B("Quadra kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
+            result.Add(new P(new B("Triple kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
+            result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced > p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
+            result.Add(new P(new B("#1 by damage:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => GetGameLink(p.Game, p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k").AddClass("linelist"))));
+            result.Add(new P(new B("#1 by kills:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => GetGameLink(p.Game, p.Champion, " ", p.Kills).AddClass("linelist"))));
             var byLastWinLoss = games.Where(g => g.Victory != null).GroupBy(g => g.DateDayOnly(TimeZone)).Select(grp => grp.OrderBy(itm => itm.DateUtc).Last().Victory.Value);
             result.Add(new P(new B("Last game of the day: "), "victory: {0:0}%, defeat: {1:0}%".Fmt(
                 byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
@@ -230,28 +232,28 @@ namespace LeagueOfStats.CmdGen
                         new TD("{0:0.0}".Fmt(g.Average(p => p.Kills / p.Game.Duration.TotalMinutes * 30))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.Deaths / p.Game.Duration.TotalMinutes * 30))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.Assists / p.Game.Duration.TotalMinutes * 30))),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.Kills), p => p.Kills.ToString("0"))),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.Deaths), p => p.Deaths.ToString("0"))),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.Assists), p => p.Assists.ToString("0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.Kills), p => p.Kills.ToString("0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.Deaths), p => p.Deaths.ToString("0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.Assists), p => p.Assists.ToString("0"))),
                         new TD("{0:0}%".Fmt(g.Average(p => p.KillParticipation))),
                         new TD(g.Average(p => p.DamageToChampions / p.Game.Duration.TotalMinutes * 30).ToString("#,0")),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.DamageToChampions), p => p.DamageToChampions.ToString("#,0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.DamageToChampions), p => p.DamageToChampions.ToString("#,0"))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.RankOf(pp => pp.DamageToChampions)))),
                         new TD("{0:0}%".Fmt(g.Count(p => p.RankOf(pp => pp.DamageToChampions) == 1) / (double) g.Count() * 100)),
                         new TD(g.Average(p => p.TotalHeal / p.Game.Duration.TotalMinutes * 30).ToString("#,0")),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.TotalHeal), p => p.TotalHeal.ToString("#,0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.TotalHeal), p => p.TotalHeal.ToString("#,0"))),
                         new TD("{0:0}".Fmt(g.Average(p => p.CreepsAt10))),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.CreepsAt10), p => p.CreepsAt10.ToString("0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.CreepsAt10), p => p.CreepsAt10.ToString("0"))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.RankOf(pp => pp.CreepsAt10)))),
                         new TD("{0:0}%".Fmt(g.Count(p => p.RankOf(pp => pp.CreepsAt10) == 1) / (double) g.Count() * 100)),
                         new TD("{0:0}".Fmt(g.Average(p => p.GoldAt10))),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.GoldAt10), p => p.GoldAt10.ToString("0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.GoldAt10), p => p.GoldAt10.ToString("0"))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 5))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 4))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 3))),
                         new TD(fmtOrInf(g.Count() / (double) g.Count(p => p.LargestMultiKill >= 2))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.WardsPlaced / p.Game.Duration.TotalMinutes * 30))),
-                        new TD(getGameValueAndLink(g.MaxElement(p => p.WardsPlaced), p => p.WardsPlaced.ToString("0"))),
+                        new TD(GetGameLink(g.MaxElement(p => p.WardsPlaced), p => p.WardsPlaced.ToString("0"))),
                         new TD("{0:0.0}".Fmt(g.Average(p => p.RankOf(pp => pp.WardsPlaced)))),
                         new TD("{0:0}%".Fmt(g.Count(p => p.RankOf(pp => pp.WardsPlaced) == 1) / (double) g.Count() * 100))
                     ))
@@ -299,8 +301,8 @@ namespace LeagueOfStats.CmdGen
                 new B("Avg per day: "), (games.Sum(g => g.Duration.TotalHours) / (games.Max(g => g.DateUtc) - games.Min(g => g.DateUtc)).TotalDays).ToString("0.0 hours")
             ));
             result.Add(new P(new B("Longest and shortest:"),
-                games.OrderByDescending(g => g.Duration).Take(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) }), new SPAN("...") { class_ = "linelist" },
-                games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => new object[] { new A(minsec(g.Duration)) { href = GetGameLink(g), class_ = "linelist" }, new SUP(g.MicroType) })));
+                games.OrderByDescending(g => g.Duration).Take(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.MicroType)).AddClass("linelist")), new SPAN("...") { class_ = "linelist" },
+                games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.MicroType)).AddClass("linelist"))));
             var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).ToList();
             result.Add(new P(new B("Played 10+ times: "),
                 (from champ in champions let c = games.Count(g => thisPlayer(g).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
@@ -423,11 +425,6 @@ namespace LeagueOfStats.CmdGen
                 + "</g></svg>");
         }
 
-        private object getGameValueAndLink(Player linkTo, Func<Player, string> text)
-        {
-            return new A(text(linkTo)) { href = GetGameLink(linkTo.Game) };
-        }
-
         private string fmtOrInf(double val)
         {
             if (double.IsPositiveInfinity(val))
@@ -452,9 +449,14 @@ namespace LeagueOfStats.CmdGen
             };
         }
 
-        private string GetGameLink(Game game)
+        private A GetGameLink(Game game, params object[] content)
         {
-            return Path.GetFileName(GamesTableFilename) + "#game" + game.Id;
+            return new A(content) { href = Path.GetFileName(GamesTableFilename) + "#game" + game.Id, class_ = (game.Victory ?? false) ? "win" : "loss" };
+        }
+
+        private A GetGameLink(Player player, Func<Player, object> getContent)
+        {
+            return GetGameLink(player.Game, getContent(player));
         }
     }
 }
