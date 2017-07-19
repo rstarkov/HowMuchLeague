@@ -272,7 +272,7 @@ namespace LeagueOfStats.CmdGen
         private object genAllGameStats(IEnumerable<Game> games)
         {
             var result = new List<object>();
-            var histoTimeOfDay = range(5, 24, 24).Select(h => Tuple.Create(h.ToString("00"), games.Count(g => g.Date(TimeZone).TimeOfDay.Hours == h)));
+            var histoTimeOfDay = range(5, 24, 24).Select(h => (label: h.ToString("00"), y: games.Count(g => g.Date(TimeZone).TimeOfDay.Hours == h)));
             result.Add(makeHistogram(histoTimeOfDay, "Games by time of day"));
             var gamesByDay = games.GroupBy(g => g.DateDayOnly(TimeZone)).OrderBy(g => g.Key).ToList();
             var firstDay = gamesByDay[0].Key;
@@ -280,14 +280,14 @@ namespace LeagueOfStats.CmdGen
             var firstWeek = firstDay.AddDays(-(((int) firstDay.DayOfWeek - 1 + 7) % 7));
             Ut.Assert(firstWeek.DayOfWeek == DayOfWeek.Monday);
             var gamesByWeek = gamesByDay.GroupBy(gbd => (int) Math.Floor((gbd.Key - firstWeek).TotalDays / 7)).ToDictionary(g => g.Key, g => g.SelectMany(gg => gg).ToList());
-            var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => Tuple.Create(c == 12 ? "12+" : c.ToString(), gamesByDay.Count(grp => grp.Count() == c))).ToList();
+            var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => (label: c == 12 ? "12+" : c.ToString(), y: gamesByDay.Count(grp => grp.Count() == c))).ToList();
             result.Add(makeHistogram(histoGamesPerDay, "Games played per day"));
-            var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), games.Count(g => (int) g.Date(TimeZone).DayOfWeek == dow))).ToList();
+            var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => (label: ((DayOfWeek) dow).ToString().Substring(0, 2), y: games.Count(g => (int) g.Date(TimeZone).DayOfWeek == dow))).ToList();
             result.Add(makeHistogram(histoGamesByDayOfWeek, "Games played on ..."));
-            var histoGamesByDayOfWeek2 = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), gamesByDay.Count(g => (int) g.Key.DayOfWeek == dow))).ToList();
+            var histoGamesByDayOfWeek2 = range(1, 7, 7).Select(dow => (label: ((DayOfWeek) dow).ToString().Substring(0, 2), y: gamesByDay.Count(g => (int) g.Key.DayOfWeek == dow))).ToList();
             result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
             result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
-            result.Add(makePlotXY("Distinct champs played", dates.Select(d => Tuple.Create((d - firstDay).TotalDays, (double) games.Where(g => g.DateDayOnly(TimeZone) <= d).Select(g => thisPlayer(g).Champion).Distinct().Count())).ToList()));
+            result.Add(makePlotXY("Distinct champs played", dates.Select(d => (x: (d - firstDay).TotalDays, y: (double) games.Where(g => g.DateDayOnly(TimeZone) <= d).Select(g => thisPlayer(g).Champion).Distinct().Count())).ToList()));
             var plotWardProgress = games.Select(g => g.Enemy.Players.Sum(p => p.WardsPlaced / g.Duration.TotalMinutes * 30.0)).ToList();
             plotWardProgress.Reverse();
             result.Add(makePlotY("Wards over time by enemy team", plotWardProgress, runningAverage(plotWardProgress, 29).ToList()));
@@ -357,14 +357,14 @@ namespace LeagueOfStats.CmdGen
             }
         }
 
-        private object makePlotXY(string title, params List<Tuple<double, double>>[] datas)
+        private object makePlotXY(string title, params List<(double x, double y)>[] datas)
         {
             double width = 400;
             double height = 150;
             var sb = new StringBuilder();
             datas = datas.Where(d => d.Count > 0).ToArray();
-            double maxX = datas.Max(data => data.Max(pt => pt.Item1));
-            double maxY = datas.Max(data => data.Max(pt => pt.Item2));
+            double maxX = datas.Max(data => data.Max(pt => pt.x));
+            double maxY = datas.Max(data => data.Max(pt => pt.y));
             var result = new StringBuilder();
             result.Append("<svg width='{0}' height='{1}' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(width, height));
             result.Append("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(width / 2, title));
@@ -373,7 +373,7 @@ namespace LeagueOfStats.CmdGen
             foreach (var data in datas)
             {
                 var color = colors.Dequeue();
-                result.Append("<polyline fill='none' stroke='{0}' points='{1}' />".Fmt(color, data.Select(d => "{0:0.000},{1:0.000}".Fmt(d.Item1 / maxX * (width - 20) + 10, (maxY - d.Item2) / maxY * (height - 40) + 30)).JoinString(" ")));
+                result.Append("<polyline fill='none' stroke='{0}' points='{1}' />".Fmt(color, data.Select(d => "{0:0.000},{1:0.000}".Fmt(d.x / maxX * (width - 20) + 10, (maxY - d.y) / maxY * (height - 40) + 30)).JoinString(" ")));
                 colors.Enqueue(color);
             }
             result.Append("</g></svg>");
@@ -382,7 +382,7 @@ namespace LeagueOfStats.CmdGen
 
         private object makePlotY(string title, params IEnumerable<double>[] datas)
         {
-            return makePlotXY(title, datas.Select(data => data.Select((p, i) => Tuple.Create((double) i, p)).ToList()).ToArray());
+            return makePlotXY(title, datas.Select(data => data.Select((p, i) => (x: (double) i, y: p)).ToList()).ToArray());
         }
 
         private IEnumerable<int> range(int first, int count, int modulus = int.MaxValue)
@@ -390,16 +390,16 @@ namespace LeagueOfStats.CmdGen
             return Enumerable.Range(first, count).Select(i => i % modulus);
         }
 
-        private object makeHistogram(IEnumerable<Tuple<string, int>> data, string title)
+        private object makeHistogram(IEnumerable<(string label, int y)> data, string title)
         {
             int x = 10;
             var sb = new StringBuilder();
-            double maxY = data.Max(pt => pt.Item2);
+            double maxY = data.Max(pt => pt.y);
             foreach (var pt in data)
             {
-                double height = 100 * pt.Item2 / maxY;
+                double height = 100 * pt.y / maxY;
                 sb.AppendFormat("<rect x='{0}' y='{1}' width='14' height='{2}' stroke-width=0 fill='#921'/>", x, 130 - height, height);
-                sb.AppendFormat("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='15' x='{0}' y='145' fill='#000'>{1}</text>", x + 7, pt.Item1);
+                sb.AppendFormat("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='15' x='{0}' y='145' fill='#000'>{1}</text>", x + 7, pt.label);
                 x += 25;
             }
             return new RawTag("<svg width='{0}' height='150' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(x)
