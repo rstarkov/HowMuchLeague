@@ -277,6 +277,9 @@ namespace LeagueOfStats.CmdGen
             var gamesByDay = games.GroupBy(g => g.DateDayOnly(TimeZone)).OrderBy(g => g.Key).ToList();
             var firstDay = gamesByDay[0].Key;
             var dates = gamesByDay.Select(g => g.Key).ToList();
+            var firstWeek = firstDay.AddDays(-(((int) firstDay.DayOfWeek - 1 + 7) % 7));
+            Ut.Assert(firstWeek.DayOfWeek == DayOfWeek.Monday);
+            var gamesByWeek = gamesByDay.GroupBy(gbd => (int) Math.Floor((gbd.Key - firstWeek).TotalDays / 7)).ToDictionary(g => g.Key, g => g.SelectMany(gg => gg).ToList());
             var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => Tuple.Create(c == 12 ? "12+" : c.ToString(), gamesByDay.Count(grp => grp.Count() == c))).ToList();
             result.Add(makeHistogram(histoGamesPerDay, "Games played per day"));
             var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => Tuple.Create(((DayOfWeek) dow).ToString().Substring(0, 2), games.Count(g => (int) g.Date(TimeZone).DayOfWeek == dow))).ToList();
@@ -291,6 +294,8 @@ namespace LeagueOfStats.CmdGen
             var plotGameDurationProgress = games.Select(g => g.Duration.TotalMinutes).ToList();
             plotGameDurationProgress.Reverse();
             result.Add(makePlotY("Game duration over time", plotGameDurationProgress, runningAverage(plotGameDurationProgress, 49).ToList()));
+            var plotHoursPerWeek = Enumerable.Range(0, gamesByWeek.Keys.Max() + 1).Select(wk => gamesByWeek.ContainsKey(wk) ? gamesByWeek[wk].Sum(g => g.Duration.TotalHours) : 0).ToList();
+            result.Add(makePlotY("Hours played per week", plotHoursPerWeek, runningAverage(plotHoursPerWeek, 25).ToList()));
             //result.Add(makeCsPlotOverTime("CS@20m as ADC over time", games, playerId, Role.DuoCarry, Lane.Bottom));
             //result.Add(makeCsPlotOverTime("CS@20m as Mid over time", games, playerId, Role.Solo, Lane.Middle));
             //result.Add(makeCsPlotOverTime("CS@20m as Top over time", games, playerId, Role.Solo, Lane.Top));
