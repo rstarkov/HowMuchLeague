@@ -99,7 +99,7 @@ namespace LeagueOfStats.PersonalData
             Team = team;
 
             AccountId = identity["player"]["accountId"].GetLong();
-            SummonerId = identity["player"].ContainsKey("summonerId") ? identity["player"]["summonerId"].GetLong() : -1; // -1 when it's a bot
+            SummonerId = identity["player"].Safe["summonerId"].GetLongSafe() ?? -1; // -1 when it's a bot
             Name = identity["player"]["summonerName"].GetString();
 
             TeamId = participant["teamId"].GetInt();
@@ -120,17 +120,17 @@ namespace LeagueOfStats.PersonalData
             LargestMultiKill = stats["largestMultiKill"].GetInt();
             WardsPlaced = stats.ContainsKey("wardsPlaced") ? stats["wardsPlaced"].GetInt() : 0;
             var timeline = participant["timeline"].GetDict();
-            if (game.Duration > TimeSpan.FromMinutes(10))
+            if (game.Duration > TimeSpan.FromMinutes(10) && game.Type != "Dark Star")
             {
                 CreepsAt10 = (int) (timeline["creepsPerMinDeltas"]["0-10"].GetDouble() * 10);
                 GoldAt10 = (int) (timeline["goldPerMinDeltas"]["0-10"].GetDouble() * 10);
             }
-            if (game.Duration > TimeSpan.FromMinutes(20))
+            if (game.Duration > TimeSpan.FromMinutes(20) && game.Type != "Dark Star")
             {
                 CreepsAt20 = CreepsAt10 + (int) (timeline["creepsPerMinDeltas"]["10-20"].GetDouble() * 10);
                 GoldAt20 = GoldAt10 + (int) (timeline["goldPerMinDeltas"]["10-20"].GetDouble() * 10);
             }
-            if (game.Duration > TimeSpan.FromMinutes(30))
+            if (game.Duration > TimeSpan.FromMinutes(30) && game.Type != "Dark Star")
             {
                 CreepsAt30 = CreepsAt20 + (int) (timeline["creepsPerMinDeltas"]["20-30"].GetDouble() * 10);
                 GoldAt30 = GoldAt20 + (int) (timeline["goldPerMinDeltas"]["20-30"].GetDouble() * 10);
@@ -194,6 +194,7 @@ namespace LeagueOfStats.PersonalData
                 case 11: Map = "Summoner's Rift"; break;
                 case 12: Map = "Howling Abyss"; break;
                 case 14: Map = "Butcher's Bridge"; break;
+                case 16: Map = "Cosmic Ruins"; break;
                 default: throw new Exception("Unknown map: " + MapId);
             }
             string queueMap = null;
@@ -205,7 +206,8 @@ namespace LeagueOfStats.PersonalData
                 case 14:
                 case 400: Type = "5v5 Draft Pick"; queueMap = "Summoner's Rift"; break; // 400: new dynamic queue draft
                 case 4:
-                case 410: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break; // 410: new dynamic queue draft
+                case 410: // 410: was temporarily the only ranked 5v5 option for solo players
+                case 420: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break; // 420: new dynamic queue draft
                 case 6: Type = "5v5 Ranked Premade"; queueMap = "Summoner's Rift"; break;
                 case 9: Type = "3v3 Ranked Premade"; queueMap = "Summoner's Rift"; break;
                 case 41: Type = "3v3 Ranked Team"; break;
@@ -235,6 +237,8 @@ namespace LeagueOfStats.PersonalData
                 case 300: Type = "King Poro"; break;
                 case 310: Type = "Nemesis"; break;
                 case 313: Type = "Black Market Brawlers"; break;
+                case 318: Type = "All Random URF"; queueMap = "Summoner's Rift"; break;
+                case 610: Type = "Dark Star"; queueMap = "Cosmic Ruins"; break;
                 default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)

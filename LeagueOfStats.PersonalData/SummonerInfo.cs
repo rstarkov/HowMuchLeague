@@ -30,6 +30,8 @@ namespace LeagueOfStats.PersonalData
         [ClassifyIgnore]
         public IReadOnlyList<string> PastNames { get; private set; }
 
+        public string Username { get; private set; }
+
         /// <summary>All games played by this summoner. This list is read-only.</summary>
         [ClassifyIgnore]
         public IReadOnlyList<Game> Games { get; private set; }
@@ -125,7 +127,11 @@ namespace LeagueOfStats.PersonalData
             {
                 var json = loadGameJson(gameId, hClient, getAuthHeader, logger);
                 if (json != null)
+                {
+                    if (json["gameType"].GetString() == "CUSTOM_GAME")
+                        continue;
                     games.Add(new Game(json, this));
+                }
             }
             postLoad(games);
         }
@@ -210,7 +216,7 @@ namespace LeagueOfStats.PersonalData
             while (true)
             {
                 logger?.Invoke("{0}/{1}: retrieving games at {2} of {3}".Fmt(Name, Region, index, count));
-                var url = $"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={index}&endIndex={index + step}&queue=0&queue=2&queue=4&queue=6&queue=7&queue=8&queue=9&queue=14&queue=16&queue=17&queue=25&queue=31&queue=32&queue=33&queue=41&queue=42&queue=52&queue=61&queue=65&queue=70&queue=73&queue=76&queue=78&queue=83&queue=91&queue=92&queue=93&queue=96&queue=98&queue=100&queue=300&queue=313&queue=400&queue=410";
+                var url = $"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={index}&endIndex={index + step}&";
                 var json = retryOnAuthHeaderFail(url, hClient, getAuthHeader).Expect(HttpStatusCode.OK).DataJson;
 
                 Ut.Assert(json["accountId"].GetLongLenient() == AccountId);

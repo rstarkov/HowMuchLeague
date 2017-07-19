@@ -53,9 +53,10 @@ namespace LeagueOfStats.PersonalData
         Ferocity,
         Heat,
         BloodWell,
-        GnarFury,
-        DragonFury,
-        Wind,
+        Flow,
+        Courage,
+        Shield,
+        CrimsonRush,
     }
 
     public class ChampionInfo
@@ -96,16 +97,17 @@ namespace LeagueOfStats.PersonalData
             switch (json["partype"].GetString())
             {
                 case "None": Resource = ChampionResource.None; break;
-                case "MP": Resource = ChampionResource.Mana; break;
+                case "Mana": Resource = ChampionResource.Mana; break;
                 case "Energy": Resource = ChampionResource.Energy; break;
-                case "Battlefury": Resource = ChampionResource.Fury; break;
+                case "Fury": Resource = ChampionResource.Fury; break;
                 case "Rage": Resource = ChampionResource.Rage; break;
                 case "Ferocity": Resource = ChampionResource.Ferocity; break;
                 case "Heat": Resource = ChampionResource.Heat; break;
-                case "BloodWell": Resource = ChampionResource.BloodWell; break;
-                case "Gnarfury": Resource = ChampionResource.GnarFury; break;
-                case "Dragonfury": Resource = ChampionResource.DragonFury; break;
-                case "Wind": Resource = ChampionResource.Wind; break;
+                case "Blood Well": Resource = ChampionResource.BloodWell; break;
+                case "Flow": Resource = ChampionResource.Flow; break;
+                case "Courage": Resource = ChampionResource.Courage; break;
+                case "Shield": Resource = ChampionResource.Shield; break;
+                case "Crimson Rush": Resource = ChampionResource.CrimsonRush; break;
                 default: throw new Exception($"Unrecognized champion resource type: '{json["partype"].GetString()}'.");
             }
 
