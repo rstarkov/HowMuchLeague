@@ -78,6 +78,90 @@ namespace LeagueOfStats.CmdGen
             Console.WriteLine("done");
         }
 
+        public void ProduceLaneTable(string outputFile)
+        {
+            Console.Write("Producing output file: " + outputFile + " ... ");
+
+            (string kind, object td) wonOrLost(double thisPlr, double oppPlr, double percentageThreshold, double absoluteThreshold, bool isGood = true, double percentageThresholdHard = 999)
+            {
+                string kind;
+                if (Math.Abs(thisPlr - oppPlr) < absoluteThreshold)
+                    kind = "close";
+                if (thisPlr == 0 || oppPlr == 0)
+                    kind = Math.Abs(thisPlr - oppPlr) < absoluteThreshold ? "close" : thisPlr > oppPlr ? "hardwin" : "hardloss";
+                if (thisPlr > oppPlr)
+                    kind = thisPlr / oppPlr > 1 + percentageThresholdHard ? (isGood ? "hardwin" : "hardloss") : thisPlr / oppPlr > 1 + percentageThreshold ? (isGood ? "win" : "loss") : "close";
+                else
+                    kind = oppPlr / thisPlr > 1 + percentageThresholdHard ? (isGood ? "hardloss" : "hardwin") : oppPlr / thisPlr > 1 + percentageThreshold ? (isGood ? "loss" : "win") : "close";
+
+                return (kind, new TD { class_ = $"nplr {kind}" }._($"{thisPlr} vs {oppPlr}"));
+            }
+
+            var groups = new[] { "Summoner's Rift, 5v5 Ranked Solo", "Summoner's Rift, 5v5 Draft Pick", "Summoner's Rift, 5v5 Blind Pick" };
+            var stats = from mapAndQueue in groups
+                        let games = _games.Where(g => g.Map + ", " + g.Type == mapAndQueue).Select(game =>
+                        {
+                            var thisPlr = thisPlayer(game);
+                            var laneOpponents = game.Enemy.Players.Where(g => g.Lane == thisPlr.Lane && g.Role == thisPlr.Role);
+                            var oppPlr = laneOpponents.Count() == 1 ? laneOpponents.Single() : null;
+                            if (thisPlr == null || oppPlr == null)
+                                return (game, thisPlr, oppPlr, null);
+                            return (game: game, thisPlr: thisPlr, oppPlr: oppPlr, details: new
+                            {
+                                creepsAt10 = wonOrLost(thisPlr.CreepsAt10, oppPlr.CreepsAt10, 0.05, 5, percentageThresholdHard: 0.30),
+                                goldAt10 = wonOrLost(thisPlr.GoldAt10, oppPlr.GoldAt10, 0.08, 100, percentageThresholdHard: 0.16),
+                                goldAt20 = wonOrLost(thisPlr.GoldAt20, oppPlr.GoldAt20, 0.08, 200, percentageThresholdHard: 0.16),
+                                kills = wonOrLost(thisPlr.Kills, oppPlr.Kills, 0, 1, percentageThresholdHard: 0.80),
+                                deaths = wonOrLost(thisPlr.Deaths, oppPlr.Deaths, 0, 1, isGood: false, percentageThresholdHard: 1.20),
+                                damage = wonOrLost(thisPlr.DamageToChampions, oppPlr.DamageToChampions, 0.08, 600, percentageThresholdHard: 0.30),
+                                wards = wonOrLost(thisPlr.WardsPlaced, oppPlr.WardsPlaced, 0.12, 3, percentageThresholdHard: 2.00),
+                            });
+                        }).ToList()
+                        select new { mapAndQueue, games };
+
+            var result = stats.Select(s => Ut.NewArray<object>(
+                new H1(s.mapAndQueue),
+                new TABLE { class_ = "lane-compare" }._(
+                    new TR(
+                        new TH("Date"),
+                        new TH("Result"),
+                        new TH("Champion"),
+                        new TH("Lane"),
+                        new TH("CS@10"),
+                        new TH("Gold@10"),
+                        new TH("Gold@20"),
+                        new TH("Kills"),
+                        new TH("Deaths"),
+                        new TH("Damage"),
+                        new TH("Wards"),
+                        new TH("Analysis")
+                    ),
+                    s.games.Select(g => new TR(
+                        new TD(new A(g.game.Date(TimeZone).ToString("dd/MM/yy HH:mm")) { href = g.game.DetailsUrl }),
+                        new TD { class_ = NullTrueFalse(g.game.Victory, "draw", "victory", "defeat") }._(NullTrueFalse(g.game.Victory, "Draw", "Victory", "Defeat")),
+                        new TD($"{g.thisPlr.Champion} vs {g.oppPlr?.Champion ?? "?"}"),
+                        new TD(g.thisPlr.Lane),
+                        g.details?.creepsAt10.td,
+                        g.details?.goldAt10.td,
+                        g.details?.goldAt20.td,
+                        g.details?.kills.td,
+                        g.details?.deaths.td,
+                        g.details?.damage.td,
+                        g.details?.wards.td,
+                        g.details == null || g.thisPlr.Role == Role.DuoSupport ? null : new TD(
+                            g.details.damage.kind == "hardwin" && g.details.kills.kind == "hardwin" && g.game.Victory==false ? "Boosted teammates" :
+                            g.details.damage.kind == "hardloss" && g.details.kills.kind == "hardloss" && g.game.Victory == true ? "Got carried hard" : ""
+                        )
+                    ))
+                )
+            ));
+
+            var css = getCss();
+            Directory.CreateDirectory(Path.GetDirectoryName(outputFile));
+            File.WriteAllText(outputFile, new HTML(new HEAD(new META { charset = "utf-8" }, new STYLELiteral(css)), new BODY(result)).ToString());
+            Console.WriteLine("done");
+        }
+
         public void ProduceStats(string outputFile, int limit = 999999)
         {
             Console.Write("Producing output file: " + outputFile + " ... ");
@@ -135,10 +219,15 @@ namespace LeagueOfStats.CmdGen
                 table.la td { text-align: left; }
                 table td.ra.ra { text-align: right; }
                 table td.la.la { text-align: left; }
+                table.lane-compare td { border: 1px solid black; text-align: center; padding: 2px 8px; }
+                table.lane-compare a { text-decoration: none; }
                 .hspace { margin-right: 25px; }
                 .linelist { margin-left: 8px; }
-                a.win, a.win:visited { color: #1A9B1B; }
-                a.loss, a.loss:visited { color: #B02424; }
+                .win, .win:visited { color: #1A9B1B; }
+                .loss, .loss:visited { color: #B02424; }
+                .hardwin, .hardwin:visited { color: #1A9B1B; font-weight: bold; }
+                .hardloss, .hardloss:visited { color: #B02424; font-weight: bold; }
+                .close, .close:visited { color: #1A68B1; }
                 .linelist:before { content: '\200B'; }";
             css += KnownPlayersAccountIds.Select(accId => $"\r\n                td.kp{accId}" + (ThisPlayerAccountIds.Contains(accId) ? " { background: #D1FECC; }" : " { background: #6EFFFF; }")).JoinString();
             css += "\r\n";

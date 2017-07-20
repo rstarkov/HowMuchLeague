@@ -43,6 +43,7 @@ namespace LeagueOfStats.CmdGen
                 generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToHashSet();
                 generator.GamesTableFilename = Settings.OutputPathTemplate.Fmt("Games-All", human.Name, "");
                 generator.ProduceGamesTable();
+                generator.ProduceLaneTable(Settings.OutputPathTemplate.Fmt("LaneCompare", human.Name, ""));
                 generator.ProduceStats(Settings.OutputPathTemplate.Fmt("All", human.Name, ""));
                 generator.ProduceStats(Settings.OutputPathTemplate.Fmt("All", human.Name, "-200"), 200);
                 foreach (var summoner in human.Summoners)
