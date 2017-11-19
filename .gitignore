@@ -6,3 +6,4 @@ obj
 Builds
 *.orig
 packages
+.vs
