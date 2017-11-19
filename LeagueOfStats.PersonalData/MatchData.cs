@@ -21,7 +21,10 @@ namespace LeagueOfStats.PersonalData
         internal Team(JsonValue json, Dictionary<int, JsonValue> participants, Dictionary<int, JsonValue> identities, Game game)
         {
             Game = game;
-            Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
+            if (Game.Map == "Valoran City Park" && !json.ContainsKey("win"))
+                Victory = true;
+            else
+                Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
             Players = participants.Values.Select(p => new Player(p, identities[p["participantId"].GetInt()], game, this))
                 .OrderBy(p => p.Lane).ThenBy(p => p.Role)
                 .ToList().AsReadOnly();
@@ -195,50 +198,56 @@ namespace LeagueOfStats.PersonalData
                 case 12: Map = "Howling Abyss"; break;
                 case 14: Map = "Butcher's Bridge"; break;
                 case 16: Map = "Cosmic Ruins"; break;
+                case 18: Map = "Valoran City Park"; break;
                 default: throw new Exception("Unknown map: " + MapId);
             }
             string queueMap = null;
             switch (QueueId)
             {
                 case 0: Type = "Custom"; break;
-                case 8: Type = "3v3"; queueMap = "Twisted Treeline"; break;
-                case 2: Type = "5v5 Blind Pick"; queueMap = "Summoner's Rift"; break;
+                case 8: case 460: Type = "3v3"; queueMap = "Twisted Treeline"; break;
+                case 2: case 430: Type = "5v5 Blind Pick"; queueMap = "Summoner's Rift"; break;
                 case 14:
                 case 400: Type = "5v5 Draft Pick"; queueMap = "Summoner's Rift"; break; // 400: new dynamic queue draft
                 case 4:
                 case 410: // 410: was temporarily the only ranked 5v5 option for solo players
                 case 420: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break; // 420: new dynamic queue draft
                 case 6: Type = "5v5 Ranked Premade"; queueMap = "Summoner's Rift"; break;
-                case 9: Type = "3v3 Ranked Premade"; queueMap = "Summoner's Rift"; break;
-                case 41: Type = "3v3 Ranked Team"; break;
+                case 9: case 470: Type = "3v3 Ranked Premade"; queueMap = "Summoner's Rift"; break;
+                case 41: Type = "3v3 Ranked Team"; queueMap = "Twisted Treeline"; break;
                 case 42: Type = "5v5 Ranked Team"; queueMap = "Summoner's Rift"; break;
                 case 16: Type = "5v5 Blind Pick"; queueMap = "Crystal Scar"; break;
                 case 17: Type = "5v5 Draft Pick"; queueMap = "Crystal Scar"; break;
                 case 7: Type = "Coop vs AI (old)"; queueMap = "Summoner's Rift"; break;
                 case 25: Type = "Dominion Coop vs AI"; queueMap = "Crystal Scar"; break;
-                case 31: Type = "Coop vs AI (Intro)"; queueMap = "Summoner's Rift"; break;
-                case 32: Type = "Coop vs AI (Beginner)"; queueMap = "Summoner's Rift"; break;
-                case 33: Type = "Coop vs AI (Intermediate)"; queueMap = "Summoner's Rift"; break;
-                case 52: Type = "Coop vs AI"; queueMap = "Twisted Treeline"; break;
-                case 61: Type = "Team Builder"; break;
-                case 65: Type = "ARAM"; queueMap = "Howling Abyss"; break;
-                case 70: Type = "One for All"; break;
-                case 72: Type = "1v1 Snowdown Showdown"; break;
-                case 73: Type = "2v2 Snowdown Showdown"; break;
+                case 31: case 830: Type = "Coop vs AI (Intro)"; queueMap = "Summoner's Rift"; break;
+                case 32: case 840: Type = "Coop vs AI (Beginner)"; queueMap = "Summoner's Rift"; break;
+                case 33: case 850: Type = "Coop vs AI (Intermediate)"; queueMap = "Summoner's Rift"; break;
+                case 52: case 800: Type = "Coop vs AI"; queueMap = "Twisted Treeline"; break;
+                case 61: Type = "Team Builder"; queueMap = "Summoner's Rift"; break;
+                case 65: case 450: Type = "ARAM"; queueMap = "Howling Abyss"; break;
+                case 70: Type = "One for All"; queueMap = "Summoner's Rift"; break;
+                case 72: Type = "1v1 Snowdown Showdown"; queueMap = "Howling Abyss"; break;
+                case 73: Type = "2v2 Snowdown Showdown"; queueMap = "Howling Abyss"; break;
                 case 75: Type = "6v6 Hexakill"; queueMap = "Summoner's Rift"; break;
-                case 76: Type = "Ultra Rapid Fire"; break;
-                case 83: Type = "Ultra Rapid Fire vs AI"; break;
-                case 91: Type = "Doom Bots Rank 1"; break;
-                case 92: Type = "Doom Bots Rank 2"; break;
-                case 93: Type = "Doom Bots Rank 5"; break;
-                case 96: Type = "Ascension"; break;
+                case 76: Type = "Ultra Rapid Fire"; queueMap = "Summoner's Rift"; break;
+                case 83: Type = "Ultra Rapid Fire vs AI"; queueMap = "Summoner's Rift"; break;
+                case 91: Type = "Doom Bots Rank 1"; queueMap = "Summoner's Rift"; break;
+                case 92: Type = "Doom Bots Rank 2"; queueMap = "Summoner's Rift"; break;
+                case 93: Type = "Doom Bots Rank 5"; queueMap = "Summoner's Rift"; break;
+                case 950: Type = "Doom Bots w/ voting"; queueMap = "Summoner's Rift"; break;
+                case 960: Type = "Doom Bots"; queueMap = "Summoner's Rift"; break;
+                case 96: Type = "Ascension"; queueMap = "Crystal Scar"; break;
                 case 98: Type = "6v6 Hexakill"; queueMap = "Twisted Treeline"; break;
                 case 100: Type = "ARAM"; queueMap = "Butcher's Bridge"; break;
-                case 300: Type = "King Poro"; break;
-                case 310: Type = "Nemesis"; break;
-                case 313: Type = "Black Market Brawlers"; break;
+                case 300: Type = "King Poro"; queueMap = "Howling Abyss"; break;
+                case 310: Type = "Nemesis"; queueMap = "Summoner's Rift"; break;
+                case 313: Type = "Black Market Brawlers"; queueMap = "Summoner's Rift"; break;
+                case 315: case 940: Type = "Nexus Siege"; queueMap = "Summoner's Rift"; break;
                 case 318: Type = "All Random URF"; queueMap = "Summoner's Rift"; break;
                 case 610: Type = "Dark Star"; queueMap = "Cosmic Ruins"; break;
+                case 980: Type = "Star Guardian Invasion: Normal"; queueMap = "Valoran City Park"; break;
+                case 990: Type = "Star Guardian Invasion: Onslaught"; queueMap = "Valoran City Park"; break;
                 default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)

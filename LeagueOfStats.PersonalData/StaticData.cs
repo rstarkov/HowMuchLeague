@@ -21,7 +21,7 @@ namespace LeagueOfStats.PersonalData
 
             // Load version info
             var versionsStr = hc.Get("https://ddragon.leagueoflegends.com/api/versions.js").Expect(HttpStatusCode.OK).DataString;
-            versionsStr = versionsStr.Replace("Riot.DDragon.versions=", "").Replace(";", "");
+            versionsStr = versionsStr.Replace("Riot.DDragon.versions = ", "").Replace(";", "");
             var versions = JsonList.Parse(versionsStr);
             GameVersion = versions.First().GetString();
 
