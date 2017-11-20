@@ -149,7 +149,7 @@ namespace LeagueOfStats.CmdGen
                         g.details?.damage.td,
                         g.details?.wards.td,
                         g.details == null || g.thisPlr.Role == Role.DuoSupport ? null : new TD(
-                            g.details.damage.kind == "hardwin" && g.details.kills.kind == "hardwin" && g.game.Victory==false ? "Boosted teammates" :
+                            g.details.damage.kind == "hardwin" && g.details.kills.kind == "hardwin" && g.game.Victory == false ? "Boosted teammates" :
                             g.details.damage.kind == "hardloss" && g.details.kills.kind == "hardloss" && g.game.Victory == true ? "Got carried hard" : ""
                         )
                     ))
@@ -300,8 +300,11 @@ namespace LeagueOfStats.CmdGen
                 byLastWinLoss.Count(v => v) / (double) byLastWinLoss.Count() * 100,
                 byLastWinLoss.Count(v => !v) / (double) byLastWinLoss.Count() * 100
             )));
-            result.Add(new P(new B("Longest win streaks: "), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
-            result.Add(new P(new B("Longest loss streaks: "), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).Select(grp => grp.Count).OrderByDescending(c => c).Take(6).JoinString(", ")));
+            result.Add(new P(new B("Longest unbroken win streaks:"), games.GroupConsecutiveBy(g => g.Victory == true).Where(grp => grp.Key).OrderByDescending(grp => grp.Count).Take(10).Select(grp => GetGameLink(grp.First(), grp.Count).AddClass("linelist"))));
+            result.Add(new P(new B("Longest unbroken loss streaks:"), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).OrderByDescending(grp => grp.Count).Take(10).Select(grp => GetGameLink(grp.First(), grp.Count).AddClass("linelist"))));
+            result.Add(new P(new B("Most wins in 20 games:"), mostWinsLosses(games, 20, wins: true).Take(10).Select(g => GetGameLink(g.firstGame, g.count).AddClass("linelist"))));
+            result.Add(new P(new B("Most losses in 20 games:"), mostWinsLosses(games, 20, wins: false).Take(10).Select(g => GetGameLink(g.firstGame, g.count).AddClass("linelist"))));
+
 
             var makeSummaryTable = Ut.Lambda((string label, IEnumerable<IGrouping<string, Player>> set) =>
             {
@@ -356,6 +359,61 @@ namespace LeagueOfStats.CmdGen
             result.Add(new H4("Total"));
             result.Add(makeSummaryTable("Total", games.Select(g => thisPlayer(g)).GroupBy(p => "Total")));
             return result;
+        }
+
+        private IEnumerable<(int count, Game firstGame)> mostWinsLosses(IEnumerable<Game> gamesE, int interval, bool wins)
+        {
+            var games = gamesE.ToArray();
+            var consumed = new bool[games.Length];
+            if (games.Length < interval)
+                yield break;
+            while (true)
+            {
+                int bestMax = -1;
+                int bestMaxFrom = -1;
+                int curMax = 0;
+                int curMaxFrom = 0;
+                for (int i = 0; i < games.Length; i++)
+                {
+                    if (consumed[i])
+                    {
+                        curMax = 0;
+                        curMaxFrom = i + 1;
+                        continue;
+                    }
+                    if (games[i].Victory == wins)
+                        curMax++;
+                    if (i - curMaxFrom >= interval)
+                    {
+                        if (games[curMaxFrom].Victory == wins)
+                            curMax--;
+                        curMaxFrom++;
+                    }
+                    if (i - curMaxFrom == interval - 1)
+                    {
+                        if (curMax > bestMax)
+                        {
+                            bestMax = curMax;
+                            bestMaxFrom = curMaxFrom;
+                        }
+                    }
+                }
+                if (bestMax < 0)
+                    yield break; // no more consecutive game regions of the desired length which weren't used for earlier results
+#if DEBUG
+                int check = 0;
+                for (int i = bestMaxFrom; i < bestMaxFrom + interval; i++)
+                {
+                    Ut.Assert(!consumed[i]);
+                    if (games[i].Victory == wins)
+                        check++;
+                }
+                Ut.Assert(check == bestMax);
+#endif
+                yield return (count: bestMax, firstGame: games[bestMaxFrom]);
+                for (int i = bestMaxFrom; i < bestMaxFrom + interval; i++)
+                    consumed[i] = true;
+            }
         }
 
         private object genAllGameStats(IEnumerable<Game> games)
