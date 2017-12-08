@@ -199,6 +199,7 @@ namespace LeagueOfStats.PersonalData
                 case 14: Map = "Butcher's Bridge"; break;
                 case 16: Map = "Cosmic Ruins"; break;
                 case 18: Map = "Valoran City Park"; break;
+                case 19: Map = "Substructure 43"; break;
                 default: throw new Exception("Unknown map: " + MapId);
             }
             string queueMap = null;
@@ -248,6 +249,7 @@ namespace LeagueOfStats.PersonalData
                 case 610: Type = "Dark Star"; queueMap = "Cosmic Ruins"; break;
                 case 980: Type = "Star Guardian Invasion: Normal"; queueMap = "Valoran City Park"; break;
                 case 990: Type = "Star Guardian Invasion: Onslaught"; queueMap = "Valoran City Park"; break;
+                case 1000: Type = "Overcharge"; queueMap = "Substructure 43"; break;
                 default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)
