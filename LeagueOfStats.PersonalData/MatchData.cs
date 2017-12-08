@@ -59,6 +59,9 @@ namespace LeagueOfStats.PersonalData
         public int GoldAt10 { get; private set; }
         public int GoldAt20 { get; private set; }
         public int GoldAt30 { get; private set; }
+        public bool? Afk { get; private set; }
+        public bool? Leaver { get; private set; }
+        public int? VisionScore { get; private set; }
 
         public int RankOf(Func<Player, double> prop)
         {
@@ -122,6 +125,9 @@ namespace LeagueOfStats.PersonalData
             TotalDamageTaken = stats["totalDamageTaken"].GetInt();
             LargestMultiKill = stats["largestMultiKill"].GetInt();
             WardsPlaced = stats.ContainsKey("wardsPlaced") ? stats["wardsPlaced"].GetInt() : 0;
+            VisionScore = stats.ContainsKey("visionScore") ? stats["visionScore"].GetInt() : (int?) null;
+            Afk = stats.ContainsKey("wasAfk") ? stats["wasAfk"].GetBool() : (bool?) null;
+            Leaver = stats.ContainsKey("leaver") ? stats["leaver"].GetBool() : (bool?) null;
             var timeline = participant["timeline"].GetDict();
             if (game.Duration > TimeSpan.FromMinutes(10) && game.Type != "Dark Star")
             {
