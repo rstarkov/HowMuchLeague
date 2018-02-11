@@ -256,6 +256,7 @@ namespace LeagueOfStats.PersonalData
                 case 980: Type = "Star Guardian Invasion: Normal"; queueMap = "Valoran City Park"; break;
                 case 990: Type = "Star Guardian Invasion: Onslaught"; queueMap = "Valoran City Park"; break;
                 case 1000: Type = "Overcharge"; queueMap = "Substructure 43"; break;
+                case 1010: Type = "Snow ARURF"; queueMap = "Summoner's Rift"; break;
                 default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)

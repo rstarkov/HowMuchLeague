@@ -167,6 +167,7 @@ namespace LeagueOfStats.CmdGen
             Console.Write("Producing output file: " + outputFile + " ... ");
             var gameTypeSections = getGameTypeSections(limit);
             var result = Ut.NewArray(
+                new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")),
                 genAllGameStats(_games.Take(limit)),
                 getContents(gameTypeSections),
                 gameTypeSections.Select(grp => Ut.NewArray<object>(
