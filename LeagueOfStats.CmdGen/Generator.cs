@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using LeagueOfStats.PersonalData;
+using LeagueOfStats.StaticData;
 using RT.TagSoup;
 using RT.Util;
 using RT.Util.ExtensionMethods;

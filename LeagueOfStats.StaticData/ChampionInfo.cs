@@ -1,7 +1,7 @@
 ﻿using System;
 using RT.Util.Json;
 
-namespace LeagueOfStats.PersonalData
+namespace LeagueOfStats.StaticData
 {
     public enum ChampionResource
     {

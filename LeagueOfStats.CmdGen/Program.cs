@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using LeagueOfStats.PersonalData;
+using LeagueOfStats.StaticData;
 using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 using RT.Util.Serialization;

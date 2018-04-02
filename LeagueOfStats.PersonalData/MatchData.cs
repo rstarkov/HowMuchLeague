@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using LeagueOfStats.StaticData;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
