@@ -8,7 +8,7 @@ using RT.Util.Json;
 
 namespace LeagueOfStats.PersonalData
 {
-    public enum Lane { Top, Jungle, Middle, Bottom }
+    public enum Lane { None, Top, Jungle, Middle, Bottom }
 
     public enum Role { None, Solo, DuoSupport, Duo, DuoCarry }
 
@@ -115,7 +115,7 @@ namespace LeagueOfStats.PersonalData
             var role = participant["timeline"]["role"].GetString();
             Role = role == "DUO" ? Role.Duo : role == "DUO_CARRY" ? Role.DuoCarry : role == "DUO_SUPPORT" ? Role.DuoSupport : role == "SOLO" ? Role.Solo : role == "NONE" ? Role.None : Ut.Throw<Role>(new Exception());
             var lane = participant["timeline"]["lane"].GetString();
-            Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : Ut.Throw<Lane>(new Exception());
+            Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : lane == "NONE" ? Lane.None : Ut.Throw<Lane>(new Exception());
             var stats = participant["stats"].GetDict();
             Kills = stats["kills"].GetInt();
             Deaths = stats["deaths"].GetInt();
