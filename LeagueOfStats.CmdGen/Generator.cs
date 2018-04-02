@@ -306,14 +306,15 @@ namespace LeagueOfStats.CmdGen
             result.Add(new P(new B("Longest unbroken loss streaks:"), games.GroupConsecutiveBy(g => g.Victory == false).Where(grp => grp.Key).OrderByDescending(grp => grp.Count).Take(10).Select(grp => GetGameLink(grp.First(), grp.Count).AddClass("linelist"))));
             result.Add(new P(new B("Most wins in 20 games:"), mostWinsLosses(games, 20, wins: true).Take(10).Select(g => GetGameLink(g.firstGame, g.count).AddClass("linelist"))));
             result.Add(new P(new B("Most losses in 20 games:"), mostWinsLosses(games, 20, wins: false).Take(10).Select(g => GetGameLink(g.firstGame, g.count).AddClass("linelist"))));
-            result.Add(new P(new B("Interval between games free of AFKs or leavers on our team:"), afkOrLeaverBetween(games, g => g.Ally.Players.Any(p => p.Afk == true || p.Leaver == true)).Take(15).Select(g => GetGameLink(g.gameWithAfk, g.sinceLastAfk).AddClass("linelist"))));
-            result.Add(new P(new B("Interval between games free of AFKs or leavers on enemy team:"), afkOrLeaverBetween(games, g => g.Enemy.Players.Any(p => p.Afk == true || p.Leaver == true)).Take(15).Select(g => GetGameLink(g.gameWithAfk, g.sinceLastAfk).AddClass("linelist"))));
-            result.Add(new P(new B("AFK or leaver on our team in last N games:"), new[] { 10, 50, 100, 200, 300, 9999 }.Select(count => new SPAN(count, ": ", games.Take(count).Count(g => g.Ally.Players.Any(p => p.Afk == true || p.Leaver == true))) { class_ = "linelist" })));
-            result.Add(new P(new B("AFK or leaver on enemy team in last N games:"), new[] { 10, 50, 100, 200, 300, 9999 }.Select(count => new SPAN(count, ": ", games.Take(count).Count(g => g.Enemy.Players.Any(p => p.Afk == true || p.Leaver == true))) { class_ = "linelist" })));
-            result.Add(new P(new B("Interval between games free of leavers on our team:"), afkOrLeaverBetween(games, g => g.Ally.Players.Any(p => p.Leaver == true)).Take(15).Select(g => GetGameLink(g.gameWithAfk, g.sinceLastAfk).AddClass("linelist"))));
-            result.Add(new P(new B("Interval between games free of leavers on enemy team:"), afkOrLeaverBetween(games, g => g.Enemy.Players.Any(p => p.Leaver == true)).Take(15).Select(g => GetGameLink(g.gameWithAfk, g.sinceLastAfk).AddClass("linelist"))));
-            result.Add(new P(new B("Leaver on our team in last N games:"), new[] { 10, 50, 100, 200, 300, 9999 }.Select(count => new SPAN(count, ": ", games.Take(count).Count(g => g.Ally.Players.Any(p => p.Leaver == true))) { class_ = "linelist" })));
-            result.Add(new P(new B("Leaver on enemy team in last N games:"), new[] { 10, 50, 100, 200, 300, 9999 }.Select(count => new SPAN(count, ": ", games.Take(count).Count(g => g.Enemy.Players.Any(p => p.Leaver == true))) { class_ = "linelist" })));
+            result.Add(new P(new B("AFK or leaver on our/enemy team in last N games:"), new[] { 10, 50, 100, 200, 300, 9999 }.Select(count => new SPAN(count, ": ",
+                games.Take(count).Count(g => g.Ally.Players.Any(p => p.Afk == true || p.Leaver == true)), "/",
+                games.Take(count).Count(g => g.Enemy.Players.Any(p => p.Afk == true || p.Leaver == true))
+            )
+            { class_ = "linelist" })));
+            result.Add(new P(new B("Leaver on our/enemy team in last N games:"), new[] { 10, 50, 100, 200, 300, 9999 }.Select(count => new SPAN(count, ": ",
+                games.Take(count).Count(g => g.Ally.Players.Any(p => p.Leaver == true)), "/",
+                games.Take(count).Count(g => g.Enemy.Players.Any(p => p.Leaver == true)))
+            { class_ = "linelist" })));
 
 
             var makeSummaryTable = Ut.Lambda((string label, IEnumerable<IGrouping<string, Player>> set) =>
