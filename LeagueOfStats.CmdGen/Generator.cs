@@ -453,14 +453,16 @@ namespace LeagueOfStats.CmdGen
             var firstWeek = firstDay.AddDays(-(((int) firstDay.DayOfWeek - 1 + 7) % 7));
             Ut.Assert(firstWeek.DayOfWeek == DayOfWeek.Monday);
             var gamesByWeek = gamesByDay.GroupBy(gbd => (int) Math.Floor((gbd.Key - firstWeek).TotalDays / 7)).ToDictionary(g => g.Key, g => g.SelectMany(gg => gg).ToList());
-            var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => (label: c == 12 ? "12+" : c.ToString(), y: gamesByDay.Count(grp => grp.Count() == c))).ToList();
-            result.Add(makeHistogram(histoGamesPerDay, "Games played per day"));
+            var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => (label: c == 12 ? "12+" : c.ToString(), y: gamesByDay.Count(grp => c == 12 ? grp.Count() >= 12 : grp.Count() == c))).ToList();
+            result.Add(makeHistogram(histoGamesPerDay, "Games played per day")); // TODO: add 0 games
             var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => (label: ((DayOfWeek) dow).ToString().Substring(0, 2), y: games.Count(g => (int) g.Date(TimeZone).DayOfWeek == dow))).ToList();
             result.Add(makeHistogram(histoGamesByDayOfWeek, "Games played on ..."));
-            var histoGamesByDayOfWeek2 = range(1, 7, 7).Select(dow => (label: ((DayOfWeek) dow).ToString().Substring(0, 2), y: gamesByDay.Count(g => (int) g.Key.DayOfWeek == dow))).ToList();
-            result.Add(makeHistogram(histoGamesByDayOfWeek2, "Days with 1+ games"));
+            result.Add(makeHistogram(range(1, 7, 7).Select(dow => (label: ((DayOfWeek) dow).ToString().Substring(0, 2), y: gamesByDay.Count(g => (int) g.Key.DayOfWeek == dow))).ToList(), "Days with 1+ games"));
+            // TODO: days with 0 games
             result.Add(makeHistogram2(new double[] { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70 }, (durMin, durMax) => games.Count(g => g.Duration.TotalMinutes > durMin && g.Duration.TotalMinutes <= durMax), "Games by length, minutes"));
             result.Add(makePlotXY("Distinct champs played", dates.Select(d => (x: (d - firstDay).TotalDays, y: (double) games.Where(g => g.DateDayOnly(TimeZone) <= d).Select(g => thisPlayer(g).Champion).Distinct().Count())).ToList()));
+            result.Add(makePlotXY("Distinct champs 3+ games", dates.Select(d => (x: (d - firstDay).TotalDays, y: (double) games.Where(g => g.DateDayOnly(TimeZone) <= d).GroupBy(g => thisPlayer(g).Champion).Where(grp => grp.Count() >= 3).Count())).ToList()));
+            result.Add(makePlotXY("Distinct champs 10+ games", dates.Select(d => (x: (d - firstDay).TotalDays, y: (double) games.Where(g => g.DateDayOnly(TimeZone) <= d).GroupBy(g => thisPlayer(g).Champion).Where(grp => grp.Count() >= 10).Count())).ToList()));
             var plotWardProgress = games.Select(g => g.Enemy.Players.Sum(p => p.WardsPlaced / g.Duration.TotalMinutes * 30.0)).ToList();
             plotWardProgress.Reverse();
             result.Add(makePlotY("Wards over time by enemy team", plotWardProgress, runningAverage(plotWardProgress, 29).ToList()));
