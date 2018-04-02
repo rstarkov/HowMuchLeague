@@ -165,7 +165,8 @@ namespace LeagueOfStats.CmdGen
         public void ProduceStats(string outputFile, int limit = 999999)
         {
             Console.Write("Producing output file: " + outputFile + " ... ");
-            var gameTypeSections = getGameTypeSections(limit);
+            var standardPvP = Games.Where(g => g.Map == "Summoner's Rift" && g.Type.StartsWith("5v5"));
+            var gameTypeSections = standardPvP.GroupBy(_ => "Summoner Rift Standard PvP").ToList().Concat(getGameTypeSections(limit)).ToList();
             var result = Ut.NewArray(
                 new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")),
                 genAllGameStats(_games.Take(limit)),
