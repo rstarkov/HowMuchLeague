@@ -233,7 +233,7 @@ namespace LeagueOfStats.PersonalData
                 case 52: case 800: Type = "Coop vs AI"; queueMap = "Twisted Treeline"; break;
                 case 61: Type = "Team Builder"; queueMap = "Summoner's Rift"; break;
                 case 65: case 450: Type = "ARAM"; queueMap = "Howling Abyss"; break;
-                case 70: Type = "One for All"; queueMap = "Summoner's Rift"; break;
+                case 70: case 1020: Type = "One for All"; queueMap = "Summoner's Rift"; break;
                 case 72: Type = "1v1 Snowdown Showdown"; queueMap = "Howling Abyss"; break;
                 case 73: Type = "2v2 Snowdown Showdown"; queueMap = "Howling Abyss"; break;
                 case 75: Type = "6v6 Hexakill"; queueMap = "Summoner's Rift"; break;
