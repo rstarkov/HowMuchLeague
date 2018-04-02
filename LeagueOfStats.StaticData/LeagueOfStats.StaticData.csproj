@@ -28,8 +28,8 @@
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="RT.Util, Version=1.0.1568.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.Util.1.0.1568\lib\net45\RT.Util.dll</HintPath>
+    <Reference Include="RT.Util, Version=1.0.1599.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.Util.1.0.1599\lib\net45\RT.Util.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

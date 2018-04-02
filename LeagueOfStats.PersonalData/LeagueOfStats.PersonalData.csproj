@@ -28,8 +28,8 @@
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="RT.Util, Version=1.0.1530.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.Util.1.0.1530\lib\net40-client\RT.Util.dll</HintPath>
+    <Reference Include="RT.Util, Version=1.0.1599.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.Util.1.0.1599\lib\net45\RT.Util.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -46,13 +46,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\LeagueOfStats.StaticData\LeagueOfStats.StaticData.csproj">
       <Project>{6d5ee88c-1926-477d-abe6-388171796b3f}</Project>
       <Name>LeagueOfStats.StaticData</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
