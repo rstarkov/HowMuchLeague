@@ -102,7 +102,8 @@ namespace LeagueOfStats.GlobalData
             }
 
             var op = new operationData();
-            Directory.CreateDirectory(Path.GetDirectoryName(FileName));
+            if (write)
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(FileName)));
             using (op.Stream = Ut.WaitSharingVio(() => File.Open(FileName, FileMode.OpenOrCreate, write ? FileAccess.ReadWrite : FileAccess.Read, FileShare.Read)))
             {
                 op.Reader = new BinaryReader(op.Stream, Encoding.UTF8, leaveOpen: true);

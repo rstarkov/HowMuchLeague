@@ -28,6 +28,7 @@ namespace LeagueOfStats.StaticData
             var championDataUrl = $"https://ddragon.leagueoflegends.com/cdn/{GameVersion}/data/en_US/champion.json";
             var championDataPath = Path.Combine(path, championDataUrl.FilenameCharactersEscape());
             string championDataStr;
+            Directory.CreateDirectory(path);
             if (File.Exists(championDataPath))
                 championDataStr = File.ReadAllText(championDataPath);
             else

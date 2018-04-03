@@ -20,6 +20,8 @@ namespace LeagueOfStats.GlobalData
         {
             operateOnFile(write: false, operation: op =>
             {
+                if (op == null)
+                    return Enumerable.Empty<bool>();
                 using (var ms = new MemoryStream(op.FormatSpecificData))
                 {
                     var reader = new BinaryReader(ms);
