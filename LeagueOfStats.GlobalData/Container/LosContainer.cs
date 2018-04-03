@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Streams;
 
@@ -102,7 +103,7 @@ namespace LeagueOfStats.GlobalData
 
             var op = new operationData();
             Directory.CreateDirectory(Path.GetDirectoryName(FileName));
-            using (op.Stream = File.Open(FileName, FileMode.OpenOrCreate, write ? FileAccess.ReadWrite : FileAccess.Read, FileShare.Read))
+            using (op.Stream = Ut.WaitSharingVio(() => File.Open(FileName, FileMode.OpenOrCreate, write ? FileAccess.ReadWrite : FileAccess.Read, FileShare.Read)))
             {
                 op.Reader = new BinaryReader(op.Stream, Encoding.UTF8, leaveOpen: true);
                 op.Writer = write ? new BinaryWriter(op.Stream, Encoding.UTF8, leaveOpen: true) : null;
