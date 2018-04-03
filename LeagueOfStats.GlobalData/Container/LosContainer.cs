@@ -235,16 +235,17 @@ namespace LeagueOfStats.GlobalData
             var prevSize = new FileInfo(FileName).Length;
             var source = Clone(FileName);
             var dest = Clone(tempName);
+            var count = new CountResult();
             if (filter == null)
-                dest.AppendItems(source.ReadItems(), compressed: true);
+                dest.AppendItems(source.ReadItems().PassthroughCount(count), compressed: true);
             else
-                dest.AppendItems(filter(source.ReadItems()), compressed: true);
+                dest.AppendItems(filter(source.ReadItems()).PassthroughCount(count), compressed: true);
             var newSize = new FileInfo(tempName).Length;
             if (newSize < prevSize / 15)
                 throw new Exception("Buggy rewrite?");
             File.Delete(FileName);
             File.Move(tempName, FileName);
-            Console.WriteLine($"Rewritten from {prevSize:#,0} to {newSize:#,0}: {FileName}");
+            Console.WriteLine($"Rewritten from {prevSize:#,0} to {newSize:#,0} ({count.Count:#,0} items): {FileName}");
         }
 
         /// <summary>Reads all items from the file.</summary>
