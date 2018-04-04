@@ -16,9 +16,11 @@ namespace LeagueOfStats.OneForAllStats
             if (args[0] == "merge-ids")
                 MergeIds(args[1], args[2], args.Subarray(3));
             else if (args[0] == "stats")
-                ComputeStats(args.Subarray(1));
+                StatsGen.Generate(args[1]);
             else if (args[0] == "download")
                 DownloadMatches(args.Subarray(1));
+            else if (args[0] == "merge-all")
+                MergeMatches(args[1], args[2]);
             else
                 Console.WriteLine("Unknown command");
         }
@@ -62,10 +64,15 @@ namespace LeagueOfStats.OneForAllStats
                 Thread.Sleep(9999);
         }
 
-        private static void ComputeStats(string[] args)
+        private static void MergeMatches(string outputPath, string searchPath)
         {
-            var dataPath = args[0];
-            StatsGen.Generate(dataPath);
+            if (Directory.Exists(outputPath))
+            {
+                Console.WriteLine("This command requires the output directory not to exist; it will be created.");
+                return;
+            }
+            Directory.CreateDirectory(outputPath);
+            MergeDataStores.Merge(outputPath, searchPath);
         }
     }
 }
