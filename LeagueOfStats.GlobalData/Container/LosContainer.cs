@@ -60,9 +60,20 @@ namespace LeagueOfStats.GlobalData
         }
     }
 
+    public abstract class LosContainer<TItem> : LosContainer
+    {
+        public LosContainer(string filename) : base(filename)
+        {
+        }
+
+        public abstract void Rewrite(Func<IEnumerable<TItem>, IEnumerable<TItem>> filter = null);
+        public abstract IEnumerable<TItem> ReadItems();
+        public abstract void AppendItems(IEnumerable<TItem> items, bool compressed);
+    }
+
     // Non-existent files are equivalent to empty files. Created automatically on first append.
     // Reads support all previous file, chunk and item format versions. Appends support all previous file format versions, but only the latest chunk and item format versions.
-    public abstract class LosContainer<TItem, TChunkState> : LosContainer where TChunkState : class
+    public abstract class LosContainer<TItem, TChunkState> : LosContainer<TItem> where TChunkState : class
     {
         public LosContainer(string filename) : base(filename)
         {
@@ -226,7 +237,7 @@ namespace LeagueOfStats.GlobalData
         /// <summary>
         ///     Reads and re-writes the entire file, updating the file and item formats to the latest versions, compressing
         ///     all chunks and minimising the chunk count.</summary>
-        public virtual void Rewrite(Func<IEnumerable<TItem>, IEnumerable<TItem>> filter = null)
+        public override void Rewrite(Func<IEnumerable<TItem>, IEnumerable<TItem>> filter = null)
         {
             if (!File.Exists(FileName))
                 return;
@@ -272,7 +283,7 @@ namespace LeagueOfStats.GlobalData
         }
 
         /// <summary>Reads all items from the file.</summary>
-        public IEnumerable<TItem> ReadItems()
+        public override IEnumerable<TItem> ReadItems()
         {
             return operateOnFile(write: false, operation: readCore);
         }
@@ -331,7 +342,7 @@ namespace LeagueOfStats.GlobalData
         ///     <para>
         ///         Compressed chunks have a certain overhead, and it might not be worth using a compressed chunk when
         ///         appending a single item.</para></remarks>
-        public void AppendItems(IEnumerable<TItem> items, bool compressed)
+        public override void AppendItems(IEnumerable<TItem> items, bool compressed)
         {
             bool rewriteNeeded = false;
             operateOnFile(write: true, operation: op =>
