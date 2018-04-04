@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
 using RT.Util;
@@ -28,12 +29,30 @@ namespace LeagueOfStats.OneForAllStats
             var matches = new List<Match>();
             foreach (var f in new PathManager(dataPath).GetFiles())
             {
-                var match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-matches-1020.losjs$");
+                var match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-matches-1020\.losjs$");
                 if (!match.Success)
                     continue;
                 var region = match.Groups["region"].Value;
+                Console.Write($"Loading {f.FullName}... ");
                 var count = new CountResult();
+                var t = new Thread(() =>
+                {
+                    int next = 5000;
+                    while (true)
+                    {
+                        if (count.Count > next)
+                        {
+                            Console.Write(count.Count + " ");
+                            next += 5000;
+                        }
+                        Thread.Sleep(1000);
+                    }
+                });
+                t.Start();
                 matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => matchFromJson(json, region)).PassthroughCount(count));
+                t.Abort();
+                t.Join();
+                Console.WriteLine();
                 writeLine($"Loaded {count} matches from {f.FullName}");
             }
             // Remove duplicates
@@ -43,6 +62,9 @@ namespace LeagueOfStats.OneForAllStats
             writeLine($"Distinct matchups: {matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Count():#,0} / {9453 + 138:#,0}"); // 138 choose 2 + 138 mirror matchups (Teemo/Karthus not allowed)
             // Champions seen
             var champions = matches.Select(m => m.Champion1).Concat(matches.Select(m => m.Champion2)).Distinct().ToList();
+
+            // All the match IDs
+            File.WriteAllLines("match-ids.txt", matches.Select(m => m.MatchId).Order());
 
             // Matchup stats
             var statsMatchups = matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Where(grp => grp.Key.Champion1 != grp.Key.Champion2).Select(grp =>
