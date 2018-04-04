@@ -22,6 +22,7 @@ namespace LeagueOfStats.OneForAllStats
         public static void Generate(string dataPath)
         {
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
+            writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
             var matches = new List<Match>();

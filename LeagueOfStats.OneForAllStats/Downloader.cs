@@ -54,7 +54,7 @@ namespace LeagueOfStats.OneForAllStats
 
         private void whileWaitingRateLimit()
         {
-            DataStore.LosMatchJsons[Region][QueueId].Initialise(compact: true);
+            //DataStore.LosMatchJsons[Region][QueueId].Initialise(compact: true);
             //foreach (var store in DataStore.LosMatchJsons[Region].Values)
             //    store.Initialise(compact: true);
         }

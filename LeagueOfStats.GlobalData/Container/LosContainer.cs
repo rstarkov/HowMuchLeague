@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Streams;
@@ -231,7 +232,7 @@ namespace LeagueOfStats.GlobalData
                 return;
             var tempName = FileName + ".rewrite";
             if (File.Exists(tempName))
-                File.Delete(tempName);
+                Ut.WaitSharingVio(() => File.Delete(tempName));
             var prevSize = new FileInfo(FileName).Length;
             var source = Clone(FileName);
             var dest = Clone(tempName);
@@ -243,8 +244,30 @@ namespace LeagueOfStats.GlobalData
             var newSize = new FileInfo(tempName).Length;
             if (newSize < prevSize / 15)
                 throw new Exception("Buggy rewrite?");
-            File.Delete(FileName);
-            File.Move(tempName, FileName);
+            Ut.WaitSharingVio(() => File.Delete(FileName));
+            retry:;
+            try
+            {
+                // Original file has been deleted. We *must* rename the rewritten file or we will lose data.
+                Ut.WaitSharingVio(() => File.Move(tempName, FileName));
+            }
+            catch
+            {
+                // Try to rename the file to something that won't be overwritten. If that succeeds, throw to notify the caller that things broke.
+                // If that fails... just keep trying this whole thing forever, as we can't exit without data loss risk.
+                int num = 1;
+                string newName;
+                while (File.Exists(newName = FileName + $".rewrite-failed-{num:00}"))
+                    num++;
+                try { Ut.WaitSharingVio(() => File.Move(tempName, newName)); }
+                catch
+                {
+                    Thread.Sleep(1000);
+                    goto retry;
+                }
+                throw new Exception($"Rewrite failed; could not rename data file to original name. The data is now in \"{newName}\" and requires a manual rename to the original location.");
+            }
+
             Console.WriteLine($"Rewritten from {prevSize:#,0} to {newSize:#,0} ({count.Count:#,0} items): {FileName}");
         }
 
