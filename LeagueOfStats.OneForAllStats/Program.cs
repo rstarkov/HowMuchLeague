@@ -21,6 +21,8 @@ namespace LeagueOfStats.OneForAllStats
                 StatsGen.Generate(args[1]);
             else if (args[0] == "download")
                 DownloadMatches(args.Subarray(1));
+            else if (args[0] == "download-ids")
+                DownloadIds(apiKey: args[1], dataPath: args[2], suffix: args[3], idFilePath: args[4]);
             else if (args[0] == "merge-all")
                 MergeMatches(args[1], args[2]);
             else
@@ -71,6 +73,36 @@ namespace LeagueOfStats.OneForAllStats
 
             while (true)
                 Thread.Sleep(9999);
+        }
+
+        private static void DownloadIds(string apiKey, string dataPath, string suffix, string idFilePath)
+        {
+            var region = EnumStrong.Parse<Region>(Path.GetFileName(idFilePath).Split('-')[0]);
+            Console.WriteLine($"Initialising for {region}...");
+            DataStore.Initialise(dataPath, suffix, new[] { region });
+            Console.WriteLine($"Downloading...");
+            var downloader = new MatchDownloader(apiKey, region);
+            downloader.OnEveryResponse = (_, __) => { };
+            var ids = File.ReadAllLines(idFilePath).Select(l => l.Trim()).Where(l => long.TryParse(l, out _)).Select(l => long.Parse(l)).ToList();
+            foreach (var matchId in ids)
+            {
+                var dl = downloader.DownloadMatch(matchId);
+                if (dl.result == MatchDownloadResult.NonExistent)
+                {
+                    Console.WriteLine($"{matchId:#,0}: non-existent");
+                    DataStore.AddNonExistentMatch(region, matchId);
+                }
+                else if (dl.result == MatchDownloadResult.Failed)
+                    DataStore.AddFailedMatch(region, matchId);
+                else if (dl.result == MatchDownloadResult.OK)
+                {
+                    var queueId = dl.json["queueId"].GetInt();
+                    Console.WriteLine($"{matchId:#,0}: queue {queueId}");
+                    DataStore.AddMatch(region, queueId, matchId, dl.json);
+                }
+                else
+                    throw new Exception();
+            }
         }
 
         private static void MergeMatches(string outputPath, string searchPath)
