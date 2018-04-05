@@ -27,7 +27,7 @@ namespace LeagueOfStats.OneForAllStats
 
             // Load matches
             var matches = new List<Match>();
-            foreach (var f in new PathManager(dataPath).GetFiles())
+            foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
             {
                 var match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-matches-1020\.losjs$");
                 if (!match.Success)
@@ -49,11 +49,13 @@ namespace LeagueOfStats.OneForAllStats
                     }
                 });
                 t.Start();
+                var started = DateTime.UtcNow;
                 matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => matchFromJson(json, region)).PassthroughCount(count));
+                var ended = DateTime.UtcNow;
                 t.Abort();
                 t.Join();
                 Console.WriteLine();
-                writeLine($"Loaded {count} matches from {f.FullName}");
+                writeLine($"Loaded {count} matches from {f.FullName} in {(ended - started).TotalSeconds:#,0.000} s");
             }
             // Remove duplicates
             var hadCount = matches.Count;
