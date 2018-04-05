@@ -11,6 +11,8 @@ namespace LeagueOfStats.OneForAllStats
 {
     class Program
     {
+        public static Dictionary<Region, ConsoleColor> Colors;
+
         static void Main(string[] args)
         {
             if (args[0] == "merge-ids")
@@ -43,19 +45,26 @@ namespace LeagueOfStats.OneForAllStats
             var dataPath = args[1];
             var suffix = args[2];
 
-            var regionLimits = new Dictionary<Region, (long min, long max)>
+            var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
-                [Region.EUW] = (3_582_500_000, 3_587_650_000),
-                [Region.EUNE] = (1_939_500_000, 1_942_550_000),
-                [Region.KR] = (3_159_900_000, 3_163_700_000),
-                [Region.NA] = (2_751_200_000, 2_754_450_000),
+                [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 10000),
+                [Region.EUNE] = ((1_939_500_000L + 1_942_550_000) / 2, 7000),
+                [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 10000),
+                [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 10000),
+            };
+            Colors = new Dictionary<Region, ConsoleColor>
+            {
+                [Region.EUW] = ConsoleColor.Green,
+                [Region.EUNE] = ConsoleColor.Red,
+                [Region.NA] = ConsoleColor.Yellow,
+                [Region.KR] = ConsoleColor.Magenta,
             };
 
             DataStore.Initialise(dataPath, suffix, regionLimits.Keys);
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(apiKey, region, 1020, regionLimits[region].min, regionLimits[region].max));
+                downloaders.Add(new Downloader(apiKey, region, 1020, regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever();

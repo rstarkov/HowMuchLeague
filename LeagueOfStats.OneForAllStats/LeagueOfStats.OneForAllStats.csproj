@@ -30,6 +30,9 @@
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="RT.KitchenSink, Version=1.0.1600.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.KitchenSink.1.0.1600\lib\net45\RT.KitchenSink.dll</HintPath>
+    </Reference>
     <Reference Include="RT.Util, Version=1.0.1599.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RT.Util.1.0.1599\lib\net45\RT.Util.dll</HintPath>
     </Reference>
