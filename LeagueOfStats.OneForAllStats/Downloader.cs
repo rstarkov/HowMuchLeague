@@ -84,7 +84,7 @@ namespace LeagueOfStats.OneForAllStats
                     gapstat.AddObservation(gap.Length);
                 Console.ForegroundColor = Program.Colors[Region];
                 Console.WriteLine($"{Region}: OFA = {MatchCount:#,0}, ID = {EarliestMatchId:#,0} - {LatestMatchId:#,0} ({EarliestMatchId - searchMin:#,0} - {searchMax - LatestMatchId:#,0}), date = {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
-                Console.WriteLine($"    Coverage: {covered:#,0} of {LatestMatchId - EarliestMatchId:#,0} ({covered / (double) (LatestMatchId - EarliestMatchId) * 100:0.000}%)");
+                Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%)");
                 Console.WriteLine($"    Gaps: smallest {gapstat.Min:#,0}, largest: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
