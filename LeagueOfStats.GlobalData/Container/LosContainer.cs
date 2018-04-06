@@ -351,7 +351,6 @@ namespace LeagueOfStats.GlobalData
                 {
                     op.Writer.Write((byte) 1); // chunk type - compressed
                     var memoryStream = new MemoryStream(); // reuse it to avoid constant array reallocation
-                    var memoryWriter = new BinaryWriter(memoryStream);
                     op.Writer.Write((byte) 0); // item format version - patched in later
                     op.Writer.Write((uint) 0); // chunk length - patched in later
                     var chunkStartPos = op.Stream.Position;
