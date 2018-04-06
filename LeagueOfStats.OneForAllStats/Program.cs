@@ -18,13 +18,13 @@ namespace LeagueOfStats.OneForAllStats
             if (args[0] == "merge-ids")
                 MergeIds(args[1], args[2], args.Subarray(3));
             else if (args[0] == "stats")
-                StatsGen.Generate(args[1]);
+                StatsGen.Generate(dataPath: args[1]);
             else if (args[0] == "download")
                 DownloadMatches(args.Subarray(1));
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: args[1], dataPath: args[2], suffix: args[3], idFilePath: args[4]);
             else if (args[0] == "merge-all")
-                MergeMatches(args[1], args[2]);
+                MergeMatches(outputPath: args[1], searchPath: args[2]);
             else
                 Console.WriteLine("Unknown command");
         }
@@ -49,10 +49,10 @@ namespace LeagueOfStats.OneForAllStats
 
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
-                [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 10000),
-                [Region.EUNE] = ((1_939_500_000L + 1_942_550_000) / 2, 7000),
-                [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 10000),
-                [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 10000),
+                [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 100_000),
+                [Region.EUNE] = ((1_939_500_000L + 1_942_550_000) / 2, 70_000),
+                [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 100_000),
+                [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 100_000),
             };
             Colors = new Dictionary<Region, ConsoleColor>
             {
