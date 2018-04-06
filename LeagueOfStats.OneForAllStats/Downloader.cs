@@ -122,14 +122,14 @@ namespace LeagueOfStats.OneForAllStats
             var dl = _downloader.DownloadMatch(matchId);
             if (dl.result == MatchDownloadResult.NonExistent)
             {
-                splitRootGapAt(matchId);
+                splitGapAt(0, matchId);
                 DataStore.AddNonExistentMatch(Region, matchId);
             }
             else if (dl.result == MatchDownloadResult.Failed)
                 DataStore.AddFailedMatch(Region, matchId);
             else if (dl.result == MatchDownloadResult.OK)
             {
-                splitRootGapAt(matchId);
+                splitGapAt(0, matchId);
                 var queueId = dl.json.Safe["queueId"].GetIntLenient();
                 if (queueId == QueueId)
                 {
@@ -160,14 +160,24 @@ namespace LeagueOfStats.OneForAllStats
         private Gap[] _heap;
         private int _heapLength;
 
-        private void splitRootGapAt(long matchId)
+        private void splitGapAt(int gapIndex, long matchId)
         {
-            var root = _heap[0];
-            if (matchId < root.From || matchId > root.To)
+            var gap = _heap[gapIndex];
+            if (matchId < gap.From || matchId > gap.To)
                 throw new Exception();
-            _heap[0].To = matchId - 1;
-            heapifyDownFrom(0);
-            addToHeap(new Gap { From = matchId + 1, To = root.To });
+            _heap[gapIndex].To = matchId - 1;
+            if (_heap[gapIndex].Length > 0)
+                heapifyDownFrom(gapIndex);
+            else
+            {
+                // Remove this gap altogether. Not super optimal as we could just add the other gap here, but that's more special cases and it's already more than fast enough
+                _heapLength--;
+                swapGaps(gapIndex, _heapLength);
+                heapifyDownFrom(gapIndex);
+            }
+            gap = new Gap { From = matchId + 1, To = gap.To };
+            if (gap.Length > 0)
+                addToHeap(gap);
         }
 
         private void addToHeap(Gap gap)
