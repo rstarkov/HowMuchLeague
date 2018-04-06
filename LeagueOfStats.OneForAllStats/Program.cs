@@ -37,7 +37,7 @@ namespace LeagueOfStats.OneForAllStats
             foreach (var f in files)
                 Console.WriteLine($"Read input {f.file}: {f.count.Count:#,0} items");
             File.Delete(outputFile);
-            output.AppendItems(ids.Order(), compressed: true);
+            output.AppendItems(ids.Order(), LosChunkFormat.LZ4HC);
             output.Rewrite();
         }
 

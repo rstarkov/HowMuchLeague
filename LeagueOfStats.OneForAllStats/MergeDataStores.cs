@@ -62,7 +62,7 @@ namespace LeagueOfStats.OneForAllStats
                 nonexistent.AddRange(ReadContainersWithLogging(NonexistentIdsFiles.Select(fi => new MatchIdContainer(fi.FullName))));
                 Console.WriteLine($"  Total unique IDs: {nonexistent.Count:#,0}");
                 var nonexistentNew = new MatchIdContainer(Path.Combine(outputPath, $"{Region}-match-id-nonexistent.losmid"), Region);
-                nonexistentNew.AppendItems(nonexistent.Order(), compressed: true);
+                nonexistentNew.AppendItems(nonexistent.Order(), LosChunkFormat.LZ4HC);
                 NonexistentCount = nonexistent.Count;
 
                 Console.WriteLine();
@@ -78,7 +78,7 @@ namespace LeagueOfStats.OneForAllStats
                         ReadContainersWithLogging(group.Select(x => new JsonContainer(x.fi.FullName)))
                             .Where(js => existingHave.Add(js["gameId"].GetLong()))
                             .PassthroughCount(count),
-                        compressed: true);
+                        LosChunkFormat.LZ4HC);
                     Console.WriteLine($"    Total unique: {count.Count:#,0}");
                     HaveCounts.Add(queueId, count.Count);
                 }
@@ -92,7 +92,7 @@ namespace LeagueOfStats.OneForAllStats
                 Console.WriteLine($"  IDs which were only in match files and not in match-id files: {existing.Count - existingWasCount:#,0}");
                 Console.WriteLine($"  Total unique IDs: {existing.Count:#,0}");
                 var existingNew = new MatchIdContainer(Path.Combine(outputPath, $"{Region}-match-id-existing.losmid"), Region);
-                existingNew.AppendItems(existing.Order(), compressed: true);
+                existingNew.AppendItems(existing.Order(), LosChunkFormat.LZ4HC);
                 RedownloadIds = existing.Except(existingHave).Order().ToList();
                 Console.WriteLine($"  Known IDs we don't have; re-download: {RedownloadIds.Count:#,0}");
             }

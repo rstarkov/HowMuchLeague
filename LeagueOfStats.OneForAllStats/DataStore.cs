@@ -43,20 +43,20 @@ namespace LeagueOfStats.OneForAllStats
         public static void AddNonExistentMatch(Region region, long matchId)
         {
             NonexistentMatchIds[region].Add(matchId);
-            LosMatchIdsNonExistent[region].AppendItems(new[] { matchId }, compressed: false);
+            LosMatchIdsNonExistent[region].AppendItems(new[] { matchId }, LosChunkFormat.Raw);
         }
 
         public static void AddFailedMatch(Region region, long matchId)
         {
             FailedMatchIds[region].Add(matchId);
-            LosMatchIdsFailed[region].AppendItems(new[] { matchId }, compressed: false);
+            LosMatchIdsFailed[region].AppendItems(new[] { matchId }, LosChunkFormat.Raw);
         }
 
         public static void AddMatch(Region region, int queueId, long matchId, JsonValue json)
         {
             ExistingMatchIds[region].Add(matchId);
-            LosMatchJsons[region][queueId].AppendItems(new[] { json }, compressed: true);
-            LosMatchIdsExisting[region].AppendItems(new[] { matchId }, compressed: false);
+            LosMatchJsons[region][queueId].AppendItems(new[] { json }, LosChunkFormat.LZ4HC);
+            LosMatchIdsExisting[region].AppendItems(new[] { matchId }, LosChunkFormat.Raw);
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using LZ4;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Streams;
@@ -17,6 +18,8 @@ using RT.Util.Streams;
 
 namespace LeagueOfStats.GlobalData
 {
+    public enum LosChunkFormat { Raw, Deflate, LZ4, LZ4HC }
+
     public abstract class LosContainer
     {
         public string FileName { get; private set; }
@@ -68,7 +71,7 @@ namespace LeagueOfStats.GlobalData
 
         public abstract void Rewrite(Func<IEnumerable<TItem>, IEnumerable<TItem>> filter = null);
         public abstract IEnumerable<TItem> ReadItems();
-        public abstract void AppendItems(IEnumerable<TItem> items, bool compressed);
+        public abstract void AppendItems(IEnumerable<TItem> items, LosChunkFormat chunkFormat);
     }
 
     // Non-existent files are equivalent to empty files. Created automatically on first append.
@@ -249,9 +252,9 @@ namespace LeagueOfStats.GlobalData
             var dest = Clone(tempName);
             var count = new CountResult();
             if (filter == null)
-                dest.AppendItems(source.ReadItems().PassthroughCount(count), compressed: true);
+                dest.AppendItems(source.ReadItems().PassthroughCount(count), LosChunkFormat.LZ4HC);
             else
-                dest.AppendItems(filter(source.ReadItems()).PassthroughCount(count), compressed: true);
+                dest.AppendItems(filter(source.ReadItems()).PassthroughCount(count), LosChunkFormat.LZ4HC);
             var newSize = new FileInfo(tempName).Length;
             if (newSize < prevSize / 15)
                 throw new Exception("Buggy rewrite?");
@@ -324,6 +327,23 @@ namespace LeagueOfStats.GlobalData
                     using (var windowStream = new WindowStream(op.Stream, chunkLength))
                         yield return ReadItem(windowStream, itemFormatVersion, GetInitialChunkState());
                 }
+                else if (scheme == 3)
+                {
+                    var itemFormatVersion = op.Reader.ReadByte();
+                    var chunkLength = (long) op.Reader.ReadUInt32(); // must be fixed length as it's patched in at the end of a write.
+                    using (var windowStream = new WindowStream(op.Stream, chunkLength))
+                    using (var decompressed = new LZ4Stream(windowStream, LZ4StreamMode.Decompress))
+                    {
+                        var endstream = new EndDetectionStream(decompressed);
+                        var state = GetInitialChunkState();
+                        while (!endstream.IsEnded)
+                        {
+                            var length = endstream.ReadUInt32Optim();
+                            using (var windowInner = new WindowStream(endstream, length))
+                                yield return ReadItem(windowInner, itemFormatVersion, state);
+                        }
+                    }
+                }
                 else
                     throw new NotSupportedException($"LOSDS scheme {scheme} is not supported: {FileName}");
             }
@@ -342,12 +362,12 @@ namespace LeagueOfStats.GlobalData
         ///     <para>
         ///         Compressed chunks have a certain overhead, and it might not be worth using a compressed chunk when
         ///         appending a single item.</para></remarks>
-        public override void AppendItems(IEnumerable<TItem> items, bool compressed)
+        public override void AppendItems(IEnumerable<TItem> items, LosChunkFormat chunkFormat)
         {
             bool rewriteNeeded = false;
             operateOnFile(write: true, operation: op =>
             {
-                if (compressed)
+                if (chunkFormat == LosChunkFormat.Deflate)
                 {
                     op.Writer.Write((byte) 1); // chunk type - compressed
                     var memoryStream = new MemoryStream(); // reuse it to avoid constant array reallocation
@@ -387,7 +407,7 @@ namespace LeagueOfStats.GlobalData
                     op.Writer.Write((byte) itemFormatAll);
                     op.Writer.Write((uint) chunkLength);
                 }
-                else
+                else if (chunkFormat == LosChunkFormat.Raw)
                 {
                     var memoryStream = new MemoryStream(); // reuse it to avoid constant array reallocation
                     var memoryWriter = new BinaryWriter(memoryStream);
@@ -403,6 +423,42 @@ namespace LeagueOfStats.GlobalData
                         op.UncompressedItemsCount++;
                     }
                     op.ValidLength = op.Stream.Position;
+                }
+                else if (chunkFormat == LosChunkFormat.LZ4 || chunkFormat == LosChunkFormat.LZ4HC)
+                {
+                    op.Writer.Write((byte) 3); // chunk type - lz4
+                    var memoryStream = new MemoryStream(); // reuse it to avoid constant array reallocation
+                    op.Writer.Write((byte) 0); // item format version - patched in later
+                    op.Writer.Write((uint) 0); // chunk length - patched in later
+                    var chunkStartPos = op.Stream.Position;
+                    int itemFormatAll = -1;
+                    using (var lz4 = new LZ4Stream(op.Stream, LZ4StreamMode.Compress, LZ4StreamFlags.IsolateInnerStream | (chunkFormat == LosChunkFormat.LZ4HC ? LZ4StreamFlags.HighCompression : 0)))
+                    {
+                        var state = GetInitialChunkState();
+                        foreach (var item in items)
+                        {
+                            memoryStream.Position = 0;
+                            memoryStream.SetLength(0);
+                            byte itemFormatVersion = WriteItem(memoryStream, item, state);
+                            if (itemFormatAll < 0)
+                                itemFormatAll = itemFormatVersion;
+                            else if (itemFormatAll != itemFormatVersion)
+                                throw new Exception("Inconsistent item format.");
+                            if (op.OldestItemFormatVersion == 0)
+                                op.OldestItemFormatVersion = itemFormatVersion;
+                            lz4.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
+                            lz4.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
+                            op.CompressedItemsCount++;
+                        }
+                        op.ShortChunkCount++;
+                    }
+                    long chunkLength = op.Stream.Position - chunkStartPos;
+                    if (chunkLength > uint.MaxValue)
+                        throw new Exception("Chunk too long - should have aborted earlier");
+                    op.ValidLength = op.Stream.Position;
+                    op.Stream.Position = chunkStartPos - 5;
+                    op.Writer.Write((byte) itemFormatAll);
+                    op.Writer.Write((uint) chunkLength);
                 }
                 rewriteNeeded = op.ShortChunkCount > 3000 || op.UncompressedItemsCount > 10000;
 
