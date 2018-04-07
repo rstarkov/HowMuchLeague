@@ -116,20 +116,21 @@ namespace LeagueOfStats.OneForAllStats
 
         public void DownloadMatch()
         {
-            long matchId = randomLong(_heap[0].From, _heap[0].To);
+            int gapIndex = Rnd.Next(0, Math.Min(20, _heapLength));
+            long matchId = randomLong(_heap[gapIndex].From, _heap[gapIndex].To);
 
             // Download it and add the outcome to the data store
             var dl = _downloader.DownloadMatch(matchId);
             if (dl.result == MatchDownloadResult.NonExistent)
             {
-                splitGapAt(0, matchId);
+                splitGapAt(gapIndex, matchId);
                 DataStore.AddNonExistentMatch(Region, matchId);
             }
             else if (dl.result == MatchDownloadResult.Failed)
                 DataStore.AddFailedMatch(Region, matchId);
             else if (dl.result == MatchDownloadResult.OK)
             {
-                splitGapAt(0, matchId);
+                splitGapAt(gapIndex, matchId);
                 var queueId = dl.json.Safe["queueId"].GetIntLenient();
                 if (queueId == QueueId)
                 {
