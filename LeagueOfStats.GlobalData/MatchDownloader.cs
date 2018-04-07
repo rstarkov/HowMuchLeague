@@ -36,6 +36,14 @@ namespace LeagueOfStats.GlobalData
                 var resp = new HClient().Get(url);
                 OnEveryResponse(url, resp);
 
+                if (resp.StatusCode == (HttpStatusCode) 403)
+                {
+                    attempts--;
+                    Console.WriteLine($"API key expired / invalid? Sleeping for 60s. Key: {ApiKey}");
+                    Thread.Sleep(TimeSpan.FromSeconds(60));
+                    goto retry;
+                }
+
                 if (resp.StatusCode == (HttpStatusCode) 429 && int.TryParse(resp.Headers["Retry-After"], out int retryAfter))
                 {
                     if (retryAfter < 1)
