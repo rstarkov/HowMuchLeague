@@ -116,6 +116,12 @@ namespace LeagueOfStats.OneForAllStats
 
         public void DownloadMatch()
         {
+            if (_heapLength == 0)
+            {
+                Console.WriteLine($"{Region}: NOTHING LEFT TO DOWNLOAD");
+                Thread.Sleep(TimeSpan.FromSeconds(10));
+                return;
+            }
             int gapIndex = Rnd.Next(0, Math.Min(20, _heapLength));
             long matchId = randomLong(_heap[gapIndex].From, _heap[gapIndex].To);
 
