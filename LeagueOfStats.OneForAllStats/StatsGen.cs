@@ -66,7 +66,7 @@ namespace LeagueOfStats.OneForAllStats
             var champions = matches.Select(m => m.Champion1).Concat(matches.Select(m => m.Champion2)).Distinct().ToList();
 
             // All the match IDs
-            File.WriteAllLines("match-ids.txt", matches.Select(m => m.MatchId).Order());
+            writeAllLines("match-ids.txt", matches.Select(m => m.MatchId).Order());
 
             // Matchup stats
             var statsMatchups = matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Where(grp => grp.Key.Champion1 != grp.Key.Champion2).Select(grp =>
@@ -80,7 +80,7 @@ namespace LeagueOfStats.OneForAllStats
             statsMatchups = statsMatchups.Concat(statsMatchups
                     .Select(m => new { Champion1 = m.Champion2, Champion2 = m.Champion1, m.Count, WinRate = 1 - m.WinRate, Lower95 = 1 - m.Upper95, Upper95 = 1 - m.Lower95, Lower67 = 1 - m.Upper67, Upper67 = 1 - m.Lower67 })
                 ).OrderBy(m => m.Champion1).ThenBy(m => m.Champion2).ToList();
-            File.WriteAllLines("statgen-matchups.csv", statsMatchups.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
+            writeAllLines("statgen-matchups.csv", statsMatchups.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
 
             // All possible matchup stats
             var statsMatchupsAll = champions.SelectMany(ch1 => champions.Select(ch2 => new { ch1, ch2 })).Where(key => key.ch1.CompareTo(key.ch2) <= 0).Select(key =>
@@ -100,7 +100,7 @@ namespace LeagueOfStats.OneForAllStats
                     .Where(m => m.Champion1 != m.Champion2)
                     .Select(m => new { Champion1 = m.Champion2, Champion2 = m.Champion1, m.Count, WinRate = 1 - m.WinRate, Lower95 = 1 - m.Upper95, Upper95 = 1 - m.Lower95, Lower67 = 1 - m.Upper67, Upper67 = 1 - m.Lower67 })
                 ).OrderBy(m => m.Champion1).ThenBy(m => m.Champion2).ToList();
-            File.WriteAllLines("statgen-matchupsall.csv", statsMatchupsAll.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
+            writeAllLines("statgen-matchupsall.csv", statsMatchupsAll.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
 
             // Champion stats at champ select stage (unknown enemy)
             var statsChampSelect = champions.Select(champion =>
@@ -122,7 +122,12 @@ namespace LeagueOfStats.OneForAllStats
                 }
                 return new { champion, Count = n, WinRate = p, Lower95 = conf95.lower, Upper95 = conf95.upper, bans, banWR };
             }).OrderBy(r => r.champion).ToList();
-            File.WriteAllLines("statgen-champselect.csv", statsChampSelect.Select(l => $"{l.champion},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.bans[0]},{l.banWR[0]},{l.bans[1]},{l.banWR[1]},{l.bans[2]},{l.banWR[2]},{l.bans[3]},{l.banWR[3]},{l.bans[4]},{l.banWR[4]}"));
+            writeAllLines("statgen-champselect.csv", statsChampSelect.Select(l => $"{l.champion},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.bans[0]},{l.banWR[0]},{l.bans[1]},{l.banWR[1]},{l.bans[2]},{l.banWR[2]},{l.bans[3]},{l.banWR[3]},{l.bans[4]},{l.banWR[4]}"));
+        }
+
+        private static void writeAllLines(string filename, IEnumerable<string> lines)
+        {
+            Ut.WaitSharingVio(() => File.WriteAllLines(filename, lines), onSharingVio: () => Console.WriteLine($"File \"{filename}\" is in use; waiting..."));
         }
 
         private static Match matchFromJson(JsonValue json, string region)

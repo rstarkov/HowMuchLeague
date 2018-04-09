@@ -49,10 +49,10 @@ namespace LeagueOfStats.OneForAllStats
 
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
-                [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 100_000),
-                [Region.EUNE] = ((1_939_500_000L + 1_942_550_000) / 2, 70_000),
-                [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 100_000),
-                [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 100_000),
+                [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 500_000),
+                [Region.EUNE] = ((1_939_500_000L + 1_942_550_000) / 2, 300_000),
+                [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 300_000),
+                [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 300_000),
             };
             Colors = new Dictionary<Region, ConsoleColor>
             {
