@@ -15,16 +15,16 @@ namespace LeagueOfStats.OneForAllStats
 
         static void Main(string[] args)
         {
-            if (args[0] == "merge-ids")
-                MergeIds(args[1], args[2], args.Subarray(3));
-            else if (args[0] == "stats")
+            if (args[0] == "stats")
                 StatsGen.Generate(dataPath: args[1]);
             else if (args[0] == "download")
                 DownloadMatches(args.Subarray(1));
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: args[1], dataPath: args[2], suffix: args[3], idFilePath: args[4]);
+            else if (args[0] == "merge-ids")
+                MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
             else if (args[0] == "merge-all")
-                MergeMatches(outputPath: args[1], searchPath: args[2]);
+                MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: true);
             else
                 Console.WriteLine("Unknown command");
         }
@@ -105,7 +105,7 @@ namespace LeagueOfStats.OneForAllStats
             }
         }
 
-        private static void MergeMatches(string outputPath, string searchPath)
+        private static void MergeMatches(string outputPath, string searchPath, bool mergeJsons)
         {
             if (Directory.Exists(outputPath))
             {
@@ -113,7 +113,7 @@ namespace LeagueOfStats.OneForAllStats
                 return;
             }
             Directory.CreateDirectory(outputPath);
-            MergeDataStores.Merge(outputPath, searchPath);
+            MergeDataStores.Merge(outputPath, searchPath, mergeJsons);
         }
     }
 }

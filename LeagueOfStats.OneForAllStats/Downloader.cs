@@ -83,9 +83,8 @@ namespace LeagueOfStats.OneForAllStats
                 foreach (var gap in _heap.Take(_heapLength))
                     gapstat.AddObservation(gap.Length);
                 Console.ForegroundColor = Program.Colors[Region];
-                Console.WriteLine($"{Region}: OFA = {MatchCount:#,0}, ID = {EarliestMatchId:#,0} - {LatestMatchId:#,0} ({EarliestMatchId - searchMin:#,0} - {searchMax - LatestMatchId:#,0}), date = {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
-                Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%)");
-                Console.WriteLine($"    Gaps: smallest {gapstat.Min:#,0}, largest: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
+                Console.WriteLine($"{Region}: {MatchCount:#,0}; {EarliestMatchId:#,0} - {LatestMatchId:#,0} ({EarliestMatchId - searchMin:#,0} - {searchMax - LatestMatchId:#,0}); {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
+                Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
         }
@@ -122,7 +121,7 @@ namespace LeagueOfStats.OneForAllStats
                 Thread.Sleep(TimeSpan.FromSeconds(10));
                 return;
             }
-            int gapIndex = Rnd.Next(0, Math.Min(20, _heapLength));
+            int gapIndex = Rnd.Next(0, Math.Min(10, _heapLength));
             long matchId = randomLong(_heap[gapIndex].From, _heap[gapIndex].To);
 
             // Download it and add the outcome to the data store

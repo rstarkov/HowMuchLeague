@@ -13,7 +13,7 @@ namespace LeagueOfStats.OneForAllStats
 {
     static class MergeDataStores
     {
-        public static void Merge(string outputPath, string searchPath)
+        public static void Merge(string outputPath, string searchPath, bool mergeJsons)
         {
             var mergers = new AutoDictionary<Region, RegionMerger>(region => new RegionMerger { Region = region });
             foreach (var f in new PathManager(searchPath).GetFiles())
@@ -22,7 +22,7 @@ namespace LeagueOfStats.OneForAllStats
                 var existing = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-match-id-existing\.losmid$");
                 var nonexistent = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-match-id-nonexistent\.losmid$");
 
-                if (match.Success)
+                if (match.Success && mergeJsons)
                     mergers[EnumStrong.Parse<Region>(match.Groups["region"].Value)].MatchFiles.Add((int.Parse(match.Groups["queueId"].Value), f));
                 else if (existing.Success)
                     mergers[EnumStrong.Parse<Region>(existing.Groups["region"].Value)].ExistingIdsFiles.Add(f);
