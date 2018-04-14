@@ -36,14 +36,20 @@ namespace LeagueOfStats.OneForAllStats
                 merger.Merge(outputPath);
                 Console.WriteLine();
                 Console.WriteLine();
-                File.WriteAllLines(Path.Combine(outputPath, $"{merger.Region}-redownload.txt"), merger.RedownloadIds.Select(id => id.ToString()));
+                if (mergeJsons)
+                    File.WriteAllLines(Path.Combine(outputPath, $"{merger.Region}-redownload.txt"), merger.RedownloadIds.Select(id => id.ToString()));
             }
 
             Console.WriteLine($"TOTAL non-existent: {mergers.Values.Sum(m => m.NonexistentCount):#,0}");
-            Console.WriteLine($"TOTAL re-download: {mergers.Values.Sum(m => m.RedownloadIds.Count):#,0}");
-            Console.WriteLine($"TOTAL have: {mergers.Values.Sum(m => m.HaveCounts.Values.Sum()):#,0}");
-            Console.WriteLine($"TOTAL have one-for-all: {mergers.Values.Sum(m => m.HaveCounts[1020]):#,0}");
-         }
+            if (mergeJsons)
+            {
+                Console.WriteLine($"TOTAL re-download: {mergers.Values.Sum(m => m.RedownloadIds.Count):#,0}");
+                Console.WriteLine($"TOTAL have: {mergers.Values.Sum(m => m.HaveCounts.Values.Sum()):#,0}");
+                Console.WriteLine($"TOTAL have one-for-all: {mergers.Values.Sum(m => m.HaveCounts[1020]):#,0}");
+            }
+            else
+                Console.WriteLine($"TOTAL existing: {mergers.Values.Sum(m => m.RedownloadIds.Count):#,0}");
+        }
 
         private class RegionMerger
         {
