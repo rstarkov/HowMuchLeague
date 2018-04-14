@@ -174,7 +174,15 @@ namespace LeagueOfStats.OneForAllStats
 
         private static double winrate(IEnumerable<Match> matches, string champion)
         {
-            return matches.Sum(m => m.Winner == champion ? (m.Champion1 == m.Champion2 ? 0.5 : 1) : 0) / matches.Count();
+            double sum = 0;
+            int count = 0;
+            foreach (var m in matches)
+            {
+                count++;
+                if (m.Winner == champion)
+                    sum += m.Champion1 == m.Champion2 ? 0.5 : 1;
+            }
+            return sum / count;
         }
 
         private static IEnumerable<Match> matchesWithout(IEnumerable<Match> matches, string champion)
