@@ -7,6 +7,7 @@ using System.Threading;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
 using RT.Util;
+using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
 using RT.Util.Paths;
@@ -80,15 +81,18 @@ namespace LeagueOfStats.OneForAllStats
             writeAllLines($"{prefix}-match-ids.txt", matches.Select(m => m.MatchId).Order());
 
             // All possible matchup stats
+            var grps = newDict(new { ch1 = "", ch2 = "" }, new List<Match>(), _ => new List<Match>());
+            foreach (var m in matches)
+                grps[new { ch1 = m.Champion1, ch2 = m.Champion2 }].Add(m);
+            var empty = new List<Match>();
             var statsMatchupsAll = champions.SelectMany(ch1 => champions.Select(ch2 => new { ch1, ch2 })).Where(key => key.ch1.CompareTo(key.ch2) <= 0).Select(key =>
             {
-                var grp = matches.Where(m => m.Champion1 == key.ch1 && m.Champion2 == key.ch2).ToList();
-                var n = grp.Count;
-                if (n == 0)
-                    return new { Champion1 = key.ch1, Champion2 = key.ch2, Count = n, WinRate = 0.5, Lower95 = 0.0, Upper95 = 1.0, Lower67 = 0.0, Upper67 = 1.0 };
+                if (!grps.ContainsKey(key))
+                    return new { Champion1 = key.ch1, Champion2 = key.ch2, Count = 0, WinRate = 0.5, Lower95 = 0.0, Upper95 = 1.0, Lower67 = 0.0, Upper67 = 1.0 };
+                var n = grps[key].Count;
                 if (key.ch1 == key.ch2)
                     return new { Champion1 = key.ch1, Champion2 = key.ch2, Count = n, WinRate = 0.5, Lower95 = 0.5, Upper95 = 0.5, Lower67 = 0.5, Upper67 = 0.5 };
-                var p = winrate(grp, key.ch1);
+                var p = winrate(grps[key], key.ch1);
                 var conf95 = getWilson(p, n, 1.96);
                 var conf67 = getWilson(p, n, 0.97);
                 return new { Champion1 = key.ch1, Champion2 = key.ch2, Count = n, WinRate = p, Lower95 = conf95.lower, Upper95 = conf95.upper, Lower67 = conf67.lower, Upper67 = conf67.upper };
@@ -120,6 +124,11 @@ namespace LeagueOfStats.OneForAllStats
                 return new { champion, Count = n, WinRate = p, Lower95 = conf95.lower, Upper95 = conf95.upper, bans, banWR };
             }).OrderBy(r => r.champion).ToList();
             writeAllLines($"{prefix}-champselect.csv", statsChampSelect.Select(l => $"{l.champion},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.bans[0]},{l.banWR[0]},{l.bans[1]},{l.banWR[1]},{l.bans[2]},{l.banWR[2]},{l.bans[3]},{l.banWR[3]},{l.bans[4]},{l.banWR[4]}"));
+        }
+
+        private static AutoDictionary<TKey, TValue> newDict<TKey, TValue>(TKey _, TValue __, Func<TKey, TValue> init)
+        {
+            return new AutoDictionary<TKey, TValue>(init);
         }
 
         private static void writeAllLines(string filename, IEnumerable<string> lines)
