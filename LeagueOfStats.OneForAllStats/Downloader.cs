@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using LeagueOfStats.GlobalData;
@@ -121,7 +122,11 @@ namespace LeagueOfStats.OneForAllStats
                 Thread.Sleep(TimeSpan.FromSeconds(10));
                 return;
             }
-            int gapIndex = Rnd.Next(0, Math.Min(10, _heapLength));
+            again:;
+            int gapIndex = Rnd.Next(0, Math.Min(20, _heapLength));
+            if (_heap[gapIndex].Length < _heap[0].Length / 2.0)
+                goto again;
+            Ut.WaitSharingVio(() => File.AppendAllText($"gaps-split-{Region}.txt", $"{_heap[gapIndex].Length} "));
             long matchId = randomLong(_heap[gapIndex].From, _heap[gapIndex].To);
 
             // Download it and add the outcome to the data store
