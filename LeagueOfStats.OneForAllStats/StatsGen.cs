@@ -79,20 +79,6 @@ namespace LeagueOfStats.OneForAllStats
             // All the match IDs
             writeAllLines($"{prefix}-match-ids.txt", matches.Select(m => m.MatchId).Order());
 
-            // Matchup stats
-            var statsMatchups = matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Where(grp => grp.Key.Champion1 != grp.Key.Champion2).Select(grp =>
-            {
-                var n = grp.Count();
-                var p = grp.Count(m => m.Champion1 == m.Winner) / (double) n;
-                var conf95 = getWilson(p, n, 1.96);
-                var conf67 = getWilson(p, n, 0.97);
-                return new { grp.Key.Champion1, grp.Key.Champion2, Count = n, WinRate = p, Lower95 = conf95.lower, Upper95 = conf95.upper, Lower67 = conf67.lower, Upper67 = conf67.upper };
-            }).ToList();
-            statsMatchups = statsMatchups.Concat(statsMatchups
-                    .Select(m => new { Champion1 = m.Champion2, Champion2 = m.Champion1, m.Count, WinRate = 1 - m.WinRate, Lower95 = 1 - m.Upper95, Upper95 = 1 - m.Lower95, Lower67 = 1 - m.Upper67, Upper67 = 1 - m.Lower67 })
-                ).OrderBy(m => m.Champion1).ThenBy(m => m.Champion2).ToList();
-            writeAllLines($"{prefix}-matchups.csv", statsMatchups.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
-
             // All possible matchup stats
             var statsMatchupsAll = champions.SelectMany(ch1 => champions.Select(ch2 => new { ch1, ch2 })).Where(key => key.ch1.CompareTo(key.ch2) <= 0).Select(key =>
             {
