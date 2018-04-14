@@ -18,6 +18,8 @@ namespace LeagueOfStats.OneForAllStats
         class Match
         {
             public string MatchId, Champion1, Champion2, Winner;
+            public DateTime StartTime;
+            public string GameVersion;
         }
 
         public static void Generate(string dataPath)
@@ -65,8 +67,17 @@ namespace LeagueOfStats.OneForAllStats
             // Champions seen
             var champions = matches.Select(m => m.Champion1).Concat(matches.Select(m => m.Champion2)).Distinct().ToList();
 
+            generate("s-all", matches, champions);
+            foreach (var date in matches.Select(m => m.StartTime.Date).Distinct().Order())
+                generate($"s-date-{date:yyyy-MM-dd}", matches.Where(m => m.StartTime.Date == date), champions);
+            foreach (var ver in matches.Select(m => m.GameVersion).Distinct().Order())
+                generate($"s-ver-{ver}", matches.Where(m => m.GameVersion == ver), champions);
+        }
+
+        private static void generate(string prefix, IEnumerable<Match> matches, List<string> champions)
+        {
             // All the match IDs
-            writeAllLines("match-ids.txt", matches.Select(m => m.MatchId).Order());
+            writeAllLines($"{prefix}-match-ids.txt", matches.Select(m => m.MatchId).Order());
 
             // Matchup stats
             var statsMatchups = matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Where(grp => grp.Key.Champion1 != grp.Key.Champion2).Select(grp =>
@@ -80,7 +91,7 @@ namespace LeagueOfStats.OneForAllStats
             statsMatchups = statsMatchups.Concat(statsMatchups
                     .Select(m => new { Champion1 = m.Champion2, Champion2 = m.Champion1, m.Count, WinRate = 1 - m.WinRate, Lower95 = 1 - m.Upper95, Upper95 = 1 - m.Lower95, Lower67 = 1 - m.Upper67, Upper67 = 1 - m.Lower67 })
                 ).OrderBy(m => m.Champion1).ThenBy(m => m.Champion2).ToList();
-            writeAllLines("statgen-matchups.csv", statsMatchups.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
+            writeAllLines($"{prefix}-matchups.csv", statsMatchups.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
 
             // All possible matchup stats
             var statsMatchupsAll = champions.SelectMany(ch1 => champions.Select(ch2 => new { ch1, ch2 })).Where(key => key.ch1.CompareTo(key.ch2) <= 0).Select(key =>
@@ -100,7 +111,7 @@ namespace LeagueOfStats.OneForAllStats
                     .Where(m => m.Champion1 != m.Champion2)
                     .Select(m => new { Champion1 = m.Champion2, Champion2 = m.Champion1, m.Count, WinRate = 1 - m.WinRate, Lower95 = 1 - m.Upper95, Upper95 = 1 - m.Lower95, Lower67 = 1 - m.Upper67, Upper67 = 1 - m.Lower67 })
                 ).OrderBy(m => m.Champion1).ThenBy(m => m.Champion2).ToList();
-            writeAllLines("statgen-matchupsall.csv", statsMatchupsAll.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
+            writeAllLines($"{prefix}-matchupsall.csv", statsMatchupsAll.Select(l => $"{l.Champion1},{l.Champion2},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.Lower67},{l.Upper67}"));
 
             // Champion stats at champ select stage (unknown enemy)
             var statsChampSelect = champions.Select(champion =>
@@ -122,7 +133,7 @@ namespace LeagueOfStats.OneForAllStats
                 }
                 return new { champion, Count = n, WinRate = p, Lower95 = conf95.lower, Upper95 = conf95.upper, bans, banWR };
             }).OrderBy(r => r.champion).ToList();
-            writeAllLines("statgen-champselect.csv", statsChampSelect.Select(l => $"{l.champion},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.bans[0]},{l.banWR[0]},{l.bans[1]},{l.banWR[1]},{l.bans[2]},{l.banWR[2]},{l.bans[3]},{l.banWR[3]},{l.bans[4]},{l.banWR[4]}"));
+            writeAllLines($"{prefix}-champselect.csv", statsChampSelect.Select(l => $"{l.champion},{l.Count},{l.WinRate},{l.Lower95},{l.Upper95},{l.bans[0]},{l.banWR[0]},{l.bans[1]},{l.banWR[1]},{l.bans[2]},{l.banWR[2]},{l.bans[3]},{l.banWR[3]},{l.bans[4]},{l.banWR[4]}"));
         }
 
         private static void writeAllLines(string filename, IEnumerable<string> lines)
@@ -138,12 +149,15 @@ namespace LeagueOfStats.OneForAllStats
             Ut.Assert(teamW != teamL);
             var champW = LeagueStaticData.Champions[json["participants"].GetList().Where(pj => pj["teamId"].GetInt() == teamW).First()["championId"].GetInt()].Name;
             var champL = LeagueStaticData.Champions[json["participants"].GetList().Where(pj => pj["teamId"].GetInt() == teamL).First()["championId"].GetInt()].Name;
+            var ver = Version.Parse(json["gameVersion"].GetString());
             return new Match
             {
                 MatchId = region + json["gameId"].GetStringLenient(),
                 Champion1 = champW.CompareTo(champL) <= 0 ? champW : champL,
                 Champion2 = champW.CompareTo(champL) <= 0 ? champL : champW,
                 Winner = champW,
+                GameVersion = string.Intern(ver.Major + "." + ver.Minor),
+                StartTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0),
             };
         }
 
