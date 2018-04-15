@@ -29,37 +29,7 @@ namespace LeagueOfStats.OneForAllStats
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = new List<Match>();
-            foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
-            {
-                var match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-matches-1020\.losjs$");
-                if (!match.Success)
-                    continue;
-                var region = match.Groups["region"].Value;
-                Console.Write($"Loading {f.FullName}... ");
-                var count = new CountResult();
-                var t = new Thread(() =>
-                {
-                    int next = 5000;
-                    while (true)
-                    {
-                        if (count.Count > next)
-                        {
-                            Console.Write(count.Count + " ");
-                            next += 5000;
-                        }
-                        Thread.Sleep(1000);
-                    }
-                });
-                t.Start();
-                var started = DateTime.UtcNow;
-                matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => matchFromJson(json, region)).PassthroughCount(count));
-                var ended = DateTime.UtcNow;
-                t.Abort();
-                t.Join();
-                Console.WriteLine();
-                writeLine($"Loaded {count} matches from {f.FullName} in {(ended - started).TotalSeconds:#,0.000} s");
-            }
+            var matches = LoadAllMatches(dataPath, 1020, matchFromJson);
             // Remove duplicates
             var hadCount = matches.Count;
             matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
@@ -73,6 +43,42 @@ namespace LeagueOfStats.OneForAllStats
                 generate($"s-date-{date:yyyy-MM-dd}", matches.Where(m => m.StartTime.Date == date), champions);
             foreach (var ver in matches.Select(m => m.GameVersion).Distinct().Order())
                 generate($"s-ver-{ver}", matches.Where(m => m.GameVersion == ver), champions);
+        }
+
+        private static List<T> LoadAllMatches<T>(string dataPath, int queueId, Func<JsonValue, Region, T> loader)
+        {
+            var matches = new List<T>();
+            foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
+            {
+                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-{queueId}\.losjs$");
+                if (!match.Success)
+                    continue;
+                var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                Console.Write($"Loading {f.FullName}... ");
+                var count = new CountResult();
+                var t = new Thread(() =>
+                {
+                    int next = 10000;
+                    while (true)
+                    {
+                        if (count.Count > next)
+                        {
+                            Console.Write(count.Count + " ");
+                            next += 10000;
+                        }
+                        Thread.Sleep(1000);
+                    }
+                });
+                t.Start();
+                var started = DateTime.UtcNow;
+                matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => loader(json, region)).PassthroughCount(count));
+                var ended = DateTime.UtcNow;
+                t.Abort();
+                t.Join();
+                Console.WriteLine();
+                writeLine($"Loaded {count} matches from {f.FullName} in {(ended - started).TotalSeconds:#,0.000} s");
+            }
+            return matches;
         }
 
         private static void generate(string prefix, IEnumerable<Match> matches, List<string> champions)
@@ -146,7 +152,7 @@ namespace LeagueOfStats.OneForAllStats
             Ut.WaitSharingVio(() => File.WriteAllLines(filename, lines), onSharingVio: () => Console.WriteLine($"File \"{filename}\" is in use; waiting..."));
         }
 
-        private static Match matchFromJson(JsonValue json, string region)
+        private static Match matchFromJson(JsonValue json, Region region)
         {
             Ut.Assert(json["gameMode"].GetString() == "ONEFORALL");
             var teamW = json["teams"].GetList().Single(tj => tj["win"].GetString() == "Win")["teamId"].GetInt();
