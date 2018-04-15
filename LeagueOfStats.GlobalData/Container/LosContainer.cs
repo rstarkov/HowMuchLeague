@@ -293,6 +293,9 @@ namespace LeagueOfStats.GlobalData
 
         private IEnumerable<TItem> readCore(operationData op)
         {
+            Stream getWindowStream(Stream underlying, long length)
+                => length > 32768 ? new WindowStream(underlying, length) : (Stream) new MemoryStream(underlying.Read((int) length));
+
             if (op == null)
                 yield break;
             while (op.Stream.Position < op.ValidLength)
@@ -301,9 +304,9 @@ namespace LeagueOfStats.GlobalData
                 if (scheme == 1)
                 {
                     var itemFormatVersion = op.Reader.ReadByte();
-                    var chunkLength = (long) op.Reader.ReadUInt32(); // must be fixed length as it's patched in at the end of a write.
+                    var chunkLength = op.Reader.ReadUInt32(); // must be fixed length as it's patched in at the end of a write.
                     uint crc32;
-                    using (var windowStream = new WindowStream(op.Stream, chunkLength))
+                    using (var windowStream = getWindowStream(op.Stream, chunkLength))
                     using (var decompressed = new DeflateStream(windowStream, CompressionMode.Decompress))
                     {
                         var crc32stream = new CRC32Stream(decompressed);
@@ -312,7 +315,7 @@ namespace LeagueOfStats.GlobalData
                         while (!endstream.IsEnded)
                         {
                             var length = endstream.ReadUInt32Optim();
-                            using (var windowInner = new WindowStream(endstream, length))
+                            using (var windowInner = getWindowStream(endstream, length))
                                 yield return ReadItem(windowInner, itemFormatVersion, state);
                         }
                         crc32 = crc32stream.CRC;
@@ -324,14 +327,14 @@ namespace LeagueOfStats.GlobalData
                 {
                     var itemFormatVersion = op.Reader.ReadByte();
                     var chunkLength = (long) op.Stream.ReadUInt64Optim(); // ulong is very slightly more compact than long
-                    using (var windowStream = new WindowStream(op.Stream, chunkLength))
+                    using (var windowStream = getWindowStream(op.Stream, chunkLength))
                         yield return ReadItem(windowStream, itemFormatVersion, GetInitialChunkState());
                 }
                 else if (scheme == 3)
                 {
                     var itemFormatVersion = op.Reader.ReadByte();
-                    var chunkLength = (long) op.Reader.ReadUInt32(); // must be fixed length as it's patched in at the end of a write.
-                    using (var windowStream = new WindowStream(op.Stream, chunkLength))
+                    var chunkLength = op.Reader.ReadUInt32(); // must be fixed length as it's patched in at the end of a write.
+                    using (var windowStream = getWindowStream(op.Stream, chunkLength))
                     using (var decompressed = new LZ4Stream(windowStream, LZ4StreamMode.Decompress))
                     {
                         var endstream = new EndDetectionStream(decompressed);
@@ -339,7 +342,7 @@ namespace LeagueOfStats.GlobalData
                         while (!endstream.IsEnded)
                         {
                             var length = endstream.ReadUInt32Optim();
-                            using (var windowInner = new WindowStream(endstream, length))
+                            using (var windowInner = getWindowStream(endstream, length))
                                 yield return ReadItem(windowInner, itemFormatVersion, state);
                         }
                     }
