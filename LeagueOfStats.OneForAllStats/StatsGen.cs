@@ -23,28 +23,6 @@ namespace LeagueOfStats.OneForAllStats
             public string GameVersion;
         }
 
-        public static void Generate(string dataPath)
-        {
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
-            writeLine($"Generating stats at {DateTime.Now}...");
-
-            // Load matches
-            var matches = LoadAllMatches(dataPath, 1020, matchFromJson);
-            // Remove duplicates
-            var hadCount = matches.Count;
-            matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
-            writeLine($"Distinct matches: {matches.Count:#,0} (duplicates removed: {hadCount - matches.Count:#,0})");
-            writeLine($"Distinct matchups: {matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Count():#,0} / {9453 + 138:#,0}"); // 138 choose 2 + 138 mirror matchups (Teemo/Karthus not allowed)
-            // Champions seen
-            var champions = matches.Select(m => m.Champion1).Concat(matches.Select(m => m.Champion2)).Distinct().ToList();
-
-            generate("s-all", matches, champions);
-            foreach (var date in matches.Select(m => m.StartTime.Date).Distinct().Order())
-                generate($"s-date-{date:yyyy-MM-dd}", matches.Where(m => m.StartTime.Date == date), champions);
-            foreach (var ver in matches.Select(m => m.GameVersion).Distinct().Order())
-                generate($"s-ver-{ver}", matches.Where(m => m.GameVersion == ver), champions);
-        }
-
         private static List<T> LoadAllMatches<T>(string dataPath, int queueId, Func<JsonValue, Region, T> loader)
         {
             var matches = new List<T>();
@@ -81,7 +59,29 @@ namespace LeagueOfStats.OneForAllStats
             return matches;
         }
 
-        private static void generate(string prefix, IEnumerable<Match> matches, List<string> champions)
+        public static void GenerateOneForAll(string dataPath)
+        {
+            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
+            writeLine($"Generating stats at {DateTime.Now}...");
+
+            // Load matches
+            var matches = LoadAllMatches(dataPath, 1020, matchFromJson);
+            // Remove duplicates
+            var hadCount = matches.Count;
+            matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
+            writeLine($"Distinct matches: {matches.Count:#,0} (duplicates removed: {hadCount - matches.Count:#,0})");
+            writeLine($"Distinct matchups: {matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Count():#,0} / {9453 + 138:#,0}"); // 138 choose 2 + 138 mirror matchups (Teemo/Karthus not allowed)
+            // Champions seen
+            var champions = matches.Select(m => m.Champion1).Concat(matches.Select(m => m.Champion2)).Distinct().ToList();
+
+            generateOneForAll("s-all", matches, champions);
+            foreach (var date in matches.Select(m => m.StartTime.Date).Distinct().Order())
+                generateOneForAll($"s-date-{date:yyyy-MM-dd}", matches.Where(m => m.StartTime.Date == date), champions);
+            foreach (var ver in matches.Select(m => m.GameVersion).Distinct().Order())
+                generateOneForAll($"s-ver-{ver}", matches.Where(m => m.GameVersion == ver), champions);
+        }
+
+        private static void generateOneForAll(string prefix, IEnumerable<Match> matches, List<string> champions)
         {
             // All the match IDs
             writeAllLines($"{prefix}-match-ids.txt", matches.Select(m => m.MatchId).Order());

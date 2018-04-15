@@ -15,8 +15,8 @@ namespace LeagueOfStats.OneForAllStats
 
         static void Main(string[] args)
         {
-            if (args[0] == "stats")
-                StatsGen.Generate(dataPath: args[1]);
+            if (args[0] == "stats-1fa")
+                StatsGen.GenerateOneForAll(dataPath: args[1]);
             else if (args[0] == "download")
                 DownloadMatches(args.Subarray(1));
             else if (args[0] == "download-ids")
