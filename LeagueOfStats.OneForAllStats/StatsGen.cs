@@ -16,7 +16,7 @@ namespace LeagueOfStats.OneForAllStats
 {
     class StatsGen
     {
-        class Match
+        class Match1FA
         {
             public string MatchId, Champion1, Champion2, Winner;
             public DateTime StartTime;
@@ -65,7 +65,7 @@ namespace LeagueOfStats.OneForAllStats
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = LoadAllMatches(dataPath, 1020, matchFromJson);
+            var matches = LoadAllMatches(dataPath, 1020, match1FAFromJson);
             // Remove duplicates
             var hadCount = matches.Count;
             matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
@@ -81,17 +81,17 @@ namespace LeagueOfStats.OneForAllStats
                 generateOneForAll($"s-ver-{ver}", matches.Where(m => m.GameVersion == ver), champions);
         }
 
-        private static void generateOneForAll(string prefix, IEnumerable<Match> matches, List<string> champions)
+        private static void generateOneForAll(string prefix, IEnumerable<Match1FA> matches, List<string> champions)
         {
             // All the match IDs
             writeAllLines($"{prefix}-match-ids.txt", matches.Select(m => m.MatchId).Order());
 
             // All possible matchup stats
             {
-                var grps = newDict(new { ch1 = "", ch2 = "" }, new List<Match>(), _ => new List<Match>());
+                var grps = newDict(new { ch1 = "", ch2 = "" }, new List<Match1FA>(), _ => new List<Match1FA>());
                 foreach (var m in matches)
                     grps[new { ch1 = m.Champion1, ch2 = m.Champion2 }].Add(m);
-                var empty = new List<Match>();
+                var empty = new List<Match1FA>();
                 var statsMatchupsAll = champions.SelectMany(ch1 => champions.Select(ch2 => new { ch1, ch2 })).Where(key => key.ch1.CompareTo(key.ch2) <= 0).Select(key =>
                 {
                     if (!grps.ContainsKey(key))
@@ -113,7 +113,7 @@ namespace LeagueOfStats.OneForAllStats
 
             // Champion stats at champ select stage (unknown enemy)
             {
-                var grps = new AutoDictionary<string, List<Match>>(_ => new List<Match>());
+                var grps = new AutoDictionary<string, List<Match1FA>>(_ => new List<Match1FA>());
                 foreach (var m in matches)
                 {
                     grps[m.Champion1].Add(m);
@@ -131,10 +131,10 @@ namespace LeagueOfStats.OneForAllStats
                     var banWR = new double[5];
                     for (int i = 0; i < 5; i++)
                     {
-                        var banResult = champions.Where(ban => ban != champion).Select(ban => new { ban, wr = winrate(matchesWithout(remaining, ban), champion) }).MaxElement(x => x.wr);
+                        var banResult = champions.Where(ban => ban != champion).Select(ban => new { ban, wr = winrate(matches1FAWithout(remaining, ban), champion) }).MaxElement(x => x.wr);
                         bans[i] = banResult.ban;
                         banWR[i] = banResult.wr;
-                        remaining = matchesWithout(remaining, bans[i]).ToList();
+                        remaining = matches1FAWithout(remaining, bans[i]).ToList();
                     }
                     return new { champion, Count = n, WinRate = p, Lower95 = conf95.lower, Upper95 = conf95.upper, bans, banWR };
                 }).OrderBy(r => r.champion).ToList();
@@ -152,7 +152,7 @@ namespace LeagueOfStats.OneForAllStats
             Ut.WaitSharingVio(() => File.WriteAllLines(filename, lines), onSharingVio: () => Console.WriteLine($"File \"{filename}\" is in use; waiting..."));
         }
 
-        private static Match matchFromJson(JsonValue json, Region region)
+        private static Match1FA match1FAFromJson(JsonValue json, Region region)
         {
             Ut.Assert(json["gameMode"].GetString() == "ONEFORALL");
             var teamW = json["teams"].GetList().Single(tj => tj["win"].GetString() == "Win")["teamId"].GetInt();
@@ -161,7 +161,7 @@ namespace LeagueOfStats.OneForAllStats
             var champW = LeagueStaticData.Champions[json["participants"].GetList().Where(pj => pj["teamId"].GetInt() == teamW).First()["championId"].GetInt()].Name;
             var champL = LeagueStaticData.Champions[json["participants"].GetList().Where(pj => pj["teamId"].GetInt() == teamL).First()["championId"].GetInt()].Name;
             var ver = Version.Parse(json["gameVersion"].GetString());
-            return new Match
+            return new Match1FA
             {
                 MatchId = region + json["gameId"].GetStringLenient(),
                 Champion1 = champW.CompareTo(champL) <= 0 ? champW : champL,
@@ -178,7 +178,7 @@ namespace LeagueOfStats.OneForAllStats
             File.AppendAllLines("StatsGen.output.txt", new[] { line });
         }
 
-        private static double winrate(IEnumerable<Match> matches, string champion)
+        private static double winrate(IEnumerable<Match1FA> matches, string champion)
         {
             double sum = 0;
             int count = 0;
@@ -191,7 +191,7 @@ namespace LeagueOfStats.OneForAllStats
             return sum / count;
         }
 
-        private static IEnumerable<Match> matchesWithout(IEnumerable<Match> matches, string champion)
+        private static IEnumerable<Match1FA> matches1FAWithout(IEnumerable<Match1FA> matches, string champion)
         {
             return matches.Where(m => m.Champion1 != champion && m.Champion2 != champion);
         }
