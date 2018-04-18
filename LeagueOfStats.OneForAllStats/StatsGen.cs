@@ -207,5 +207,141 @@ namespace LeagueOfStats.OneForAllStats
             var c = 1 + z * z / n;
             return ((a - b) / c, (a + b) / c);
         }
+
+        public static void GenerateSR5v5(string dataPath)
+        {
+            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
+            writeLine($"Generating stats at {DateTime.Now}...");
+
+            // Load matches
+            var matches = LoadAllMatches(dataPath, 420, matchSRFromJson) // ranked solo
+                .Concat(LoadAllMatches(dataPath, 400, matchSRFromJson)) // draft pick
+                .Concat(LoadAllMatches(dataPath, 430, matchSRFromJson)) // blind pick
+                .ToList();
+            // Remove duplicates
+            var hadCount = matches.Count;
+            matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
+            writeLine($"Distinct matches: {matches.Count:#,0} (duplicates removed: {hadCount - matches.Count:#,0})");
+
+            var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).Order().ToList();
+
+            var matchupsMid = matches.Where(m => m.Mid.ChampW != null && m.Mid.ChampL != null && m.Mid.ChampW != m.Mid.ChampL).Select(m => m.Mid).ToList();
+            writeLine($"Usable mid matchups: {matchupsMid.Count:#,0}");
+            genSRLaneMatchup(matchupsMid, "Vel'Koz", "mid");
+            genSRLaneMatchup(matchupsMid, "Malzahar", "mid");
+            genSRLaneMatchup(matchupsMid, "LeBlanc", "mid");
+            genSRLaneMatchup(matchupsMid, "Zed", "mid");
+            genSRLaneMatchup(matchupsMid, "Ahri", "mid");
+
+            var matchesTop = matches.Where(m => m.Top.ChampW != null && m.Top.ChampL != null && m.Top.ChampW != m.Top.ChampL).Select(m => m.Top).ToList();
+            writeLine($"Usable top matchups: {matchesTop.Count:#,0}");
+            genSRLaneMatchup(matchesTop, "Yorick", "top");
+            genSRLaneMatchup(matchesTop, "Akali", "top");
+            genSRLaneMatchup(matchesTop, "Garen", "top");
+            genSRLaneMatchup(matchesTop, "Nasus", "top");
+            genSRLaneMatchup(matchesTop, "Darius", "top");
+        }
+
+        private static void genSRLaneMatchup(List<LaneSR> matches, string champ, string lane)
+        {
+            writeLine("");
+            writeLine("");
+            writeLine("");
+            matches = matches.Where(m => m.ChampW == champ || m.ChampL == champ).ToList();
+            writeLine($"Usable matches for {lane} {champ}: {matches.Count:#,0}");
+            {
+                var p = matches.Count(m => m.ChampW == champ) / (double) matches.Count;
+                var conf95 = getWilson(p, matches.Count, 1.96);
+                writeLine($"Overall win rate: {p * 100:0.0}% ({conf95.lower * 100:0}% - {conf95.upper * 100:0}%)");
+            }
+
+            var matchups = matches.GroupBy(m => m.Other(champ)).ToDictionary(grp => grp.Key, grp => grp.ToList()).Select(kvp =>
+            {
+                var enemy = kvp.Key;
+                var p = kvp.Value.Count(m => m.ChampW == champ) / (double) kvp.Value.Count;
+                var conf95 = getWilson(p, kvp.Value.Count, 1.96);
+                return new { enemy, winrate = p, count = kvp.Value.Count, conf95 };
+            }).Where(m => m.count >= 10).OrderByDescending(m => m.winrate).ToList();
+
+            writeLine("");
+            writeLine("Most frequent matchups (50%)");
+            foreach (var mu in percentile(matchups.OrderByDescending(m => m.count), 0.50, m => m.count).OrderByDescending(m => m.winrate))
+                writeLine($"{champ},{mu.enemy,-15}, {mu.winrate:0.0000}, {mu.count,5},            ,{mu.conf95.lower:0.0000}, {mu.conf95.upper:0.0000}");
+            writeLine("");
+            writeLine("Almost all matchups (95%)");
+            foreach (var mu in percentile(matchups.OrderByDescending(m => m.count), 0.95, m => m.count).OrderByDescending(m => m.winrate))
+                writeLine($"{champ},{mu.enemy,-15}, {mu.winrate:0.0000}, {mu.count,5},            ,{mu.conf95.lower:0.0000}, {mu.conf95.upper:0.0000}");
+            writeLine("");
+            writeLine("Remaining matchups (...5%)");
+            foreach (var mu in percentile(matchups.OrderBy(m => m.count), 0.05, m => m.count).OrderByDescending(m => m.winrate))
+                writeLine($"{champ},{mu.enemy,-15}, {mu.winrate:0.0000}, {mu.count,5},            ,{mu.conf95.lower:0.0000}, {mu.conf95.upper:0.0000}");
+            writeLine("");
+            var bans = LeagueStaticData.Champions.Values.Select(ch => ch.Name).Where(ch => ch != champ).Select(ban =>
+            {
+                var ms = matches.Where(m => m.Other(champ) != ban).ToList();
+                var winrate = ms.Count == 0 ? -1 : ms.Count(m => m.ChampW == champ) / (double) ms.Count;
+                return new { ban, winrate, count = ms.Count };
+            }).OrderByDescending(b => b.winrate).Take(5).ToList();
+            foreach (var b in bans)
+                writeLine($"Ban for {champ}: {b.ban} = {b.winrate * 100:0.0}% ({b.count,0} matches, {matches.Count - b.count:#,0} banned)");
+        }
+
+        private static IEnumerable<T> percentile<T>(IEnumerable<T> coll, double perc, Func<T, double> by)
+        {
+            double max = coll.Sum(by);
+            double sum = 0;
+            foreach (var el in coll)
+            {
+                sum += by(el);
+                if (sum > perc * max)
+                    yield break;
+                yield return el;
+            }
+        }
+
+        struct LaneSR
+        {
+            public string ChampW;
+            public string ChampL;
+            public string Other(string champ) => champ == ChampW ? ChampL : champ == ChampL ? ChampW : throw new Exception();
+        }
+
+        class MatchSR
+        {
+            public string MatchId;
+            public LaneSR Mid, Top, Jun, Adc, Sup;
+            public string GameVersion;
+            public DateTime StartTime;
+        }
+
+        private static MatchSR matchSRFromJson(JsonValue json, Region region)
+        {
+            Ut.Assert(json["gameMode"].GetString() == "CLASSIC");
+            var teamW = json["teams"].GetList().Single(tj => tj["win"].GetString() == "Win")["teamId"].GetInt();
+            var teamL = json["teams"].GetList().Single(tj => tj["win"].GetString() == "Fail")["teamId"].GetInt();
+            Ut.Assert(teamW != teamL);
+            var champsW = json["participants"].GetList().Where(pj => pj["teamId"].GetInt() == teamW).ToList();
+            var champsL = json["participants"].GetList().Where(pj => pj["teamId"].GetInt() == teamL).ToList();
+            var ver = Version.Parse(json["gameVersion"].GetString());
+            return new MatchSR
+            {
+                MatchId = region + json["gameId"].GetStringLenient(),
+                Mid = new LaneSR { ChampW = findChampion(champsW, "MIDDLE", "SOLO"), ChampL = findChampion(champsL, "MIDDLE", "SOLO") },
+                Top = new LaneSR { ChampW = findChampion(champsW, "TOP", "SOLO"), ChampL = findChampion(champsL, "TOP", "SOLO") },
+                Jun = new LaneSR { ChampW = findChampion(champsW, "JUNGLE", "SOLO"), ChampL = findChampion(champsL, "JUNGLE", "SOLO") },
+                Adc = new LaneSR { ChampW = findChampion(champsW, "BOTTOM", "DUO_CARRY"), ChampL = findChampion(champsL, "BOTTOM", "DUO_CARRY") },
+                Sup = new LaneSR { ChampW = findChampion(champsW, "BOTTOM", "DUO_SUPPORT"), ChampL = findChampion(champsL, "BOTTOM", "DUO_SUPPORT") },
+                GameVersion = string.Intern(ver.Major + "." + ver.Minor),
+                StartTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0),
+            };
+        }
+
+        private static string findChampion(List<JsonValue> champs, string lane, string role)
+        {
+            var json = champs.FirstOrDefault(pj => pj["timeline"]["lane"].GetString() == lane && pj["timeline"]["role"].GetString() == role);
+            if (json == null)
+                return null;
+            return LeagueStaticData.Champions[json["championId"].GetInt()].Name;
+        }
     }
 }
