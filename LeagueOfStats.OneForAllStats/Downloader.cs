@@ -14,7 +14,8 @@ namespace LeagueOfStats.OneForAllStats
     {
         public string ApiKey;
         public Region Region;
-        public int QueueId;
+        public string Version;
+        public int? QueueId;
         public long InitialMatchId, MatchIdRange;
 
         public int MatchCount { get; private set; } = 0;
@@ -25,10 +26,11 @@ namespace LeagueOfStats.OneForAllStats
 
         private MatchDownloader _downloader;
 
-        public Downloader(string apiKey, Region region, int queueId, long initialMatchId, long matchIdRange)
+        public Downloader(string apiKey, Region region, string version, int? queueId, long initialMatchId, long matchIdRange)
         {
             ApiKey = apiKey;
             Region = region;
+            Version = version;
             QueueId = queueId;
             InitialMatchId = initialMatchId;
             MatchIdRange = matchIdRange;
@@ -36,8 +38,12 @@ namespace LeagueOfStats.OneForAllStats
             _downloader = new MatchDownloader(ApiKey, Region);
             _downloader.OnEveryResponse = (_, __) => { };
 
-            foreach (var json in DataStore.LosMatchJsons[Region][QueueId].ReadItems())
-                countMatch(json);
+            foreach (var kvpVersion in DataStore.LosMatchJsons[Region])
+                if (kvpVersion.Key == Version || Version == null)
+                    foreach (var kvpQueue in kvpVersion.Value)
+                        if (kvpQueue.Key == QueueId || QueueId == null)
+                            foreach (var json in kvpQueue.Value.ReadItems())
+                                countMatch(json, new BasicMatchInfo(json));
             rebuild();
             printStats();
         }
@@ -62,15 +68,22 @@ namespace LeagueOfStats.OneForAllStats
             Console.WriteLine("done");
         }
 
-        private void countMatch(JsonValue json)
+        private (bool added, bool rangeExpanded) countMatch(JsonValue json, BasicMatchInfo info)
         {
-            MatchCount++;
-            var gameCreation = json.Safe["gameCreation"].GetLong();
-            EarliestMatchDate = Math.Min(EarliestMatchDate, gameCreation);
-            LatestMatchDate = Math.Max(LatestMatchDate, gameCreation);
-            var matchId = json["gameId"].GetLong();
-            EarliestMatchId = Math.Min(EarliestMatchId, matchId);
-            LatestMatchId = Math.Max(LatestMatchId, matchId);
+            bool rangeExpanded = info.MatchId < EarliestMatchId || info.MatchId > LatestMatchId;
+            bool added = false;
+
+            if ((info.GameVersion == Version || Version == null) && (info.QueueId == QueueId || QueueId == null))
+            {
+                MatchCount++;
+                EarliestMatchDate = Math.Min(EarliestMatchDate, info.GameCreation);
+                LatestMatchDate = Math.Max(LatestMatchDate, info.GameCreation);
+                EarliestMatchId = Math.Min(EarliestMatchId, info.MatchId);
+                LatestMatchId = Math.Max(LatestMatchId, info.MatchId);
+                added = true;
+            }
+
+            return (added, rangeExpanded);
         }
 
         private void printStats()
@@ -141,16 +154,14 @@ namespace LeagueOfStats.OneForAllStats
             else if (dl.result == MatchDownloadResult.OK)
             {
                 splitGapAt(gapIndex, matchId);
-                var queueId = dl.json.Safe["queueId"].GetIntLenient();
-                if (queueId == QueueId)
+                var info = DataStore.AddMatch(Region, dl.json);
+                var (added, rangeExpanded) = countMatch(dl.json, info);
+                if (added)
                 {
-                    bool rebuildRequired = matchId < EarliestMatchId || matchId > LatestMatchId;
-                    countMatch(dl.json);
-                    if (rebuildRequired)
+                    if (rangeExpanded)
                         rebuild();
                     printStats();
                 }
-                DataStore.AddMatch(Region, queueId, matchId, dl.json);
             }
             else
                 throw new Exception();

@@ -30,11 +30,11 @@
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="RT.KitchenSink, Version=1.0.1600.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.KitchenSink.1.0.1600\lib\net45\RT.KitchenSink.dll</HintPath>
+    <Reference Include="RT.KitchenSink, Version=1.0.1601.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.KitchenSink.1.0.1601\lib\net45\RT.KitchenSink.dll</HintPath>
     </Reference>
-    <Reference Include="RT.Util, Version=1.0.1599.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.Util.1.0.1599\lib\net45\RT.Util.dll</HintPath>
+    <Reference Include="RT.Util, Version=1.0.1601.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.Util.1.0.1601\lib\net45\RT.Util.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -46,15 +46,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConcurrentAutoDictionary.cs" />
     <Compile Include="DataStore.cs" />
     <Compile Include="MergeDataStores.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="StatsGen.cs" />
     <Compile Include="Downloader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LeagueOfStats.GlobalData\LeagueOfStats.GlobalData.csproj">
@@ -65,6 +63,9 @@
       <Project>{6d5ee88c-1926-477d-abe6-388171796b3f}</Project>
       <Name>LeagueOfStats.StaticData</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

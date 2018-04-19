@@ -18,7 +18,7 @@ namespace LeagueOfStats.OneForAllStats
             if (args[0] == "stats-1fa")
                 StatsGen.GenerateOneForAll(dataPath: args[1]);
             else if (args[0] == "download")
-                DownloadMatches(args.Subarray(1));
+                DownloadMatches(apiKey: args[1], dataPath: args[2], suffix: args[3]);
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: args[1], dataPath: args[2], suffix: args[3], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
@@ -41,12 +41,8 @@ namespace LeagueOfStats.OneForAllStats
             output.Rewrite();
         }
 
-        private static void DownloadMatches(string[] args)
+        private static void DownloadMatches(string apiKey, string dataPath, string suffix)
         {
-            var apiKey = args[0];
-            var dataPath = args[1];
-            var suffix = args[2];
-
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
                 [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 500_000),
@@ -62,11 +58,11 @@ namespace LeagueOfStats.OneForAllStats
                 [Region.KR] = ConsoleColor.Magenta,
             };
 
-            DataStore.Initialise(dataPath, suffix, regionLimits.Keys);
+            DataStore.Initialise(dataPath, suffix);
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(apiKey, region, 1020, regionLimits[region].initial, regionLimits[region].range));
+                downloaders.Add(new Downloader(apiKey, region, null, 1020, regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever();
@@ -78,8 +74,8 @@ namespace LeagueOfStats.OneForAllStats
         private static void DownloadIds(string apiKey, string dataPath, string suffix, string idFilePath)
         {
             var region = EnumStrong.Parse<Region>(Path.GetFileName(idFilePath).Split('-')[0]);
-            Console.WriteLine($"Initialising for {region}...");
-            DataStore.Initialise(dataPath, suffix, new[] { region });
+            Console.WriteLine($"Initialising...");
+            DataStore.Initialise(dataPath, suffix);
             Console.WriteLine($"Downloading...");
             var downloader = new MatchDownloader(apiKey, region);
             downloader.OnEveryResponse = (_, __) => { };
@@ -96,9 +92,8 @@ namespace LeagueOfStats.OneForAllStats
                     Console.WriteLine($"Download failed: {matchId}");
                 else if (dl.result == MatchDownloadResult.OK)
                 {
-                    var queueId = dl.json["queueId"].GetInt();
-                    Console.WriteLine($"{matchId:#,0}: queue {queueId}");
-                    DataStore.AddMatch(region, queueId, matchId, dl.json);
+                    var info = DataStore.AddMatch(region, dl.json);
+                    Console.WriteLine($"{matchId:#,0}: queue {info.QueueId}");
                 }
                 else
                     throw new Exception();
