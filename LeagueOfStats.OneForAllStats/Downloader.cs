@@ -137,7 +137,7 @@ namespace LeagueOfStats.OneForAllStats
                 DataStore.AddNonExistentMatch(Region, matchId);
             }
             else if (dl.result == MatchDownloadResult.Failed)
-                DataStore.AddFailedMatch(Region, matchId);
+                Console.WriteLine($"Download failed: {matchId}");
             else if (dl.result == MatchDownloadResult.OK)
             {
                 splitGapAt(gapIndex, matchId);

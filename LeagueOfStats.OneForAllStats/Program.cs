@@ -93,7 +93,7 @@ namespace LeagueOfStats.OneForAllStats
                     DataStore.AddNonExistentMatch(region, matchId);
                 }
                 else if (dl.result == MatchDownloadResult.Failed)
-                    DataStore.AddFailedMatch(region, matchId);
+                    Console.WriteLine($"Download failed: {matchId}");
                 else if (dl.result == MatchDownloadResult.OK)
                 {
                     var queueId = dl.json["queueId"].GetInt();
