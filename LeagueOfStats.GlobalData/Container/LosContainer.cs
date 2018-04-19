@@ -23,6 +23,7 @@ namespace LeagueOfStats.GlobalData
     public abstract class LosContainer
     {
         public string FileName { get; private set; }
+        public bool EnableAutoRewrite { get; set; } = true;
 
         public LosContainer(string filename)
         {
@@ -233,7 +234,7 @@ namespace LeagueOfStats.GlobalData
 
             if (compact && (stats.ShortChunkCount > 1 || stats.UncompressedItemsCount > 0))
                 Rewrite();
-            else if (stats.ShortChunkCount > 2000 || stats.UncompressedItemsCount > 5000)
+            else if (EnableAutoRewrite && (stats.ShortChunkCount > 2000 || stats.UncompressedItemsCount > 5000))
                 Rewrite();
         }
 
@@ -468,7 +469,7 @@ namespace LeagueOfStats.GlobalData
                 return Enumerable.Empty<bool>();
             }).ToList();
 
-            if (rewriteNeeded)
+            if (rewriteNeeded && EnableAutoRewrite)
                 Rewrite();
         }
     }
