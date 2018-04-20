@@ -43,8 +43,15 @@ namespace LeagueOfStats.OneForAllStats
                 if (kvpVersion.Key == Version || Version == null)
                     foreach (var kvpQueue in kvpVersion.Value)
                         if (kvpQueue.Key == QueueId || QueueId == null)
-                            foreach (var json in kvpQueue.Value.ReadItems())
+                        {
+                            Console.Write($"Loading {kvpQueue.Value.FileName}... ");
+                            var thread = new CountThread(10000);
+                            foreach (var json in kvpQueue.Value.ReadItems().PassthroughCount(thread.Count))
                                 countMatch(json, new BasicMatchInfo(json));
+                            thread.Stop();
+                            Console.WriteLine();
+                            Console.WriteLine($"  loaded {thread.Count.Count:#,0} matches in {thread.Duration.TotalSeconds:#,0} s ({thread.Rate:#,0}/s)");
+                        }
             if (LatestMatchId == 0) // means not a single match within the filter parameters was in the store
                 InitialMatchId = initialMatchId;
             else

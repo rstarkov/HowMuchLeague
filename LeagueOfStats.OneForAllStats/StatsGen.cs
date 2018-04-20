@@ -33,28 +33,11 @@ namespace LeagueOfStats.OneForAllStats
                     continue;
                 var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
                 Console.Write($"Loading {f.FullName}... ");
-                var count = new CountResult();
-                var t = new Thread(() =>
-                {
-                    int next = 10000;
-                    while (true)
-                    {
-                        if (count.Count > next)
-                        {
-                            Console.Write(count.Count + " ");
-                            next += 10000;
-                        }
-                        Thread.Sleep(1000);
-                    }
-                });
-                t.Start();
-                var started = DateTime.UtcNow;
-                matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => loader(json, region)).PassthroughCount(count));
-                var ended = DateTime.UtcNow;
-                t.Abort();
-                t.Join();
+                var thread = new CountThread(10000);
+                matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => loader(json, region)).PassthroughCount(thread.Count));
+                thread.Stop();
                 Console.WriteLine();
-                writeLine($"Loaded {count} matches from {f.FullName} in {(ended - started).TotalSeconds:#,0.000} s");
+                writeLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
             }
             return matches;
         }
