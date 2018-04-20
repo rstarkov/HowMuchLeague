@@ -12,7 +12,7 @@ namespace LeagueOfStats.OneForAllStats
 {
     class Downloader
     {
-        public string ApiKey;
+        public string[] ApiKeys;
         public Region Region;
         public string Version;
         public int? QueueId;
@@ -24,19 +24,20 @@ namespace LeagueOfStats.OneForAllStats
         public long EarliestMatchId { get; private set; } = long.MaxValue;
         public long LatestMatchId { get; private set; } = 0;
 
-        private MatchDownloader _downloader;
+        private MatchDownloader[] _downloaders;
+        private int _nextDownloader = 0;
 
-        public Downloader(string apiKey, Region region, string version, int? queueId, long initialMatchId, long matchIdRange)
+        public Downloader(string[] apiKeys, Region region, string version, int? queueId, long initialMatchId, long matchIdRange)
         {
-            ApiKey = apiKey;
+            ApiKeys = apiKeys;
             Region = region;
             Version = version;
             QueueId = queueId;
-            InitialMatchId = initialMatchId;
             MatchIdRange = matchIdRange;
 
-            _downloader = new MatchDownloader(ApiKey, Region);
-            _downloader.OnEveryResponse = (_, __) => { };
+            _downloaders = ApiKeys.Select(key => new MatchDownloader(key, Region)).ToArray();
+            foreach (var dl in _downloaders)
+                dl.OnEveryResponse = (_, __) => { };
 
             foreach (var kvpVersion in DataStore.LosMatchJsons[Region])
                 if (kvpVersion.Key == Version || Version == null)
@@ -44,6 +45,10 @@ namespace LeagueOfStats.OneForAllStats
                         if (kvpQueue.Key == QueueId || QueueId == null)
                             foreach (var json in kvpQueue.Value.ReadItems())
                                 countMatch(json, new BasicMatchInfo(json));
+            if (LatestMatchId == 0) // means not a single match within the filter parameters was in the store
+                InitialMatchId = initialMatchId;
+            else
+                InitialMatchId = (EarliestMatchId + LatestMatchId) / 2;
             rebuild();
             printStats();
         }
@@ -51,18 +56,17 @@ namespace LeagueOfStats.OneForAllStats
         private void rebuild()
         {
             Console.Write("Rebuilding... ");
-            var ids = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region]);
 
-            // Add an extra gap entry if the search range limit exceeds existing IDs
             var searchMin = Math.Min(InitialMatchId, EarliestMatchId) - MatchIdRange;
-            if (searchMin < ids.MinOrDefault(long.MaxValue))
-                ids = ids.Concat(searchMin);
             var searchMax = Math.Max(InitialMatchId, LatestMatchId) + MatchIdRange;
-            if (searchMax > ids.MaxOrDefault(0))
-                ids = ids.Concat(searchMax);
 
-            var sorted = ids.Order().ToList();
-            _heap = sorted.SelectConsecutivePairs(false, (id1, id2) => new Gap { From = id1 + 1, To = id2 - 1 }).Where(g => g.Length > 0).ToArray();
+            var ids = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region])
+                .Where(id => id > searchMin && id < searchMax)
+                .Concat(searchMin).Concat(searchMax) // add extra gap entries at the search limits
+                .Order()
+                .ToList();
+
+            _heap = ids.SelectConsecutivePairs(false, (id1, id2) => new Gap { From = id1 + 1, To = id2 - 1 }).Where(g => g.Length > 0).ToArray();
             _heapLength = _heap.Length;
             heapifyFull();
             Console.WriteLine("done");
@@ -90,14 +94,14 @@ namespace LeagueOfStats.OneForAllStats
         {
             if (EarliestMatchDate < long.MaxValue && LatestMatchDate > 0)
             {
-                var covered = DataStore.ExistingMatchIds[Region].Count + DataStore.NonexistentMatchIds[Region].Count;
                 var searchMin = _heap.Take(_heapLength).Min(g => g.From);
                 var searchMax = _heap.Take(_heapLength).Max(g => g.To);
+                var covered = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region]).Count(id => id >= searchMin && id <= searchMax);
                 var gapstat = new ValueStat();
                 foreach (var gap in _heap.Take(_heapLength))
                     gapstat.AddObservation(gap.Length);
                 Console.ForegroundColor = Program.Colors[Region];
-                Console.WriteLine($"{Region}: {MatchCount:#,0}; {EarliestMatchId:#,0} - {LatestMatchId:#,0} ({EarliestMatchId - searchMin:#,0} - {searchMax - LatestMatchId:#,0}); {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
+                Console.WriteLine($"{Region}: {MatchCount:#,0}; {EarliestMatchId:#,0} - {LatestMatchId:#,0}; {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
                 Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
                 Console.ForegroundColor = ConsoleColor.Gray;
             }
@@ -136,14 +140,24 @@ namespace LeagueOfStats.OneForAllStats
                 return;
             }
             again:;
-            int gapIndex = Rnd.Next(0, Math.Min(20, _heapLength));
+            int gapIndex = Rnd.Next(0, Math.Min(5, _heapLength));
             if (_heap[gapIndex].Length < _heap[0].Length / 2.0)
                 goto again;
             Ut.WaitSharingVio(() => File.AppendAllText($"gaps-split-{Region}.txt", $"{_heap[gapIndex].Length} "));
             long matchId = randomLong(_heap[gapIndex].From, _heap[gapIndex].To);
 
             // Download it and add the outcome to the data store
-            var dl = _downloader.DownloadMatch(matchId);
+            again2:;
+            var downloader = _downloaders[_nextDownloader];
+            _nextDownloader = (_nextDownloader + 1) % _downloaders.Length;
+            var dl = downloader.DownloadMatch(matchId);
+            if (dl.result == MatchDownloadResult.OverQuota)
+            {
+                Thread.Sleep(Rnd.Next(500, 1500)); // slowly de-sync multiple Downloaders over time
+                goto again2;
+            }
+            // Downloading is inherently single-threaded to avoid complications related to dealing with several different match IDs being "in flight" and what that means for the gap heap.
+
             if (dl.result == MatchDownloadResult.NonExistent)
             {
                 splitGapAt(gapIndex, matchId);

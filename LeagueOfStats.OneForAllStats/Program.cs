@@ -62,7 +62,7 @@ namespace LeagueOfStats.OneForAllStats
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(apiKey, region, null, 1020, regionLimits[region].initial, regionLimits[region].range));
+                downloaders.Add(new Downloader(new[] { apiKey }, region, null, 1020, regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever();
