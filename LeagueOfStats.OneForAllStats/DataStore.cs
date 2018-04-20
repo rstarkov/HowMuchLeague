@@ -13,16 +13,17 @@ namespace LeagueOfStats.OneForAllStats
     {
         public static string DataPath;
         public static string Suffix;
+        public static string LosPath => Path.Combine(DataPath, $"Global{Suffix}");
 
         public static CcAutoDictionary<Region, ConcurrentBag<long>> ExistingMatchIds = new CcAutoDictionary<Region, ConcurrentBag<long>>(_ => new ConcurrentBag<long>());
         public static CcAutoDictionary<Region, ConcurrentBag<long>> NonexistentMatchIds = new CcAutoDictionary<Region, ConcurrentBag<long>>(_ => new ConcurrentBag<long>());
 
         public static CcAutoDictionary<Region, string, int, JsonContainer> LosMatchJsons = new CcAutoDictionary<Region, string, int, JsonContainer>(
-            (region, version, queueId) => new JsonContainer(Path.Combine(DataPath, $"Global{Suffix}", $"{region}-matches-{version}-{queueId}.losjs")));
-        private static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsExisting = new CcAutoDictionary<Region, MatchIdContainer>(
-            region => new MatchIdContainer(Path.Combine(DataPath, $"Global{Suffix}", $"{region}-match-id-existing.losmid"), region));
-        private static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsNonExistent = new CcAutoDictionary<Region, MatchIdContainer>(
-            region => new MatchIdContainer(Path.Combine(DataPath, $"Global{Suffix}", $"{region}-match-id-nonexistent.losmid"), region));
+            (region, version, queueId) => new JsonContainer(Path.Combine(LosPath, $"{region}-matches-{version}-{queueId}.losjs")));
+        public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsExisting = new CcAutoDictionary<Region, MatchIdContainer>(
+            region => new MatchIdContainer(Path.Combine(LosPath, $"{region}-match-id-existing.losmid"), region));
+        public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsNonExistent = new CcAutoDictionary<Region, MatchIdContainer>(
+            region => new MatchIdContainer(Path.Combine(LosPath, $"{region}-match-id-nonexistent.losmid"), region));
 
         public static void Initialise(string dataPath, string suffix)
         {
@@ -30,7 +31,7 @@ namespace LeagueOfStats.OneForAllStats
             DataPath = dataPath;
             Suffix = suffix;
 
-            var losDir = new DirectoryInfo(Path.Combine(DataPath, $"Global{Suffix}"));
+            var losDir = new DirectoryInfo(LosPath);
             if (!losDir.Exists)
                 losDir.Create();
             foreach (var file in losDir.GetFiles())
