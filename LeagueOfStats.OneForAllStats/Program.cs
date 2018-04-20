@@ -108,7 +108,7 @@ namespace LeagueOfStats.OneForAllStats
                 return;
             }
             Directory.CreateDirectory(outputPath);
-            MergeDataStores.Merge(outputPath, searchPath, mergeJsons);
+            MergeDataStores.MergePreVer(outputPath, searchPath, mergeJsons);
         }
     }
 }

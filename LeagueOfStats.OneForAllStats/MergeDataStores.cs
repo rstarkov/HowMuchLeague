@@ -13,9 +13,68 @@ namespace LeagueOfStats.OneForAllStats
 {
     static class MergeDataStores
     {
-        public static void Merge(string outputPath, string searchPath, bool mergeJsons)
+        public static void MergePreVerToPostVer(string dataPath, string dataSuffix, string searchPath)
         {
-            var mergers = new AutoDictionary<Region, RegionMerger>(region => new RegionMerger { Region = region });
+            DataStore.Initialise(dataPath, dataSuffix);
+            var pm = new PathManager(searchPath);
+            pm.AddExcludePath(DataStore.LosPath);
+            foreach (var f in pm.GetFiles())
+            {
+                Console.WriteLine(f.FullName);
+                Match match;
+                if ((match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-match-id-nonexistent\.losmid$")).Success)
+                {
+                    var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                    DataStore.LosMatchIdsNonExistent[region].AppendItems(new MatchIdContainer(f.FullName, region).ReadItems(), LosChunkFormat.LZ4HC);
+                }
+                else if ((match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-match-id-existing\.losmid$")).Success)
+                {
+                    var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                    DataStore.LosMatchIdsExisting[region].AppendItems(new MatchIdContainer(f.FullName, region).ReadItems(), LosChunkFormat.LZ4HC);
+                }
+                else if ((match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-matches-(?<queueId>\d+)\.losjs$")).Success)
+                {
+                    var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                    var queueId = int.Parse(match.Groups["queueId"].Value);
+                    foreach (var json in new JsonContainer(f.FullName).ReadItems())
+                    {
+                        var info = new BasicMatchInfo(json);
+                        Ut.Assert(info.QueueId == queueId);
+                        DataStore.LosMatchJsons[region][info.GameVersion][info.QueueId].AppendItems(new[] { json }, LosChunkFormat.LZ4);
+                    }
+                }
+            }
+        }
+
+        public static void Recompress(string dataPath, string dataSuffix)
+        {
+            DataStore.Initialise(dataPath, dataSuffix);
+
+            foreach (var store in DataStore.LosMatchIdsNonExistent.Values)
+                store.Rewrite();
+
+            var haveIds = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
+            foreach (var val in DataStore.LosMatchJsons.SelectMany(v1 => v1.Value.Values.SelectMany(v2 => v2.Values.Select(c => new { container = c, region = v1.Key }))))
+            {
+                // Recompress as one chunk while eliminating any duplicates
+                Console.WriteLine(val.container.FileName);
+                var savedIds = new HashSet<long>();
+                val.container.Rewrite(jsons => jsons.Where(json => savedIds.Add(json["gameId"].GetLong())));
+                haveIds[val.region].AddRange(savedIds);
+                DataStore.LosMatchIdsExisting[val.region].AppendItems(savedIds, LosChunkFormat.LZ4);
+            }
+
+            foreach (var kvp in DataStore.LosMatchIdsExisting)
+            {
+                kvp.Value.Rewrite();
+                var redownload = kvp.Value.ReadItems().Except(haveIds[kvp.Key]).Order().Select(id => id.ToString());
+                File.WriteAllLines(Path.Combine(DataStore.LosPath, $"_{kvp.Key}_redownload.txt"), redownload);
+            }
+        }
+
+        public static void MergePreVer(string outputPath, string searchPath, bool mergeJsons)
+        {
+            var mergers = new AutoDictionary<Region, RegionMergerPreVer>(region => new RegionMergerPreVer { Region = region });
             foreach (var f in new PathManager(searchPath).GetFiles())
             {
                 var match = Regex.Match(f.Name, @"^(?<region>[A-Z]+)-matches-(?<queueId>\d+)\.losjs$");
@@ -51,7 +110,7 @@ namespace LeagueOfStats.OneForAllStats
                 Console.WriteLine($"TOTAL existing: {mergers.Values.Sum(m => m.RedownloadIds.Count):#,0}");
         }
 
-        private class RegionMerger
+        private class RegionMergerPreVer
         {
             public Region Region;
             public List<(int queueId, FileInfo fi)> MatchFiles = new List<(int, FileInfo)>();
