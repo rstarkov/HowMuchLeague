@@ -78,9 +78,9 @@ namespace LeagueOfStats.GlobalData
         public override void Rewrite(Func<IEnumerable<long>, IEnumerable<long>> filter = null)
         {
             if (filter == null)
-                base.Rewrite(matchIds => matchIds.Order());
+                base.Rewrite(matchIds => matchIds.Distinct().Order());
             else
-                base.Rewrite(matchIds => filter(matchIds).Order());
+                base.Rewrite(matchIds => filter(matchIds).Distinct().Order());
         }
     }
 
