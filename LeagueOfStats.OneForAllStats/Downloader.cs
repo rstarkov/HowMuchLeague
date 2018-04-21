@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -60,6 +61,8 @@ namespace LeagueOfStats.OneForAllStats
             printStats();
         }
 
+        private List<long> _idsForRebuild = new List<long>(); // only meaningful during a rebuild, but we don't want a large new list allocated and GC'd all the time (plus we never know what capacity it should be upfront, but it doesn't change much from run to run)
+
         private void rebuild()
         {
             Console.Write("Rebuilding... ");
@@ -67,13 +70,18 @@ namespace LeagueOfStats.OneForAllStats
             var searchMin = Math.Min(InitialMatchId, EarliestMatchId) - MatchIdRange;
             var searchMax = Math.Max(InitialMatchId, LatestMatchId) + MatchIdRange;
 
-            var ids = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region])
-                .Where(id => id > searchMin && id < searchMax)
-                .Concat(searchMin).Concat(searchMax) // add extra gap entries at the search limits
-                .Order()
-                .ToList();
+            _idsForRebuild.Clear();
+            foreach (var id in DataStore.ExistingMatchIds[Region])
+                if (id > searchMin && id < searchMax)
+                    _idsForRebuild.Add(id);
+            foreach (var id in DataStore.NonexistentMatchIds[Region])
+                if (id > searchMin && id < searchMax)
+                    _idsForRebuild.Add(id);
+            _idsForRebuild.Add(searchMin);
+            _idsForRebuild.Add(searchMax);
+            _idsForRebuild.Sort();
 
-            _heap = ids.SelectConsecutivePairs(false, (id1, id2) => new Gap { From = id1 + 1, To = id2 - 1 }).Where(g => g.Length > 0).ToArray();
+            _heap = _idsForRebuild.SelectConsecutivePairs(false, (id1, id2) => new Gap { From = id1 + 1, To = id2 - 1 }).Where(g => g.Length > 0).ToArray();
             _heapLength = _heap.Length;
             heapifyFull();
             Console.WriteLine("done");
