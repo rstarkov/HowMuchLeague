@@ -97,28 +97,32 @@ namespace LeagueOfStats.OneForAllStats
             return (added, rangeExpanded);
         }
 
+        private DateTime _noPrintStatsUntil;
+
         private void printStats()
         {
-            if (EarliestMatchDate < long.MaxValue && LatestMatchDate > 0)
+            if (!(EarliestMatchDate < long.MaxValue && LatestMatchDate > 0 && _heapLength > 0))
+                return;
+            if (DateTime.UtcNow < _noPrintStatsUntil)
+                return;
+            long searchMin = long.MaxValue;
+            long searchMax = long.MinValue;
+            for (int i = 0; i < _heapLength; i++)
             {
-                long searchMin = long.MaxValue;
-                long searchMax = long.MinValue;
-                for (int i = 0; i < _heapLength; i++)
-                {
-                    if (searchMin > _heap[i].From)
-                        searchMin = _heap[i].From;
-                    if (searchMax < _heap[i].To)
-                        searchMax = _heap[i].To;
-                }
-                var covered = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region]).Count(id => id >= searchMin && id <= searchMax);
-                var gapstat = new ValueStat();
-                foreach (var gap in _heap.Take(_heapLength))
-                    gapstat.AddObservation(gap.Length);
-                Console.ForegroundColor = Program.Colors[Region];
-                Console.WriteLine($"{Region}: {MatchCount:#,0}; {EarliestMatchId:#,0} - {LatestMatchId:#,0}; {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
-                Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
-                Console.ForegroundColor = ConsoleColor.Gray;
+                if (searchMin > _heap[i].From)
+                    searchMin = _heap[i].From;
+                if (searchMax < _heap[i].To)
+                    searchMax = _heap[i].To;
             }
+            var covered = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region]).Count(id => id >= searchMin && id <= searchMax);
+            var gapstat = new ValueStat();
+            foreach (var gap in _heap.Take(_heapLength))
+                gapstat.AddObservation(gap.Length);
+            Console.ForegroundColor = Program.Colors[Region];
+            Console.WriteLine($"{Region}: {MatchCount:#,0}; {EarliestMatchId:#,0} - {LatestMatchId:#,0}; {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
+            Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            _noPrintStatsUntil = DateTime.UtcNow.AddSeconds(60);
         }
 
         public void DownloadForever(bool background = false)
