@@ -92,8 +92,26 @@ namespace LeagueOfStats.OneForAllStats
             _idsForRebuild.Add(searchMax);
             _idsForRebuild.Sort();
 
-            _heap = _idsForRebuild.SelectConsecutivePairs(false, (id1, id2) => new Gap { From = id1 + 1, To = id2 - 1 }).Where(g => g.Length > 0).ToArray();
-            _heapLength = _heap.Length;
+            int iHeap = 0; // this is just _heapLength but it's a tight enough loop to benefit from using a local as opposed to a field
+            int iId = 0;
+            while (iId < _idsForRebuild.Count - 1)
+            {
+                var idF = _idsForRebuild[iId] + 1;
+                var idT = _idsForRebuild[iId + 1] - 1;
+                iId++;
+                if (idF <= idT) // else: skip consecutive IDs as there is no gap between them
+                {
+                    if (_heap.Length <= iHeap)
+                    {
+                        var temp = _heap;
+                        _heap = new Gap[_heap.Length * 3 / 2]; // the size of this array settles over repeated invocations of rebuild, so no need to grow it very fast; 1.5x is enough and wastes less RAM
+                        Array.Copy(temp, _heap, iHeap);
+                    }
+                    _heap[iHeap] = new Gap { From = idF, To = idT };
+                    iHeap++;
+                }
+            }
+            _heapLength = iHeap;
             heapifyFull();
             Console.WriteLine("done");
         }
@@ -239,7 +257,7 @@ namespace LeagueOfStats.OneForAllStats
             }
             public override string ToString() => $"{From:#,0} - {To:#,0} ({Length:#,0})";
         }
-        private Gap[] _heap;
+        private Gap[] _heap = new Gap[16];
         private int _heapLength;
 
         private void splitGapAt(int gapIndex, long matchId)
