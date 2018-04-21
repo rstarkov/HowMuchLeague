@@ -40,13 +40,13 @@ namespace LeagueOfStats.OneForAllStats
                 if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-id-existing\.losmid$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                    LosMatchIdsExisting[region].Initialise(compact: true);
+                    LosMatchIdsExisting[region].Initialise();
                     ExistingMatchIds[region] = LosMatchIdsExisting[region].ReadItems().ToBag();
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-id-nonexistent\.losmid$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                    LosMatchIdsNonExistent[region].Initialise(compact: true);
+                    LosMatchIdsNonExistent[region].Initialise();
                     NonexistentMatchIds[region] = LosMatchIdsNonExistent[region].ReadItems().ToBag();
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-matches-(?<version>\d+\.\d+)-(?<queueId>\d+)\.losjs$")).Success)
