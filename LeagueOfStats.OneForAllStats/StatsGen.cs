@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
 using RT.Util;
@@ -23,12 +22,12 @@ namespace LeagueOfStats.OneForAllStats
             public string GameVersion;
         }
 
-        private static List<T> LoadAllMatches<T>(string dataPath, int queueId, Func<JsonValue, Region, T> loader)
+        private static List<T> LoadAllMatches<T>(string dataPath, string version, int queueId, Func<JsonValue, Region, T> loader)
         {
             var matches = new List<T>();
             foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
             {
-                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-{queueId}\.losjs$");
+                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-{version}-{queueId}\.losjs$");
                 if (!match.Success)
                     continue;
                 var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
@@ -42,13 +41,15 @@ namespace LeagueOfStats.OneForAllStats
             return matches;
         }
 
-        public static void GenerateOneForAll(string dataPath)
+        public static void GenerateOneForAll(string dataPath, string dataSuffix)
         {
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = LoadAllMatches(dataPath, 1020, match1FAFromJson);
+            var matches = LoadAllMatches(Path.Combine(dataPath, $"Global{dataSuffix}"), "8.6", 1020, match1FAFromJson)
+                .Concat(LoadAllMatches(Path.Combine(dataPath, $"Global{dataSuffix}"), "8.7", 1020, match1FAFromJson))
+                .ToList();
             // Remove duplicates
             var hadCount = matches.Count;
             matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
@@ -191,15 +192,16 @@ namespace LeagueOfStats.OneForAllStats
             return ((a - b) / c, (a + b) / c);
         }
 
-        public static void GenerateSR5v5(string dataPath)
+        public static void GenerateSR5v5(string dataPath, string dataSuffix, string version)
         {
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = LoadAllMatches(dataPath, 420, matchSRFromJson) // ranked solo
-                .Concat(LoadAllMatches(dataPath, 400, matchSRFromJson)) // draft pick
-                .Concat(LoadAllMatches(dataPath, 430, matchSRFromJson)) // blind pick
+            dataPath = Path.Combine(dataPath, $"Global{dataSuffix}");
+            var matches = LoadAllMatches(dataPath, version, 420, matchSRFromJson) // ranked solo
+                .Concat(LoadAllMatches(dataPath, version, 400, matchSRFromJson)) // draft pick
+                .Concat(LoadAllMatches(dataPath, version, 430, matchSRFromJson)) // blind pick
                 .ToList();
             // Remove duplicates
             var hadCount = matches.Count;
@@ -244,7 +246,7 @@ namespace LeagueOfStats.OneForAllStats
             {
                 var conf95 = getWilson(overallWinrate, matches.Count, 1.96);
                 writeLine($"Overall win rate: {overallWinrate * 100:0.0}% ({conf95.lower * 100:0}% - {conf95.upper * 100:0}%)");
-                File.AppendAllLines($"_overall_ - {lane}.txt", new[] { $"{champ,-15}, {overallWinrate * 100:0.0}%, {matches.Count:#,0}, {conf95.lower * 100:0.0}%, {conf95.upper * 100:0.0}%" });
+                File.AppendAllLines($"_overall_ - {lane}.txt", new[] { $"{champ,-15}, {overallWinrate * 100:0.0}%, {matches.Count,6}, {conf95.lower * 100:0.0}%, {conf95.upper * 100:0.0}%" });
             }
 
             var matchups = matches.GroupBy(m => m.Other(champ)).ToDictionary(grp => grp.Key, grp => grp.ToList()).Select(kvp =>
