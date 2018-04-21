@@ -101,8 +101,15 @@ namespace LeagueOfStats.OneForAllStats
         {
             if (EarliestMatchDate < long.MaxValue && LatestMatchDate > 0)
             {
-                var searchMin = _heap.Take(_heapLength).Min(g => g.From);
-                var searchMax = _heap.Take(_heapLength).Max(g => g.To);
+                long searchMin = long.MaxValue;
+                long searchMax = long.MinValue;
+                for (int i = 0; i < _heapLength; i++)
+                {
+                    if (searchMin > _heap[i].From)
+                        searchMin = _heap[i].From;
+                    if (searchMax < _heap[i].To)
+                        searchMax = _heap[i].To;
+                }
                 var covered = DataStore.ExistingMatchIds[Region].Concat(DataStore.NonexistentMatchIds[Region]).Count(id => id >= searchMin && id <= searchMax);
                 var gapstat = new ValueStat();
                 foreach (var gap in _heap.Take(_heapLength))
