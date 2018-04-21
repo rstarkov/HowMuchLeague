@@ -40,19 +40,30 @@ namespace LeagueOfStats.OneForAllStats
             foreach (var dl in _downloaders)
                 dl.OnEveryResponse = (_, __) => { };
 
-            foreach (var kvpVersion in DataStore.LosMatchJsons[Region])
-                if (kvpVersion.Key == Version || Version == null)
-                    foreach (var kvpQueue in kvpVersion.Value)
-                        if (kvpQueue.Key == QueueId || QueueId == null)
-                        {
-                            Console.Write($"Loading {kvpQueue.Value.FileName}... ");
-                            var thread = new CountThread(10000);
-                            foreach (var json in kvpQueue.Value.ReadItems().PassthroughCount(thread.Count))
-                                countMatch(json, new BasicMatchInfo(json));
-                            thread.Stop();
-                            Console.WriteLine();
-                            Console.WriteLine($"  loaded {thread.Count.Count:#,0} matches in {thread.Duration.TotalSeconds:#,0} s ({thread.Rate:#,0}/s)");
-                        }
+            if (Version == null && QueueId == null && DataStore.ExistingMatchIds[Region].Count > 0)
+            {
+                // We only really care about match IDs (also dates, but not a lot as those are only for stats printing). We need them filtered by QueueId & Version,
+                // but there is currently no efficient way to do that other than read all match JSONs. Except if there are no filters - then it's just all the known match IDs.
+                EarliestMatchId = DataStore.ExistingMatchIds[Region].Min();
+                LatestMatchId = DataStore.ExistingMatchIds[Region].Max();
+                MatchCount = DataStore.ExistingMatchIds[Region].Count;
+            }
+            else
+            {
+                foreach (var kvpVersion in DataStore.LosMatchJsons[Region])
+                    if (kvpVersion.Key == Version || Version == null)
+                        foreach (var kvpQueue in kvpVersion.Value)
+                            if (kvpQueue.Key == QueueId || QueueId == null)
+                            {
+                                Console.Write($"Loading {kvpQueue.Value.FileName}... ");
+                                var thread = new CountThread(10000);
+                                foreach (var json in kvpQueue.Value.ReadItems().PassthroughCount(thread.Count))
+                                    countMatch(json, new BasicMatchInfo(json));
+                                thread.Stop();
+                                Console.WriteLine();
+                                Console.WriteLine($"  loaded {thread.Count.Count:#,0} matches in {thread.Duration.TotalSeconds:#,0} s ({thread.Rate:#,0}/s)");
+                            }
+            }
             if (LatestMatchId == 0) // means not a single match within the filter parameters was in the store
                 InitialMatchId = initialMatchId;
             else
