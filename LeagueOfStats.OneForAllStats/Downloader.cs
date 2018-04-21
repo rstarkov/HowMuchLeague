@@ -127,6 +127,7 @@ namespace LeagueOfStats.OneForAllStats
             foreach (var gap in _heap.Take(_heapLength))
                 gapstat.AddObservation(gap.Length);
             Console.ForegroundColor = Program.Colors[Region];
+            Console.WriteLine();
             Console.WriteLine($"{Region}: {MatchCount:#,0}; {EarliestMatchId:#,0} - {LatestMatchId:#,0}; {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
             Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
             Console.ForegroundColor = ConsoleColor.Gray;
@@ -195,6 +196,8 @@ namespace LeagueOfStats.OneForAllStats
             {
                 splitGapAt(gapIndex, matchId);
                 var info = DataStore.AddMatch(Region, dl.json);
+                var wasEarliest = EarliestMatchId;
+                var wasLatest = LatestMatchId;
                 var (added, rangeExpanded) = countMatch(dl.json, info);
                 if (added)
                 {
@@ -202,6 +205,12 @@ namespace LeagueOfStats.OneForAllStats
                         rebuild();
                     printStats();
                 }
+                Console.ForegroundColor = Program.Colors[Region] - (added ? 0 : 8);
+                if (matchId < (wasEarliest + wasLatest) / 2)
+                    Console.Write($">{matchId - wasEarliest:#,0}   ");
+                else
+                    Console.Write($"{wasLatest - matchId:#,0}<   ");
+                Console.ForegroundColor = ConsoleColor.Gray;
             }
             else
                 throw new Exception();
