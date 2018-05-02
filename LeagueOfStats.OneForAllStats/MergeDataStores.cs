@@ -46,9 +46,9 @@ namespace LeagueOfStats.OneForAllStats
             }
         }
 
-        public static void Recompress(string dataPath, string dataSuffix)
+        public static void Recompress(string dataPath)
         {
-            DataStore.Initialise(dataPath, dataSuffix);
+            DataStore.Initialise(dataPath, "");
 
             foreach (var store in DataStore.LosMatchIdsNonExistent.Values)
                 store.Rewrite();

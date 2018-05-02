@@ -41,12 +41,13 @@ namespace LeagueOfStats.OneForAllStats
             return matches;
         }
 
-        public static void GenerateOneForAll(string dataPath, string dataSuffix)
+        public static void GenerateOneForAll(string dataPath)
         {
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
+            string dataSuffix = "";
             var matches = LoadAllMatches(Path.Combine(dataPath, $"Global{dataSuffix}"), "8.6", 1020, match1FAFromJson)
                 .Concat(LoadAllMatches(Path.Combine(dataPath, $"Global{dataSuffix}"), "8.7", 1020, match1FAFromJson))
                 .ToList();

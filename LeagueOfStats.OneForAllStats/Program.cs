@@ -18,9 +18,9 @@ namespace LeagueOfStats.OneForAllStats
             if (args[0] == "stats-1fa")
                 StatsGen.GenerateOneForAll(dataPath: args[1]);
             else if (args[0] == "download")
-                DownloadMatches(apiKey: args[1], dataPath: args[2], suffix: args[3]);
+                DownloadMatches(apiKey: args[1], dataPath: args[2]);
             else if (args[0] == "download-ids")
-                DownloadIds(apiKey: args[1], dataPath: args[2], suffix: args[3], idFilePath: args[4]);
+                DownloadIds(apiKey: args[1], dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
                 MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
             else if (args[0] == "merge-all")
@@ -41,7 +41,7 @@ namespace LeagueOfStats.OneForAllStats
             output.Rewrite();
         }
 
-        private static void DownloadMatches(string apiKey, string dataPath, string suffix)
+        private static void DownloadMatches(string apiKey, string dataPath)
         {
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
@@ -58,7 +58,7 @@ namespace LeagueOfStats.OneForAllStats
                 [Region.KR] = ConsoleColor.Magenta,
             };
 
-            DataStore.Initialise(dataPath, suffix);
+            DataStore.Initialise(dataPath, "");
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
@@ -71,11 +71,11 @@ namespace LeagueOfStats.OneForAllStats
                 Thread.Sleep(9999);
         }
 
-        private static void DownloadIds(string apiKey, string dataPath, string suffix, string idFilePath)
+        private static void DownloadIds(string apiKey, string dataPath, string idFilePath)
         {
             var region = EnumStrong.Parse<Region>(Path.GetFileName(idFilePath).Split('-')[0]);
             Console.WriteLine($"Initialising...");
-            DataStore.Initialise(dataPath, suffix);
+            DataStore.Initialise(dataPath, "");
             Console.WriteLine($"Downloading...");
             var downloader = new MatchDownloader(apiKey, region);
             downloader.OnEveryResponse = (_, __) => { };
