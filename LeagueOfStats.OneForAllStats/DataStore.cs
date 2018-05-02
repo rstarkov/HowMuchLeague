@@ -88,8 +88,13 @@ namespace LeagueOfStats.OneForAllStats
             GameCreation = json.Safe["gameCreation"].GetLong();
             MatchId = json["gameId"].GetLong();
             QueueId = json["queueId"].GetInt();
-            var ver = Version.Parse(json["gameVersion"].GetString());
-            GameVersion = ver.Major + "." + ver.Minor;
+            if (!json.ContainsKey("gameVersion"))
+                GameVersion = "0.0";
+            else
+            {
+                var ver = Version.Parse(json["gameVersion"].GetString());
+                GameVersion = ver.Major + "." + ver.Minor;
+            }
         }
     }
 }
