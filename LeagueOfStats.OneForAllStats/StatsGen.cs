@@ -208,7 +208,44 @@ namespace LeagueOfStats.OneForAllStats
             matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
             writeLine($"Distinct matches: {matches.Count:#,0} (duplicates removed: {hadCount - matches.Count:#,0})");
 
-            var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).Order().ToList();
+            {
+                var duos = new AutoDictionary<string, (int winCount, int totalCount)>(_ => (0, 0));
+                void addDuo2(string duoDesc, bool win)
+                {
+                    var stat = duos[duoDesc];
+                    stat.totalCount++;
+                    if (win)
+                        stat.winCount++;
+                    duos[duoDesc] = stat;
+                }
+                void addDuo(LaneSR lane1, LaneSR lane2, string lane1type, string lane2type)
+                {
+                    if (lane1.ChampW != null && lane2.ChampW != null)
+                        addDuo2($"{lane1type}:{lane1.ChampW} + {lane2type}:{lane2.ChampW}", true);
+                    if (lane1.ChampL != null && lane2.ChampL != null)
+                        addDuo2($"{lane1type}:{lane1.ChampL} + {lane2type}:{lane2.ChampL}", false);
+                }
+                foreach (var match in matches)
+                {
+                    addDuo(match.Adc, match.Sup, "adc", "sup");
+                    addDuo(match.Adc, match.Jun, "adc", "jun");
+                    addDuo(match.Adc, match.Mid, "adc", "mid");
+                    addDuo(match.Adc, match.Top, "adc", "top");
+                    addDuo(match.Sup, match.Jun, "sup", "jun");
+                    addDuo(match.Sup, match.Mid, "sup", "mid");
+                    addDuo(match.Sup, match.Top, "sup", "top");
+                    addDuo(match.Jun, match.Mid, "jun", "mid");
+                    addDuo(match.Jun, match.Top, "jun", "top");
+                    addDuo(match.Mid, match.Top, "mid", "top");
+                }
+                var duoStats =
+                    from kvp in duos
+                    let wr = kvp.Value.winCount / (double) kvp.Value.totalCount
+                    let count = kvp.Value.totalCount
+                    let conf = getWilson(wr, count, 1.96)
+                    select new { duo = kvp.Key, count, wr, lower95 = conf.lower, upper95 = conf.upper };
+                File.WriteAllLines($"duos.csv", duoStats.Select(d => $"{d.duo},{d.wr * 100:0.000}%,{d.count},{d.lower95 * 100:0.000}%,{d.upper95 * 100:0.000}%"));
+            }
 
             genSRLaneMatchups("mid", matches.Select(m => m.Mid).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
             genSRLaneMatchups("top", matches.Select(m => m.Top).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
