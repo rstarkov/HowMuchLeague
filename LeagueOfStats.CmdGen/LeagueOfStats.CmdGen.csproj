@@ -33,8 +33,8 @@
     <Reference Include="RT.TagSoup, Version=1.0.1613.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RT.TagSoup.1.0.1613\lib\net40-client\RT.TagSoup.dll</HintPath>
     </Reference>
-    <Reference Include="RT.Util, Version=1.0.1599.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.Util.1.0.1599\lib\net45\RT.Util.dll</HintPath>
+    <Reference Include="RT.Util, Version=1.0.1601.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RT.Util.1.0.1601\lib\net45\RT.Util.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
