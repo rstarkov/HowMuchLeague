@@ -193,12 +193,13 @@ namespace LeagueOfStats.OneForAllStats
             return ((a - b) / c, (a + b) / c);
         }
 
-        public static void GenerateSR5v5(string dataPath, string dataSuffix, string version)
+        public static void GenerateSR5v5(string dataPath, string version)
         {
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
+            var dataSuffix = "";
             dataPath = Path.Combine(dataPath, $"Global{dataSuffix}");
             var matches = LoadAllMatches(dataPath, version, 420, matchSRFromJson) // ranked solo
                 .Concat(LoadAllMatches(dataPath, version, 400, matchSRFromJson)) // draft pick

@@ -17,8 +17,10 @@ namespace LeagueOfStats.OneForAllStats
         {
             if (args[0] == "stats-1fa")
                 StatsGen.GenerateOneForAll(dataPath: args[1]);
+            else if (args[0] == "stats-sr")
+                StatsGen.GenerateSR5v5(dataPath: args[1], version: args[2]);
             else if (args[0] == "download")
-                DownloadMatches(apiKey: args[1], dataPath: args[2]);
+                DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: args.Subarray(4));
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: args[1], dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
@@ -41,7 +43,7 @@ namespace LeagueOfStats.OneForAllStats
             output.Rewrite();
         }
 
-        private static void DownloadMatches(string apiKey, string dataPath)
+        private static void DownloadMatches(string dataPath, string version, string queueId, string[] apiKeys)
         {
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
@@ -62,7 +64,7 @@ namespace LeagueOfStats.OneForAllStats
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(new[] { apiKey }, region, null, 1020, regionLimits[region].initial, regionLimits[region].range));
+                downloaders.Add(new Downloader(apiKeys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever();
