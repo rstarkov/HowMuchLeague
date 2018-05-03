@@ -58,7 +58,7 @@ namespace LeagueOfStats.OneForAllStats
                                 Console.Write($"Loading {kvpQueue.Value.FileName}... ");
                                 var thread = new CountThread(10000);
                                 foreach (var json in kvpQueue.Value.ReadItems().PassthroughCount(thread.Count))
-                                    countMatch(json, new BasicMatchInfo(json));
+                                    countMatch(new BasicMatchInfo(json));
                                 thread.Stop();
                                 Console.WriteLine();
                                 Console.WriteLine($"  loaded {thread.Count.Count:#,0} matches in {thread.Duration.TotalSeconds:#,0} s ({thread.Rate:#,0}/s)");
@@ -116,7 +116,7 @@ namespace LeagueOfStats.OneForAllStats
             Console.WriteLine("done");
         }
 
-        private (bool added, bool rangeExpanded) countMatch(JsonValue json, BasicMatchInfo info)
+        private (bool added, bool rangeExpanded) countMatch(BasicMatchInfo info)
         {
             bool rangeExpanded = info.MatchId < EarliestMatchId || info.MatchId > LatestMatchId;
             bool added = false;
@@ -227,7 +227,7 @@ namespace LeagueOfStats.OneForAllStats
                 var info = DataStore.AddMatch(Region, dl.json);
                 var wasEarliest = EarliestMatchId;
                 var wasLatest = LatestMatchId;
-                var (added, rangeExpanded) = countMatch(dl.json, info);
+                var (added, rangeExpanded) = countMatch(info);
                 if (added)
                 {
                     if (rangeExpanded)
