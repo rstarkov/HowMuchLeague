@@ -50,6 +50,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BasicMatchInfo.cs" />
+    <Compile Include="Container\BasicMatchInfoContainer.cs" />
     <Compile Include="Container\MatchIdContainer.cs" />
     <Compile Include="Util\EndDetectionStream.cs" />
     <Compile Include="Enums.cs" />

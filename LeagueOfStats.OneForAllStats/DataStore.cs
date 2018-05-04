@@ -20,6 +20,8 @@ namespace LeagueOfStats.OneForAllStats
 
         public static CcAutoDictionary<Region, string, int, JsonContainer> LosMatchJsons = new CcAutoDictionary<Region, string, int, JsonContainer>(
             (region, version, queueId) => new JsonContainer(Path.Combine(LosPath, $"{region}-matches-{version}-{queueId}.losjs")));
+        public static CcAutoDictionary<Region, BasicMatchInfoContainer> LosMatchInfos = new CcAutoDictionary<Region, BasicMatchInfoContainer>(
+            region => new BasicMatchInfoContainer(Path.Combine(LosPath, $"{region}-match-infos.losbi")));
         public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsExisting = new CcAutoDictionary<Region, MatchIdContainer>(
             region => new MatchIdContainer(Path.Combine(LosPath, $"{region}-match-id-existing.losmid"), region));
         public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsNonExistent = new CcAutoDictionary<Region, MatchIdContainer>(
@@ -57,6 +59,12 @@ namespace LeagueOfStats.OneForAllStats
                     LosMatchJsons[region][version][queueId].EnableAutoRewrite = false;
                     LosMatchJsons[region][version][queueId].Initialise();
                 }
+                else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-infos\.losbi$")).Success)
+                {
+                    var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                    LosMatchInfos[region].EnableAutoRewrite = false;
+                    LosMatchInfos[region].Initialise();
+                }
             }
         }
 
@@ -72,29 +80,8 @@ namespace LeagueOfStats.OneForAllStats
             ExistingMatchIds[region].Add(info.MatchId);
             LosMatchJsons[region][info.GameVersion][info.QueueId].AppendItems(new[] { json }, LosChunkFormat.LZ4HC);
             LosMatchIdsExisting[region].AppendItems(new[] { info.MatchId }, LosChunkFormat.Raw);
+            LosMatchInfos[region].AppendItems(new[] { info }, LosChunkFormat.LZ4HC);
             return info;
-        }
-    }
-
-    struct BasicMatchInfo
-    {
-        public long MatchId;
-        public int QueueId;
-        public string GameVersion;
-        public long GameCreation;
-
-        public BasicMatchInfo(JsonValue json)
-        {
-            GameCreation = json.Safe["gameCreation"].GetLong();
-            MatchId = json["gameId"].GetLong();
-            QueueId = json["queueId"].GetInt();
-            if (!json.ContainsKey("gameVersion"))
-                GameVersion = "0.0";
-            else
-            {
-                var ver = Version.Parse(json["gameVersion"].GetString());
-                GameVersion = ver.Major + "." + ver.Minor;
-            }
         }
     }
 }
