@@ -28,7 +28,7 @@ namespace LeagueOfStats.GlobalData
         private Thread _t;
         public CountResult Count = new CountResult();
         public DateTime StartedAt, EndedAt;
-        public TimeSpan Duration => EndedAt - StartedAt;
+        public TimeSpan Duration => (EndedAt == default(DateTime) ? DateTime.UtcNow : EndedAt) - StartedAt;
         public double Rate => Count.Count / Duration.TotalSeconds;
         public Action<int> OnInterval = (count) => Console.Write(count + " ");
 
