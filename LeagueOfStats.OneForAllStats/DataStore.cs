@@ -21,7 +21,7 @@ namespace LeagueOfStats.OneForAllStats
         public static CcAutoDictionary<Region, string, int, JsonContainer> LosMatchJsons = new CcAutoDictionary<Region, string, int, JsonContainer>(
             (region, version, queueId) => new JsonContainer(Path.Combine(LosPath, $"{region}-matches-{version}-{queueId}.losjs")));
         public static CcAutoDictionary<Region, BasicMatchInfoContainer> LosMatchInfos = new CcAutoDictionary<Region, BasicMatchInfoContainer>(
-            region => new BasicMatchInfoContainer(Path.Combine(LosPath, $"{region}-match-infos.losbi")));
+            region => new BasicMatchInfoContainer(Path.Combine(LosPath, $"{region}-match-infos.losbi"), region));
         public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsExisting = new CcAutoDictionary<Region, MatchIdContainer>(
             region => new MatchIdContainer(Path.Combine(LosPath, $"{region}-match-id-existing.losmid"), region));
         public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsNonExistent = new CcAutoDictionary<Region, MatchIdContainer>(
