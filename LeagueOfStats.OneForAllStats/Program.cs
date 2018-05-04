@@ -112,5 +112,32 @@ namespace LeagueOfStats.OneForAllStats
             Directory.CreateDirectory(outputPath);
             MergeDataStores.MergePreVer(outputPath, searchPath, mergeJsons);
         }
+
+        private static void RewriteBasicInfos(string dataPath)
+        {
+            DataStore.Initialise(dataPath, "");
+            foreach (var region in DataStore.LosMatchJsons.Keys)
+            {
+                var existing = new HashSet<long>();
+                var countRead = new CountThread(10000);
+                countRead.OnInterval = count => { Console.Write($"R:{count:#,0} ({countRead.Rate:#,0}/s)  "); };
+                var countWrite = new CountThread(10000);
+                countWrite.OnInterval = count => { Console.Write($"W:{count:#,0} ({countWrite.Rate:#,0}/s)  "); };
+                var matchInfos = DataStore.LosMatchJsons[region].Values
+                    .SelectMany(x => x.Values)
+                    .SelectMany(container => container.ReadItems())
+                    .Select(json => new BasicMatchInfo(json))
+                    .PassthroughCount(countRead.Count)
+                    .OrderBy(m => m.MatchId)
+                    .Where(m => existing.Add(m.MatchId))
+                    .PassthroughCount(countWrite.Count);
+                if (File.Exists(DataStore.LosMatchInfos[region].FileName))
+                    DataStore.LosMatchInfos[region].Rewrite(_ => matchInfos);
+                else
+                    DataStore.LosMatchInfos[region].AppendItems(matchInfos, LosChunkFormat.LZ4HC);
+                countRead.Stop();
+                countWrite.Stop();
+            }
+        }
     }
 }
