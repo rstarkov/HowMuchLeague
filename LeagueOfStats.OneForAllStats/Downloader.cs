@@ -7,7 +7,7 @@ using LeagueOfStats.GlobalData;
 using RT.KitchenSink;
 using RT.Util;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
+using RT.Util.Geometry;
 
 namespace LeagueOfStats.OneForAllStats
 {
@@ -24,6 +24,8 @@ namespace LeagueOfStats.OneForAllStats
         public long LatestMatchDate { get; private set; } = 0;
         public long EarliestMatchId { get; private set; } = long.MaxValue;
         public long LatestMatchId { get; private set; } = 0;
+
+        private double _matchIdSlope, _matchIdOffset;
 
         private MatchDownloader[] _downloaders;
         private int _nextDownloader = 0;
@@ -42,7 +44,7 @@ namespace LeagueOfStats.OneForAllStats
 
             Console.Write($"Loading {DataStore.LosMatchInfos[Region].FileName}... ");
             var thread = new CountThread(10000);
-            foreach (var info in DataStore.LosMatchInfos[Region].ReadItems().PassthroughCount(thread.Count))
+            foreach (var info in rebuildSlope(DataStore.LosMatchInfos[Region].ReadItems().PassthroughCount(thread.Count).OrderBy(x => x.GameCreation), 2 * 86_400_000))
                 if ((info.GameVersion == Version || Version == null) && (info.QueueId == QueueId || QueueId == null))
                     countMatch(info);
             thread.Stop();
@@ -57,7 +59,58 @@ namespace LeagueOfStats.OneForAllStats
             printStats();
         }
 
+        private IEnumerable<BasicMatchInfo> rebuildSlope(IEnumerable<BasicMatchInfo> infos, double tgtInterval)
+        {
+            // build a polyline touching the id-over-time plot from below with a specified target interval between polyline points, in a single pass over the data
+            var entries = new List<PointD>();
+            foreach (var info in infos)
+            {
+                var newPt = new PointD(info.GameCreation, info.MatchId);
+                entries.Add(newPt);
+                while (entries.Count > 2)
+                {
+                    // Can we remove the point before last?
+                    if (entries[entries.Count - 1].X - entries[entries.Count - 3].X > tgtInterval)
+                        break; // nope, that would leave a gap that's too large
+
+                    double slopeCur = (entries[entries.Count - 1].Y - entries[entries.Count - 2].Y) / (entries[entries.Count - 1].X - entries[entries.Count - 2].X);
+                    double slopePrev = (entries[entries.Count - 2].Y - entries[entries.Count - 3].Y) / (entries[entries.Count - 2].X - entries[entries.Count - 3].X);
+                    if (slopeCur < slopePrev) // the last three points form a right turn
+                        entries.RemoveAt(entries.Count - 2); // so remove the point before last
+                    else
+                        break;
+                }
+                yield return info;
+            }
+
+            // Take only the last two months' worth of points
+            entries = entries.Where(pt => pt.X >= (DateTime.UtcNow.AddMonths(-2) - new DateTime(1970, 1, 1)).TotalMilliseconds).ToList();
+
+            // Linear fit them (https://stackoverflow.com/a/19040841/33080)
+            double sumX = 0.0;
+            double sumX2 = 0.0;
+            double sumXY = 0.0;
+            double sumY = 0.0;
+            double sumY2 = 0.0;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                sumX += entries[i].X;
+                sumX2 += entries[i].X * entries[i].X;
+                sumXY += entries[i].X * entries[i].Y;
+                sumY += entries[i].Y;
+                sumY2 += entries[i].Y * entries[i].Y;
+            }
+            double denom = entries.Count * sumX2 - sumX * sumX;
+            if (denom == 0)
+                throw new Exception();
+
+            _matchIdSlope = (entries.Count * sumXY - sumX * sumY) / denom;
+            _matchIdOffset = (sumY * sumX2 - sumX * sumXY) / denom;
+        }
+
         private List<long> _idsForRebuild = new List<long>(); // only meaningful during a rebuild, but we don't want a large new list allocated and GC'd all the time (plus we never know what capacity it should be upfront, but it doesn't change much from run to run)
+
+        private DateTime _needRebuildAfter = DateTime.MaxValue;
 
         private void rebuild()
         {
@@ -65,6 +118,15 @@ namespace LeagueOfStats.OneForAllStats
 
             var searchMin = Math.Min(InitialMatchId, EarliestMatchId) - MatchIdRange;
             var searchMax = Math.Max(InitialMatchId, LatestMatchId) + MatchIdRange;
+            var maxByDate = (long) (_matchIdOffset + _matchIdSlope * (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds);
+            _needRebuildAfter = DateTime.MaxValue;
+            if (searchMax > maxByDate)
+            {
+                searchMax = maxByDate;
+                _needRebuildAfter = DateTime.UtcNow.AddMinutes(2);
+            }
+            if (searchMax < searchMin)
+                throw new Exception("Can't search in this range");
 
             _idsForRebuild.Clear();
             foreach (var id in DataStore.ExistingMatchIds[Region])
@@ -154,7 +216,11 @@ namespace LeagueOfStats.OneForAllStats
             new Thread(() =>
             {
                 while (true)
+                {
                     DownloadMatch();
+                    if (DateTime.UtcNow > _needRebuildAfter)
+                        rebuild();
+                }
             })
             { IsBackground = background }.Start();
         }
