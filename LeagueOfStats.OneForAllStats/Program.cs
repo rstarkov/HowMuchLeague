@@ -139,5 +139,82 @@ namespace LeagueOfStats.OneForAllStats
                 countWrite.Stop();
             }
         }
+
+        private static void GenRedownloadList(string dataPath)
+        {
+            DataStore.Initialise(dataPath, "");
+            foreach (var region in DataStore.LosMatchJsons.Keys)
+            {
+                var minId = DataStore.LosMatchInfos[region].ReadItems().Where(m => m.GameCreationDate >= new DateTime(2018, 3, 1)).Min(m => m.MatchId);
+                File.WriteAllLines($"redo-{region}.txt", DataStore.NonexistentMatchIds[region].Where(id => id > minId).Distinct().Order().Select(id => id.ToString()));
+            }
+        }
+
+        private static void RecheckNonexistentIds(string dataPath, string[] apiKeys)
+        {
+            Console.WriteLine($"Initialising...");
+            DataStore.Initialise(dataPath, "");
+            Console.WriteLine($"Downloading...");
+            var threads = new List<Thread>();
+            foreach (var region in DataStore.NonexistentMatchIds.Keys)
+            {
+                var t = new Thread(() => { RecheckNonexistentIdsRegion(region, apiKeys); });
+                t.Start();
+                threads.Add(t);
+            }
+            foreach (var t in threads)
+                t.Join();
+        }
+        private static void RecheckNonexistentIdsRegion(Region region, string[] apiKeys)
+        {
+            var path = @"P:\LeagueOfStats\LeagueOfStats\Builds\";
+            var doneFile = Path.Combine(path, $"redone-{region}.txt");
+            long maxDoneId = 0;
+            int hits = 0;
+            if (File.Exists(doneFile))
+                foreach (var line in File.ReadLines(doneFile).Select(s => s.Trim()).Where(s => s != ""))
+                {
+                    if (line.StartsWith("hits:"))
+                        hits = int.Parse(line.Substring("hits:".Length));
+                    else
+                        maxDoneId = Math.Max(maxDoneId, long.Parse(line));
+                }
+            var idsToProcess = File.ReadAllLines(Path.Combine(path, $"redo-{region}.txt")).Select(l => long.Parse(l)).Where(id => id > maxDoneId).ToList();
+            var downloaders = apiKeys.Select(apiKey => new MatchDownloader(apiKey, region) { OnEveryResponse = (_, __) => { } }).ToList();
+            var nextDownloader = 0;
+            int remaining = idsToProcess.Count;
+            foreach (var matchId in idsToProcess)
+            {
+                again:;
+                var dl = downloaders[nextDownloader].DownloadMatch(matchId);
+                nextDownloader = (nextDownloader + 1) % downloaders.Count;
+                if (dl.result == MatchDownloadResult.OverQuota)
+                {
+                    Thread.Sleep(Rnd.Next(500, 1500));
+                    goto again;
+                }
+                remaining--;
+                if (dl.result == MatchDownloadResult.NonExistent)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.Write($"{region}:{remaining:#,0}  ");
+                    //DataStore.AddNonExistentMatch(region, matchId); - it's already in there, as that's how we built the list for rechecking
+                }
+                else if (dl.result == MatchDownloadResult.Failed)
+                    Console.WriteLine($"Download failed: {matchId}");
+                else if (dl.result == MatchDownloadResult.OK)
+                {
+                    hits++;
+                    File.AppendAllLines(doneFile, new[] { $"hits:{hits}" });
+                    DataStore.AddMatch(region, dl.json);
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.Write($"{region}:{remaining:#,0}:{hits:#,0}  ");
+                }
+                else
+                    throw new Exception();
+                File.AppendAllLines(doneFile, new[] { matchId.ToString() });
+            }
+        }
+
     }
 }
