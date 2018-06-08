@@ -10,6 +10,7 @@ namespace LeagueOfStats.GlobalData
         public byte GameVersionMajor, GameVersionMinor;
         public string GameVersion => $"{GameVersionMajor}.{GameVersionMinor}";
         public long GameCreation;
+        public DateTime GameCreationDate => new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(GameCreation);
 
         public BasicMatchInfo()
         {

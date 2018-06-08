@@ -248,7 +248,7 @@ namespace LeagueOfStats.OneForAllStats
                 return;
             }
             again:;
-            int gapIndex = Rnd.Next(0, Math.Min(5, _heapLength));
+            int gapIndex = 0; // Rnd.Next(0, Math.Min(5, _heapLength));
             if (_heap[gapIndex].Length < _heap[0].Length / 2.0)
                 goto again;
             Ut.WaitSharingVio(() => File.AppendAllText($"gaps-split-{Region}.txt", $"{_heap[gapIndex].Length} "));

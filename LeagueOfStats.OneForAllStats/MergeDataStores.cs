@@ -52,6 +52,8 @@ namespace LeagueOfStats.OneForAllStats
 
             foreach (var store in DataStore.LosMatchIdsNonExistent.Values)
                 store.Rewrite();
+            foreach (var store in DataStore.LosMatchInfos.Values)
+                store.Rewrite();
 
             var haveIds = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
             foreach (var val in DataStore.LosMatchJsons.SelectMany(v1 => v1.Value.Values.SelectMany(v2 => v2.Values.Select(c => new { container = c, region = v1.Key }))))
