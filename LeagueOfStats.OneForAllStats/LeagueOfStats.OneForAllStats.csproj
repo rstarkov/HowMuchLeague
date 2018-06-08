@@ -29,6 +29,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <DefineConstants>TRACE</DefineConstants>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="RT.KitchenSink, Version=1.0.1601.0, Culture=neutral, processorArchitecture=MSIL">
