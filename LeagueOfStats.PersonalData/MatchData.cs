@@ -252,7 +252,7 @@ namespace LeagueOfStats.PersonalData
                 case 310: Type = "Nemesis"; queueMap = "Summoner's Rift"; break;
                 case 313: Type = "Black Market Brawlers"; queueMap = "Summoner's Rift"; break;
                 case 315: case 940: Type = "Nexus Siege"; queueMap = "Summoner's Rift"; break;
-                case 318: Type = "All Random URF"; queueMap = "Summoner's Rift"; break;
+                case 318: case 900:  Type = "All Random URF"; queueMap = "Summoner's Rift"; break;
                 case 610: Type = "Dark Star"; queueMap = "Cosmic Ruins"; break;
                 case 980: Type = "Star Guardian Invasion: Normal"; queueMap = "Valoran City Park"; break;
                 case 990: Type = "Star Guardian Invasion: Onslaught"; queueMap = "Valoran City Park"; break;
