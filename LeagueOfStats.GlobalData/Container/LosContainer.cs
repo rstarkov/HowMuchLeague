@@ -20,6 +20,13 @@ namespace LeagueOfStats.GlobalData
 {
     public enum LosChunkFormat { Raw, Deflate, LZ4, LZ4HC }
 
+    public class ContainerStats
+    {
+        public uint ShortChunkCount;
+        public uint CompressedItemsCount;
+        public uint UncompressedItemsCount;
+    }
+
     public abstract class LosContainer
     {
         public string FileName { get; private set; }
@@ -62,6 +69,8 @@ namespace LeagueOfStats.GlobalData
             else
                 throw new Exception();
         }
+
+        public abstract ContainerStats GetContainerStats();
     }
 
     public abstract class LosContainer<TItem> : LosContainer
@@ -98,9 +107,7 @@ namespace LeagueOfStats.GlobalData
             public byte FileFormatVersion;
 
             public byte OldestItemFormatVersion;
-            public uint ShortChunkCount;
-            public uint CompressedItemsCount;
-            public uint UncompressedItemsCount;
+            public ContainerStats Stats = new ContainerStats();
 
             public byte[] FormatSpecificData;
 
@@ -157,15 +164,15 @@ namespace LeagueOfStats.GlobalData
                     op.OldestItemFormatVersion = (byte) (newFile ? 0 : op.Reader.ReadByte());
                     if (newFile)
                         op.Writer.Write(op.OldestItemFormatVersion);
-                    op.ShortChunkCount = newFile ? 0 : op.Reader.ReadUInt32();
+                    op.Stats.ShortChunkCount = newFile ? 0 : op.Reader.ReadUInt32();
                     if (newFile)
-                        op.Writer.Write(op.ShortChunkCount);
-                    op.CompressedItemsCount = newFile ? 0 : op.Reader.ReadUInt32();
+                        op.Writer.Write(op.Stats.ShortChunkCount);
+                    op.Stats.CompressedItemsCount = newFile ? 0 : op.Reader.ReadUInt32();
                     if (newFile)
-                        op.Writer.Write(op.CompressedItemsCount);
-                    op.UncompressedItemsCount = newFile ? 0 : op.Reader.ReadUInt32();
+                        op.Writer.Write(op.Stats.CompressedItemsCount);
+                    op.Stats.UncompressedItemsCount = newFile ? 0 : op.Reader.ReadUInt32();
                     if (newFile)
-                        op.Writer.Write(op.UncompressedItemsCount);
+                        op.Writer.Write(op.Stats.UncompressedItemsCount);
 
                     if (newFile)
                     {
@@ -206,14 +213,27 @@ namespace LeagueOfStats.GlobalData
                         // Update stats
                         op.Stream.Position = statsPos;
                         op.Writer.Write(op.OldestItemFormatVersion);
-                        op.Writer.Write(op.ShortChunkCount);
-                        op.Writer.Write(op.CompressedItemsCount);
-                        op.Writer.Write(op.UncompressedItemsCount);
+                        op.Writer.Write(op.Stats.ShortChunkCount);
+                        op.Writer.Write(op.Stats.CompressedItemsCount);
+                        op.Writer.Write(op.Stats.UncompressedItemsCount);
                     }
                 }
                 else
                     throw new NotSupportedException($"LOSDS version {op.FileFormatVersion} is not supported: {FileName}");
             }
+        }
+
+        public override ContainerStats GetContainerStats()
+        {
+            operationData stats = null;
+            operateOnFile(write: false, operation: op =>
+            {
+                stats = op;
+                return Enumerable.Empty<bool>();
+            }).ToList();
+            if (stats == null)
+                return null;
+            return stats.Stats;
         }
 
         /// <summary>
@@ -223,12 +243,7 @@ namespace LeagueOfStats.GlobalData
         ///     for whether the savings will be significant enough.</param>
         public override void Initialise(bool compact = false)
         {
-            operationData stats = null;
-            operateOnFile(write: false, operation: op =>
-            {
-                stats = op;
-                return Enumerable.Empty<bool>();
-            }).ToList();
+            var stats = GetContainerStats();
             if (stats == null)
                 return;
 
@@ -397,10 +412,10 @@ namespace LeagueOfStats.GlobalData
                                 op.OldestItemFormatVersion = itemFormatVersion;
                             crc32stream.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
                             crc32stream.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
-                            op.CompressedItemsCount++;
+                            op.Stats.CompressedItemsCount++;
                         }
                         crc32 = crc32stream.CRC;
-                        op.ShortChunkCount++;
+                        op.Stats.ShortChunkCount++;
                     }
                     long chunkLength = op.Stream.Position - chunkStartPos;
                     if (chunkLength > uint.MaxValue)
@@ -424,7 +439,7 @@ namespace LeagueOfStats.GlobalData
                         op.Writer.Write(itemFormat);
                         op.Stream.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
                         op.Stream.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
-                        op.UncompressedItemsCount++;
+                        op.Stats.UncompressedItemsCount++;
                     }
                     op.ValidLength = op.Stream.Position;
                 }
@@ -452,9 +467,9 @@ namespace LeagueOfStats.GlobalData
                                 op.OldestItemFormatVersion = itemFormatVersion;
                             lz4.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
                             lz4.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
-                            op.CompressedItemsCount++;
+                            op.Stats.CompressedItemsCount++;
                         }
-                        op.ShortChunkCount++;
+                        op.Stats.ShortChunkCount++;
                     }
                     long chunkLength = op.Stream.Position - chunkStartPos;
                     if (chunkLength > uint.MaxValue)
@@ -464,7 +479,7 @@ namespace LeagueOfStats.GlobalData
                     op.Writer.Write((byte) itemFormatAll);
                     op.Writer.Write((uint) chunkLength);
                 }
-                rewriteNeeded = op.ShortChunkCount > 3000 || op.UncompressedItemsCount > 10000;
+                rewriteNeeded = op.Stats.ShortChunkCount > 3000 || op.Stats.UncompressedItemsCount > 10000;
 
                 return Enumerable.Empty<bool>();
             }).ToList();

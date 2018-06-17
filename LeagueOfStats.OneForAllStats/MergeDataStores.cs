@@ -56,8 +56,16 @@ namespace LeagueOfStats.OneForAllStats
                 store.Rewrite();
 
             var haveIds = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
-            foreach (var val in DataStore.LosMatchJsons.SelectMany(v1 => v1.Value.Values.SelectMany(v2 => v2.Values.Select(c => new { container = c, region = v1.Key }))))
+            var containers = DataStore.LosMatchJsons.SelectMany(v1 => v1.Value.Values.SelectMany(v2 => v2.Values.Select(c => new { container = c, region = v1.Key })))
+                .OrderByDescending(c => new FileInfo(c.container.FileName).Length);
+            foreach (var val in containers)
             {
+                var stats = val.container.GetContainerStats();
+                if (stats.ShortChunkCount < 10 && stats.UncompressedItemsCount < 10)
+                {
+                    Console.WriteLine(val.container.FileName + " - SKIPPED");
+                    continue;
+                }
                 // Recompress as one chunk while eliminating any duplicates
                 Console.WriteLine(val.container.FileName);
                 var savedIds = new HashSet<long>();
