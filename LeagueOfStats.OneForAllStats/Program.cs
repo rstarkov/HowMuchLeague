@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -45,6 +45,8 @@ namespace LeagueOfStats.OneForAllStats
 
         private static void DownloadMatches(string dataPath, string version, string queueId, string[] apiKeys)
         {
+            using (var p = Process.GetCurrentProcess())
+                p.PriorityClass = ProcessPriorityClass.Idle;
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
                 [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 500_000),
