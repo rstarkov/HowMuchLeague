@@ -205,9 +205,12 @@ namespace LeagueOfStats.GlobalData
 
                     if (write)
                     {
+                        // Adjust stream length to reduce fragmentation due to lots of small appends
+                        if (op.Stream.Length > op.ValidLength * 102 / 100) // no more than 2% wasted space
+                            op.Stream.SetLength(op.ValidLength * 102 / 100);
+                        if (op.Stream.Length < op.ValidLength * 101 / 100) // add more any time free space falls below 1%
+                            op.Stream.SetLength(op.ValidLength * 102 / 100);
                         // Commit this write
-                        if (op.Stream.Length > op.ValidLength)
-                            op.Stream.SetLength(op.ValidLength);
                         op.Stream.Position = validLengthPos;
                         op.Writer.Write(op.ValidLength);
                         // Update stats
