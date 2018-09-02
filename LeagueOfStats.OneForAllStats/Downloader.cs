@@ -123,7 +123,7 @@ namespace LeagueOfStats.OneForAllStats
             if (searchMax > maxByDate)
             {
                 searchMax = maxByDate;
-                _needRebuildAfter = DateTime.UtcNow.AddMinutes(2);
+                _needRebuildAfter = DateTime.UtcNow.AddMinutes(5);
             }
             if (searchMax < searchMin)
                 throw new Exception("Can't search in this range");
