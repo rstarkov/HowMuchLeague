@@ -60,6 +60,7 @@
     <Compile Include="MatchDownloader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Util\Util.cs" />
+    <Compile Include="Util\WinAPI.cs" />
     <Compile Include="Util\WindowStream.cs" />
   </ItemGroup>
   <ItemGroup>

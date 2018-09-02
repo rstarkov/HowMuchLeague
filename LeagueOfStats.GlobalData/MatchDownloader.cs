@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Threading;
+using LeagueOfStats.GlobalData.Util;
 using RT.Util;
 using RT.Util.Json;
 
@@ -43,6 +44,7 @@ namespace LeagueOfStats.GlobalData
                 {
                     attempts--;
                     Console.WriteLine($"API key expired / invalid? Sleeping for 60s. Key: {ApiKey}");
+                    LosWinAPI.FlashConsoleTaskbarIcon(true);
                     Thread.Sleep(TimeSpan.FromSeconds(60));
                     goto retry;
                 }
