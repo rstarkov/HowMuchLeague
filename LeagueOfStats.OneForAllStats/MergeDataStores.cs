@@ -13,6 +13,13 @@ namespace LeagueOfStats.OneForAllStats
 {
     static class MergeDataStores
     {
+        public static void MergeFailed(string dataPath, string mergeLosjs, Region region)
+        {
+            DataStore.Initialise(dataPath, "");
+            foreach (var js in new JsonContainer(mergeLosjs).ReadItems())
+                DataStore.AddMatch(region, js);
+        }
+
         public static void MergePreVerToPostVer(string dataPath, string dataSuffix, string searchPath)
         {
             DataStore.Initialise(dataPath, dataSuffix);
