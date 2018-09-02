@@ -130,6 +130,9 @@ namespace LeagueOfStats.PersonalData
                 {
                     if (json["gameType"].GetString() == "CUSTOM_GAME")
                         continue;
+                    var queueId = json["queueId"].GetStringLenientSafe();
+                    if (queueId == "2000" || queueId == "2010" || queueId == "2020")
+                        continue; // tutorial game
                     games.Add(new Game(json, this));
                 }
             }

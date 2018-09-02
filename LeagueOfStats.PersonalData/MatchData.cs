@@ -207,6 +207,7 @@ namespace LeagueOfStats.PersonalData
                 case 16: Map = "Cosmic Ruins"; break;
                 case 18: Map = "Valoran City Park"; break;
                 case 19: Map = "Substructure 43"; break;
+                case 21: Map = "Nexus Blitz"; break;
                 default: throw new Exception("Unknown map: " + MapId);
             }
             string queueMap = null;
@@ -258,6 +259,7 @@ namespace LeagueOfStats.PersonalData
                 case 990: Type = "Star Guardian Invasion: Onslaught"; queueMap = "Valoran City Park"; break;
                 case 1000: Type = "Overcharge"; queueMap = "Substructure 43"; break;
                 case 1010: Type = "Snow ARURF"; queueMap = "Summoner's Rift"; break;
+                case 1200: Type = "Nexus Blitz"; queueMap = "Nexus Blitz"; break;
                 default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)
