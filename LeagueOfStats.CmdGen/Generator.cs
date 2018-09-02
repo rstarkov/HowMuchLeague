@@ -487,10 +487,12 @@ namespace LeagueOfStats.CmdGen
             var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).ToList();
             result.Add(new P(new B("Played 10+ times: "),
                 (from champ in champions let c = games.Count(g => thisPlayer(g).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
-            result.Add(new P(new B("Played 3-9 times: "),
-                (from champ in champions let c = games.Count(g => thisPlayer(g).Champion == champ) where c >= 3 && c <= 9 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));
-            result.Add(new P(new B("Played 1-2 times: "), champions.Where(champ => { int c = games.Count(g => thisPlayer(g).Champion == champ); return c >= 1 && c <= 2; }).Order().JoinString(", ")));
-            result.Add(new P(new B("Never played: "), champions.Where(champ => !games.Any(g => thisPlayer(g).Champion == champ)).Order().JoinString(", ")));
+            for (int count = 9; count >= 0; count--)
+            {
+                var champs = champions.Where(champ => games.Count(g => thisPlayer(g).Champion == champ) == count).Order().JoinString(", ");
+                if (champs != "")
+                    result.Add(new P(new B($"Played {count} times: "), champs));
+            }
 
             return result;
         }
