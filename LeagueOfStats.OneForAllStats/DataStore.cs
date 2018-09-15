@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.IO;
+﻿using System.IO;
 using System.Text.RegularExpressions;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
@@ -15,8 +13,8 @@ namespace LeagueOfStats.OneForAllStats
         public static string Suffix;
         public static string LosPath => Path.Combine(DataPath, $"Global{Suffix}");
 
-        public static CcAutoDictionary<Region, ConcurrentBag<long>> ExistingMatchIds = new CcAutoDictionary<Region, ConcurrentBag<long>>(_ => new ConcurrentBag<long>());
-        public static CcAutoDictionary<Region, ConcurrentBag<long>> NonexistentMatchIds = new CcAutoDictionary<Region, ConcurrentBag<long>>(_ => new ConcurrentBag<long>());
+        public static CcAutoDictionary<Region, CompactSetOfLong> ExistingMatchIds = new CcAutoDictionary<Region, CompactSetOfLong>(_ => new CompactSetOfLong());
+        public static CcAutoDictionary<Region, CompactSetOfLong> NonexistentMatchIds = new CcAutoDictionary<Region, CompactSetOfLong>(_ => new CompactSetOfLong());
 
         public static CcAutoDictionary<Region, string, int, JsonContainer> LosMatchJsons = new CcAutoDictionary<Region, string, int, JsonContainer>(
             (region, version, queueId) => new JsonContainer(Path.Combine(LosPath, $"{region}-matches-{version}-{queueId}.losjs")));
@@ -43,13 +41,13 @@ namespace LeagueOfStats.OneForAllStats
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
                     LosMatchIdsExisting[region].Initialise();
-                    ExistingMatchIds[region] = LosMatchIdsExisting[region].ReadItems().ToBag();
+                    ExistingMatchIds[region] = new CompactSetOfLong(LosMatchIdsExisting[region].ReadItems());
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-id-nonexistent\.losmid$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
                     LosMatchIdsNonExistent[region].Initialise();
-                    NonexistentMatchIds[region] = LosMatchIdsNonExistent[region].ReadItems().ToBag();
+                    NonexistentMatchIds[region] = new CompactSetOfLong(LosMatchIdsNonExistent[region].ReadItems());
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-matches-(?<version>\d+\.\d+)-(?<queueId>\d+)\.losjs$")).Success)
                 {

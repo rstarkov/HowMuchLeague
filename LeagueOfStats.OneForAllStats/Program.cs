@@ -62,7 +62,9 @@ namespace LeagueOfStats.OneForAllStats
                 [Region.KR] = ConsoleColor.Magenta,
             };
 
+            Console.WriteLine("Initialising data store ...");
             DataStore.Initialise(dataPath, "");
+            Console.WriteLine("    ... done.");
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
