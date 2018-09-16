@@ -108,9 +108,9 @@ namespace LeagueOfStats.OneForAllStats
             _matchIdOffset = (sumY * sumX2 - sumX * sumXY) / denom;
         }
 
-        private List<long> _idsForRebuild = new List<long>(); // only meaningful during a rebuild, but we don't want a large new list allocated and GC'd all the time (plus we never know what capacity it should be upfront, but it doesn't change much from run to run)
-
         private DateTime _needRebuildAfter = DateTime.MaxValue;
+
+        private int _prevIdsForRebuildSize = 16;
 
         private void rebuild()
         {
@@ -128,7 +128,7 @@ namespace LeagueOfStats.OneForAllStats
             if (searchMax < searchMin)
                 throw new Exception("Can't search in this range");
 
-            _idsForRebuild.Clear();
+            var _idsForRebuild = new List<long>(_prevIdsForRebuildSize * 5 / 4);
             foreach (var id in DataStore.ExistingMatchIds[Region])
                 if (id > searchMin && id < searchMax)
                     _idsForRebuild.Add(id);
@@ -138,6 +138,7 @@ namespace LeagueOfStats.OneForAllStats
             _idsForRebuild.Add(searchMin);
             _idsForRebuild.Add(searchMax);
             _idsForRebuild.Sort();
+            _prevIdsForRebuildSize = _idsForRebuild.Count;
 
             // Populate heap entries with gaps generated from the ID list
             int iHeap = 0; // this is just _heapLength but it's a tight enough loop to benefit from using a local as opposed to a field
@@ -152,7 +153,7 @@ namespace LeagueOfStats.OneForAllStats
                     if (_heap.Length <= iHeap)
                     {
                         var temp = _heap;
-                        _heap = new Gap[_heap.Length * 3 / 2]; // the size of this array settles over repeated invocations of rebuild, so no need to grow it very fast; 1.5x is enough and wastes less RAM
+                        _heap = new Gap[_heap.Length * 5 / 4]; // the size of this array settles over repeated invocations of rebuild, so no need to grow it very fast; prioritise reduced RAM waste
                         Array.Copy(temp, _heap, iHeap);
                     }
                     _heap[iHeap] = new Gap { From = idF, To = idT };
@@ -337,7 +338,7 @@ namespace LeagueOfStats.OneForAllStats
             if (_heapLength == _heap.Length)
             {
                 var tmp = _heap;
-                _heap = new Gap[_heap.Length * 2];
+                _heap = new Gap[_heap.Length * 5 / 4]; // the size of this array settles over repeated invocations of rebuild, so no need to grow it very fast; prioritise reduced RAM waste
                 Array.Copy(tmp, _heap, _heapLength);
             }
             _heap[_heapLength++] = gap;
