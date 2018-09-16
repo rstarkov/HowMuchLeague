@@ -207,6 +207,7 @@ namespace LeagueOfStats.PersonalData
                 case 16: Map = "Cosmic Ruins"; break;
                 case 18: Map = "Valoran City Park"; break;
                 case 19: Map = "Substructure 43"; break;
+                case 20: Map = "Crash Site"; break;
                 case 21: Map = "Nexus Blitz"; break;
                 default: throw new Exception("Unknown map: " + MapId);
             }
@@ -260,6 +261,11 @@ namespace LeagueOfStats.PersonalData
                 case 1000: Type = "Overcharge"; queueMap = "Substructure 43"; break;
                 case 1010: Type = "Snow ARURF"; queueMap = "Summoner's Rift"; break;
                 case 1200: Type = "Nexus Blitz"; queueMap = "Nexus Blitz"; break;
+                case 1030: Type = "Odyssey Extraction: Intro"; queueMap = "Crash Site"; break;
+                case 1040: Type = "Odyssey Extraction: Cadet"; queueMap = "Crash Site"; break;
+                case 1050: Type = "Odyssey Extraction: Crewmember"; queueMap = "Crash Site"; break;
+                case 1060: Type = "Odyssey Extraction: Captain"; queueMap = "Crash Site"; break;
+                case 1070: Type = "Odyssey Extraction: Onslaught"; queueMap = "Crash Site"; break;
                 default: throw new Exception("Unknown queue: " + QueueId);
             }
             if (queueMap != null)
