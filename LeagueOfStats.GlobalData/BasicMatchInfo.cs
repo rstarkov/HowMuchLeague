@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using RT.Util.Json;
 
 namespace LeagueOfStats.GlobalData
@@ -30,5 +31,8 @@ namespace LeagueOfStats.GlobalData
                 GameVersionMinor = checked((byte) ver.Minor);
             }
         }
+
+        public string LosjsFileName(string dataPath, string dataSuffix, Region region)
+            => Path.Combine(dataPath, $"Global{dataSuffix}", $"{region}-matches-{GameVersion}-{QueueId}.losjs");
     }
 }
