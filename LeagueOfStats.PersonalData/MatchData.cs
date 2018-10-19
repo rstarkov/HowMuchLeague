@@ -22,7 +22,7 @@ namespace LeagueOfStats.PersonalData
         internal Team(JsonValue json, Dictionary<int, JsonValue> participants, Dictionary<int, JsonValue> identities, Game game)
         {
             Game = game;
-            if (Game.Map == "Valoran City Park" && !json.ContainsKey("win"))
+            if ((Game.Map == "Valoran City Park" || Game.Map == "Crash Site") && !json.ContainsKey("win"))
                 Victory = true;
             else
                 Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
