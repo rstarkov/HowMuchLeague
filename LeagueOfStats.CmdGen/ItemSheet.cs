@@ -14,7 +14,7 @@ namespace LeagueOfStats.CmdGen
     {
         public static void Generate(string outputPath)
         {
-            var itemsSR = LeagueStaticData.Items.Values.Where(i => i.BuildsInto.Count == 0 && i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift).ToList();
+            var itemsSR = LeagueStaticData.Items.Values.Where(i => i.NoUnconditionalChildren && i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift).ToList();
             var allTags = LeagueStaticData.Items.Values.SelectMany(i => i.Tags).Distinct().Order().JoinString(", ");
 
             var allySpecific = itemsSR.Where(i => i.RequiredAlly != null).ToList();

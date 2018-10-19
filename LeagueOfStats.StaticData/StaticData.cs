@@ -57,6 +57,8 @@ namespace LeagueOfStats.StaticData
             Items = new ReadOnlyDictionary<int, ItemInfo>(
                 itemData["data"].GetDict().Select(kvp => new ItemInfo(kvp.Key, kvp.Value.GetDict(), GameVersion)).ToDictionary(ch => ch.Id, ch => ch)
             );
+            foreach (var item in Items.Values)
+                item.NoUnconditionalChildren = item.BuildsInto.All(ch => Items[ch].RequiredAlly != null || Items[ch].RequiredChampion != null);
         }
     }
 }

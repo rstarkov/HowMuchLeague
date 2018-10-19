@@ -31,6 +31,7 @@ namespace LeagueOfStats.StaticData
         public string RequiredChampion { get; private set; }
         public string RequiredAlly { get; private set; }
         public bool ExcludeFromStandardSummonerRift { get; private set; }
+        public bool NoUnconditionalChildren { get; internal set; }
 
         public decimal? Stat_ArmorFlat { get; private set; }
         public decimal? Stat_AttackSpeedPrc { get; private set; }
@@ -64,7 +65,7 @@ namespace LeagueOfStats.StaticData
 
             ExcludeFromStandardSummonerRift = Name.Contains("Quick Charge")
                 || (Name == "Siege Ballista") || (Name == "Tower: Beam of Ruination") || (Name == "Port Pad") || (Name == "Flash Zone")
-                || (Name == "Vanguard Banner") || (Name == "Siege Refund") || (Name == "Entropy Field") || (Name == "Shield Totem");
+                || (Name == "Vanguard Banner") || (Name == "Siege Refund") || (Name == "Entropy Field") || (Name == "Shield Totem") || (Name == "Tower: Storm Bulwark");
 
             var image = json.GetDictAndRemove("image");
             Icon = $"http://ddragon.leagueoflegends.com/cdn/{gameVersion}/img/{image["group"].GetString()}/{image["full"].GetString()}";
