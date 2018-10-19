@@ -13,6 +13,7 @@ namespace LeagueOfStats.StaticData
     {
         public static string GameVersion { get; private set; }
         public static IReadOnlyDictionary<int, ChampionInfo> Champions { get; private set; }
+        public static IReadOnlyDictionary<int, ItemInfo> Items { get; private set; }
 
         public static void Load(string path)
         {
@@ -39,6 +40,22 @@ namespace LeagueOfStats.StaticData
             var championData = JsonDict.Parse(championDataStr);
             Champions = new ReadOnlyDictionary<int, ChampionInfo>(
                 championData["data"].GetDict().Values.Select(js => new ChampionInfo(js.GetDict())).ToDictionary(ch => ch.Id, ch => ch)
+            );
+
+            // Load item data
+            var itemDataUrl = $"https://ddragon.leagueoflegends.com/cdn/{GameVersion}/data/en_US/item.json";
+            var itemDataPath = Path.Combine(path, itemDataUrl.FilenameCharactersEscape());
+            string itemDataStr;
+            if (File.Exists(itemDataPath))
+                itemDataStr = File.ReadAllText(itemDataPath);
+            else
+            {
+                itemDataStr = hc.Get(itemDataUrl).Expect(HttpStatusCode.OK).DataString;
+                File.WriteAllText(itemDataPath, itemDataStr);
+            }
+            var itemData = JsonDict.Parse(itemDataStr);
+            Items = new ReadOnlyDictionary<int, ItemInfo>(
+                itemData["data"].GetDict().Select(kvp => new ItemInfo(kvp.Key, kvp.Value.GetDict(), GameVersion)).ToDictionary(ch => ch.Id, ch => ch)
             );
         }
     }
