@@ -22,6 +22,7 @@ namespace LeagueOfStats.CmdGen
             Directory.CreateDirectory(Path.Combine(Settings.DataPath, "Summoners"));
 
             LeagueStaticData.Load(Path.Combine(Settings.DataPath, "Static"));
+            ItemSheet.Generate(Settings.ItemsOutputPath);
             foreach (var human in Settings.Humans)
                 human.Summoners = human.SummonerIds.Where(si => si.LoadData).Select(si => new SummonerInfo(Path.Combine(Settings.DataPath, "Summoners", $"{si.RegionServer.ToLower()}-{si.AccountId}.xml"))).ToList();
             foreach (var summoner in Settings.Humans.SelectMany(h => h.Summoners))

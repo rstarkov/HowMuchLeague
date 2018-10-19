@@ -1,0 +1,32 @@
+﻿body {
+    background: #222;
+    color: #fff;
+    margin: 0;
+    padding: 15px;
+}
+
+p {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+div.item {
+    display: inline-block;
+    margin-right: 10px;
+    margin-bottom: 20px;
+}
+
+    div.item > img {
+        width: 56px;
+        border: 1px solid white;
+    }
+
+span.gold {
+    display: inline-block;
+    background-image: url(https://ddragon.leagueoflegends.com/cdn/5.5.1/img/ui/gold.png);
+    width: 22px;
+    height: 18px;
+    position: relative;
+    top: 3px;
+}
