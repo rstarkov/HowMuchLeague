@@ -39,7 +39,7 @@ namespace LeagueOfStats.StaticData
             }
             var championData = JsonDict.Parse(championDataStr);
             Champions = new ReadOnlyDictionary<int, ChampionInfo>(
-                championData["data"].GetDict().Values.Select(js => new ChampionInfo(js.GetDict())).ToDictionary(ch => ch.Id, ch => ch)
+                championData["data"].GetDict().Select(kvp => new ChampionInfo(kvp.Key, kvp.Value.GetDict())).ToDictionary(ch => ch.Id, ch => ch)
             );
 
             // Load item data

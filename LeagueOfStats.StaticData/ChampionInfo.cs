@@ -22,6 +22,7 @@ namespace LeagueOfStats.StaticData
     public class ChampionInfo
     {
         public int Id { get; private set; }
+        public string InternalName { get; private set; }
         public string Name { get; private set; }
         public string Title { get; private set; }
         public string Blurb { get; private set; }
@@ -48,9 +49,10 @@ namespace LeagueOfStats.StaticData
         public decimal BaseMoveSpeed { get; private set; }
         public decimal BaseAttackRange { get; private set; }
 
-        public ChampionInfo(JsonDict json)
+        public ChampionInfo(string internalName, JsonDict json)
         {
             Id = json["key"].GetIntLenient();
+            InternalName = internalName;
             Name = json["name"].GetString();
             Title = json["title"].GetString();
             Blurb = json["blurb"].GetString();
