@@ -46,6 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ItemSets.cs" />
     <Compile Include="PersonalStats.cs" />
     <Compile Include="GlobalStats.cs" />
     <Compile Include="ItemSheet.cs" />

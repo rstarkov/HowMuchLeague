@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using LeagueOfStats.StaticData;
 using RT.Util.Serialization;
@@ -24,7 +24,7 @@ namespace LeagueOfStats.CmdGen
                 PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
 
             if (settings.ItemSetsSettings != null && settings.LeagueInstallPath != null)
-                GlobalStats.GenerateItemSets(settings.DataPath, settings.LeagueInstallPath, settings.ItemSetsSettings);
+                ItemSets.Generate(settings.DataPath, settings.LeagueInstallPath, settings.ItemSetsSettings);
         }
     }
 }
