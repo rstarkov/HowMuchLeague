@@ -196,7 +196,6 @@ namespace LeagueOfStats.CmdGen
 
         public static void GenerateTotalKDA(string dataPath)
         {
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             var kills = new Dictionary<string, int>();
             var deaths = new Dictionary<string, int>();
             var games = new Dictionary<string, int>();
@@ -219,7 +218,6 @@ namespace LeagueOfStats.CmdGen
 
         public static void GenerateOneForAll(string dataPath)
         {
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
@@ -371,7 +369,6 @@ namespace LeagueOfStats.CmdGen
 
         public static void GenerateSR5v5(string dataPath, string version)
         {
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
@@ -586,8 +583,6 @@ namespace LeagueOfStats.CmdGen
 
         public static void GenerateRecentItemStats(string dataPath)
         {
-            writeLine("Loading static data...");
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             writeLine("Initialising global data...");
             DataStore.Initialise(dataPath, "");
 
@@ -643,7 +638,6 @@ namespace LeagueOfStats.CmdGen
         public static void GenerateItemSets(string dataPath, string leagueInstallPath, ItemSetsSettings settings)
         {
             writeLine("Generating item sets...");
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
 
             var generatedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var byName = LeagueStaticData.Items.Values.Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && !i.HideFromAll).ToDictionary(i => i.Name);
