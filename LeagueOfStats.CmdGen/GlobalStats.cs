@@ -35,7 +35,6 @@ namespace LeagueOfStats.CmdGen
 
         internal static void GenerateGameCounts(string dataPath)
         {
-            DataStore.Initialise(dataPath, "", autoRewrites: false);
             foreach (var region in DataStore.LosMatchInfos.Keys)
             {
                 var entries = DataStore.LosMatchInfos[region].ReadItems().Select(m => new ginfo { Id = m.MatchId, Date = m.GameCreationDate, QueueId = remapQueue(m.QueueId) })

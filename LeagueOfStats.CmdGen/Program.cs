@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.IO;
+using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
 using RT.Util.Serialization;
 
@@ -15,6 +16,10 @@ namespace LeagueOfStats.CmdGen
 
             Console.Write("Loading static data...");
             LeagueStaticData.Load(Path.Combine(settings.DataPath, "Static"));
+            Console.WriteLine(" done");
+
+            Console.Write("Initialising global data...");
+            DataStore.Initialise(settings.DataPath, "", autoRewrites: false);
             Console.WriteLine(" done");
 
             if (settings.ItemsOutputPath != null)

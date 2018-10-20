@@ -19,9 +19,6 @@ namespace LeagueOfStats.CmdGen
     {
         public static void GenerateRecentItemStats(string dataPath, string itemStatsFile)
         {
-            Console.WriteLine("Initialising global data...");
-            DataStore.Initialise(dataPath, "", autoRewrites: false);
-
             Console.WriteLine($"Loading basic match infos...");
             var cutoff = DateTime.UtcNow - TimeSpan.FromDays(30);
             var matchFiles = DataStore.LosMatchInfos
