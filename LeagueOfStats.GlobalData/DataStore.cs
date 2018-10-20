@@ -1,6 +1,5 @@
 ﻿using System.IO;
 using System.Text.RegularExpressions;
-using LeagueOfStats.GlobalData;
 using RT.Util;
 using RT.Util.Json;
 
@@ -12,8 +11,44 @@ namespace LeagueOfStats.GlobalData
         public static string Suffix;
         public static string LosPath => Path.Combine(DataPath, $"Global{Suffix}");
 
-        public static CcAutoDictionary<Region, CompactSetOfLong> ExistingMatchIds = new CcAutoDictionary<Region, CompactSetOfLong>(_ => new CompactSetOfLong());
-        public static CcAutoDictionary<Region, CompactSetOfLong> NonexistentMatchIds = new CcAutoDictionary<Region, CompactSetOfLong>(_ => new CompactSetOfLong());
+        private static CcAutoDictionary<Region, CompactSetOfLong> _existingMatchIds = null;
+        private static CcAutoDictionary<Region, CompactSetOfLong> _nonexistentMatchIds = null;
+
+        public static CcAutoDictionary<Region, CompactSetOfLong> ExistingMatchIds
+        {
+            get
+            {
+                lock (_existingMatchIdsLock)
+                {
+                    if (_existingMatchIds == null)
+                    {
+                        _existingMatchIds = new CcAutoDictionary<Region, CompactSetOfLong>(_ => new CompactSetOfLong());
+                        foreach (var kvp in LosMatchIdsExisting)
+                            _existingMatchIds[kvp.Key] = new CompactSetOfLong(kvp.Value.ReadItems());
+                    }
+                    return _existingMatchIds;
+                }
+            }
+        }
+        private static object _existingMatchIdsLock = new object();
+
+        public static CcAutoDictionary<Region, CompactSetOfLong> NonexistentMatchIds
+        {
+            get
+            {
+                lock (_nonexistentMatchIdsLock)
+                {
+                    if (_nonexistentMatchIds == null)
+                    {
+                        _nonexistentMatchIds = new CcAutoDictionary<Region, CompactSetOfLong>(_ => new CompactSetOfLong());
+                        foreach (var kvp in LosMatchIdsNonExistent)
+                            _nonexistentMatchIds[kvp.Key] = new CompactSetOfLong(kvp.Value.ReadItems());
+                    }
+                    return _nonexistentMatchIds;
+                }
+            }
+        }
+        private static object _nonexistentMatchIdsLock = new object();
 
         public static CcAutoDictionary<Region, string, int, JsonContainer> LosMatchJsons = new CcAutoDictionary<Region, string, int, JsonContainer>(
             (region, version, queueId) => new JsonContainer(Path.Combine(LosPath, $"{region}-matches-{version}-{queueId}.losjs")));
@@ -39,13 +74,11 @@ namespace LeagueOfStats.GlobalData
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
                     LosMatchIdsExisting[region].Initialise();
-                    ExistingMatchIds[region] = new CompactSetOfLong(LosMatchIdsExisting[region].ReadItems());
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-id-nonexistent\.losmid$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
                     LosMatchIdsNonExistent[region].Initialise();
-                    NonexistentMatchIds[region] = new CompactSetOfLong(LosMatchIdsNonExistent[region].ReadItems());
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-matches-(?<version>\d+\.\d+)-(?<queueId>\d+)\.losjs$")).Success)
                 {
