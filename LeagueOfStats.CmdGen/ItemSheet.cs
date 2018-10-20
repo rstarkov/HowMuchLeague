@@ -31,6 +31,8 @@ namespace LeagueOfStats.CmdGen
                     new STYLELiteral(css)
                 ),
                 new BODY(
+                    new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")),
+
                     itemSection("Physical Damage", itemsSR.Where(i => i.HasTag("PhysicalDamage")), item => item.Stat_PhysicalDamageFlat),
                     itemSection("Armor Penetration", itemsSR.Where(i => i.HasTag("ArmorPenetration"))),
                     itemSection("Lethality", itemsSR.Where(i => i.HasTag("Lethality"))),
@@ -54,7 +56,7 @@ namespace LeagueOfStats.CmdGen
                     itemSection("Has Slow", itemsSR.Where(i => i.HasTag("Slow"))),
                     itemSection("Has On-Hit", itemsSR.Where(i => i.HasTag("OnHit"))),
                     itemSection("Has Aura", itemsSR.Where(i => i.HasTag("Aura"))),
-                    itemSection("Has Active", itemsSR.Where(i => i.HasTag("Active"))),
+                    itemSection("Has Active", itemsSR.Where(i => i.HasTag("Active") || i.Description.Contains("</active>"))),
 
                     itemSection("Consumable", itemsSR.Where(i => i.HasTag("Consumable"))),
                     itemSection("Gold", itemsSR.Where(i => i.HasTag("Gold"))),

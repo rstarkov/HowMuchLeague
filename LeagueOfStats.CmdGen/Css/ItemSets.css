@@ -28,6 +28,7 @@ div.set {
 
     div.set h3 {
         margin-top: 0;
+        white-space: pre;
     }
 
 div.item {
