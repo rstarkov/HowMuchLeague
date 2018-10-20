@@ -640,13 +640,20 @@ namespace LeagueOfStats.CmdGen
                         File.AppendAllText("item-popularity.csv", $"{champ},{lanerole},{item},{counts[champ][lanerole][item]}\r\n");
         }
 
-        public static void GenerateItemSets(string dataPath, string leagueInstallPath, string reportPath, JsonValue preferredSlots)
+        public static void GenerateItemSets(string dataPath, string leagueInstallPath, ItemSetsSettings settings)
         {
             writeLine("Generating item sets...");
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
 
             var generatedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var byName = LeagueStaticData.Items.Values.Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && !i.HideFromAll).ToDictionary(i => i.Name);
+
+            JsonValue preferredSlots = null;
+            if (settings.SlotsJsonFile != null && settings.SlotsName != null)
+            {
+                var json = JsonDict.Parse(File.ReadAllText(settings.SlotsJsonFile));
+                preferredSlots = json["itemSets"].GetList().First(l => l["title"].GetString() == settings.SlotsName)["preferredItemSlots"];
+            }
 
             var toprow = new[] { byName["Health Potion"], byName["Control Ward"], byName["Farsight Alteration"], byName["Oracle Lens"], byName["Corrupting Potion"], byName["Elixir of Iron"], byName["Elixir of Sorcery"], byName["Elixir of Wrath"] };
             var boots = new[] { byName["Boots of Swiftness"], byName["Boots of Mobility"], byName["Ionian Boots of Lucidity"], byName["Berserker's Greaves"], byName["Sorcerer's Shoes"], byName["Ninja Tabi"], byName["Mercury's Treads"] };
@@ -673,9 +680,9 @@ namespace LeagueOfStats.CmdGen
                         continue;
                     var items = itemStats[champ.Name][role].OrderByDescending(p => p.count).Select(i => (count: i.count, item: itemsSR[i.itemId])).ToList();
                     var total = items.Sum(i => i.count);
-                    if (total < 1000)
+                    if (total < settings.MinGames)
                         continue;
-                    var minUsage = total * 1 / 1000;
+                    var minUsage = total * settings.UsageCutoffPercent / 100.0;
                     var sections = new List<List<(int count, ItemInfo item)>>();
                     var titles = new List<string>();
 
@@ -684,7 +691,7 @@ namespace LeagueOfStats.CmdGen
                     titles.Add($"Consumables and trinkets ({DateTime.Today:dd MMM yyyy})");
 
                     // Section 2: starting items
-                    sections.Add(items.Where(i => starting.Contains(i.item) && i.count >= minUsage).Take(toprow.Length).ToList());
+                    sections.Add(items.Where(i => starting.Contains(i.item) && i.count >= minUsage).Take(settings.MaxItemsPerRow).ToList());
                     titles.Add("Starting:  " + relCounts(sections.Last()));
 
                     // Section 3: boots
@@ -702,7 +709,7 @@ namespace LeagueOfStats.CmdGen
                     while (toList.Count > 0)
                     {
                         var last = sections[sections.Count - 1];
-                        if (last.Count == toprow.Length)
+                        if (last.Count == settings.MaxItemsPerRow)
                         {
                             last = new List<(int, ItemInfo)>();
                             sections.Add(last);
@@ -781,14 +788,8 @@ namespace LeagueOfStats.CmdGen
                 new HEAD(new STYLELiteral(css)),
                 new BODY(pagesHtml)
             );
-            Directory.CreateDirectory(reportPath);
-            File.WriteAllText(Path.Combine(reportPath, "ItemSets.html"), html.ToString());
-        }
-
-        public static JsonValue LoadPreferredSlots(string itemSetPath, string itemSetName)
-        {
-            var json = JsonDict.Parse(File.ReadAllText(itemSetPath));
-            return json["itemSets"].GetList().First(l => l["title"].GetString() == itemSetName)["preferredItemSlots"];
+            Directory.CreateDirectory(settings.ReportPath);
+            File.WriteAllText(Path.Combine(settings.ReportPath, "ItemSets.html"), html.ToString());
         }
     }
 }

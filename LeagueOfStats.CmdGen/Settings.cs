@@ -10,10 +10,18 @@ namespace LeagueOfStats.CmdGen
         public string DataPath = @"C:\Temp\League\Data";
         public string PersonalOutputPathTemplate = @"C:\Temp\League\{0}-{1}{2}.html";
         public string ItemsOutputPath = @"C:\Temp\League";
-        public string ItemSetsReportPath = @"C:\Temp\League";
-        public string ItemSetsSlotsJson = @"C:\Games\League\Config\ItemSets.json";
-        public string ItemSetsSlotsName = @"My Preferred Slots";
+        public ItemSetsSettings ItemSetsSettings = new ItemSetsSettings();
         public List<HumanInfo> Humans = new List<HumanInfo>();
+    }
+
+    class ItemSetsSettings
+    {
+        public string ReportPath = @"C:\Temp\League";
+        public string SlotsJsonFile = @"C:\Games\League\Config\ItemSets.json";
+        public string SlotsName = @"My Preferred Slots";
+        public int MaxItemsPerRow = 8;
+        public int MinGames = 1000;
+        public double UsageCutoffPercent = 0.1;
     }
 
     public class HumanInfo
