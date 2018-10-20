@@ -46,7 +46,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Generator.cs" />
+    <Compile Include="PersonalStats.cs" />
     <Compile Include="GlobalStats.cs" />
     <Compile Include="ItemSheet.cs" />
     <Compile Include="Program.cs" />

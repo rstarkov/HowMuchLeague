@@ -7,11 +7,57 @@ using LeagueOfStats.PersonalData;
 using LeagueOfStats.StaticData;
 using RT.TagSoup;
 using RT.Util;
+using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueOfStats.CmdGen
 {
-    class Generator
+    static class PersonalStats
+    {
+        public static void Generate(string dataPath, string outputPathTemplate, List<HumanInfo> humans)
+        {
+            Directory.CreateDirectory(Path.Combine(dataPath, "Static"));
+            Directory.CreateDirectory(Path.Combine(dataPath, "Summoners"));
+
+            foreach (var human in humans)
+                human.Summoners = human.SummonerIds.Where(si => si.LoadData).Select(si => new SummonerInfo(Path.Combine(dataPath, "Summoners", $"{si.RegionServer.ToLower()}-{si.AccountId}.xml"))).ToList();
+            foreach (var summoner in humans.SelectMany(h => h.Summoners))
+            {
+                Console.WriteLine($"Loading game data for {summoner}");
+                if (summoner.AuthorizationHeader == "")
+                    summoner.LoadGamesOffline();
+                else
+                    summoner.LoadGamesOnline(
+                        sm => InputBox.GetLine($"Please enter Authorization header value for {sm.Region}/{sm.Name}:", sm.AuthorizationHeader, "League of Stats"),
+                        str => Console.WriteLine(str));
+            }
+
+            var generator = new PersonalStatsGenerator();
+            generator.KnownPlayersAccountIds = humans.SelectMany(h => h.SummonerIds).Select(s => s.AccountId).ToHashSet();
+            foreach (var human in humans.Where(h => h.Summoners.Count > 0))
+            {
+                generator.TimeZone = human.TimeZone;
+                generator.Games = human.Summoners.SelectMany(s => s.Games).ToList();
+                generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToHashSet();
+                generator.GamesTableFilename = outputPathTemplate.Fmt("Games-All", human.Name, "");
+                generator.ProduceGamesTable();
+                generator.ProduceLaneTable(outputPathTemplate.Fmt("LaneCompare", human.Name, ""));
+                generator.ProduceStats(outputPathTemplate.Fmt("All", human.Name, ""));
+                generator.ProduceStats(outputPathTemplate.Fmt("All", human.Name, "-200"), 200);
+                foreach (var summoner in human.Summoners)
+                {
+                    generator.Games = summoner.Games.ToList();
+                    generator.ThisPlayerAccountIds = new[] { summoner.AccountId }.ToHashSet();
+                    generator.GamesTableFilename = outputPathTemplate.Fmt("Games-" + summoner.Region, summoner.Name, "");
+                    generator.ProduceGamesTable();
+                    generator.ProduceStats(outputPathTemplate.Fmt(summoner.Region, summoner.Name, ""));
+                    generator.ProduceStats(outputPathTemplate.Fmt(summoner.Region, summoner.Name, "-200"), 200);
+                }
+            }
+        }
+    }
+
+    class PersonalStatsGenerator
     {
         public HashSet<long> ThisPlayerAccountIds;
         public HashSet<long> KnownPlayersAccountIds;
