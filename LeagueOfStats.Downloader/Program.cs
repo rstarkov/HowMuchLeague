@@ -16,11 +16,7 @@ namespace LeagueOfStats.Downloader
 
         static void Main(string[] args)
         {
-            if (args[0] == "stats-1fa")
-                StatsGen.GenerateOneForAll(dataPath: args[1]);
-            else if (args[0] == "stats-sr")
-                StatsGen.GenerateSR5v5(dataPath: args[1], version: args[2]);
-            else if (args[0] == "download")
+            if (args[0] == "download")
                 DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: args.Subarray(4));
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: args[1], dataPath: args[2], idFilePath: args[4]);

@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Generator.cs" />
+    <Compile Include="GlobalStats.cs" />
     <Compile Include="ItemSheet.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -54,6 +55,10 @@
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\LeagueOfStats.GlobalData\LeagueOfStats.GlobalData.csproj">
+      <Project>{ceac08c0-27d7-4d48-bd18-e4648ee12264}</Project>
+      <Name>LeagueOfStats.GlobalData</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LeagueOfStats.PersonalData\LeagueOfStats.PersonalData.csproj">
       <Project>{f295eddd-ae28-49d5-a6b1-b64f6cb27c6d}</Project>
       <Name>LeagueOfStats.PersonalData</Name>

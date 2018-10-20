@@ -12,9 +12,9 @@ using RT.Util.ExtensionMethods;
 using RT.Util.Json;
 using RT.Util.Paths;
 
-namespace LeagueOfStats.Downloader
+namespace LeagueOfStats.CmdGen
 {
-    class StatsGen
+    static class GlobalStats
     {
         class Match1FA
         {
