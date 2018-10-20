@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
+using RT.TagSoup;
 using RT.Util;
 using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
@@ -658,7 +660,9 @@ namespace LeagueOfStats.CmdGen
                 .ToLookup(p => p.champ)
                 .ToDictionary(grp => grp.Key, grp => grp.ToLookup(p => p.role));
 
-            foreach (var champ in LeagueStaticData.Champions.Values)
+            var pagesHtml = new List<object>();
+
+            foreach (var champ in LeagueStaticData.Champions.Values.OrderBy(ch => ch.Name))
             {
                 foreach (var role in new[] { "mid", "top", "jungle", "adc", "sup" })
                 {
@@ -705,6 +709,7 @@ namespace LeagueOfStats.CmdGen
                     for (int i = titles.Count; i < sections.Count; i++)
                         titles.Add("Items:  " + relCounts(sections[i], mostUsed));
                     var blocks = sections.Zip(titles, (section, title) => (title: title, items: section.Select(s => s.item).ToList())).ToList();
+                    var caption = $"LoS - {champ.InternalName.SubstringSafe(0, 4)} - {role} - {total:#,0} games";
 
                     string relCounts(IEnumerable<(int count, ItemInfo item)> sec, int rel = 0)
                     {
@@ -713,12 +718,27 @@ namespace LeagueOfStats.CmdGen
                         return sec.Select(s => $"{s.count * 100.0 / rel:0}").JoinString("  ");
                     }
 
+                    // Save to HTML for review / reference
+                    pagesHtml.Add(Ut.NewArray<object>(
+                        new H1(role.Substring(0, 1).ToUpper() + role.Substring(1) + " " + champ.Name, new SMALL(caption)),
+                        new DIV { class_ = "set" }._(
+                            blocks.Select(b => Ut.NewArray<object>(
+                                new H3(b.title),
+                                new DIV { class_ = "row" }._(
+                                    b.items.Select(item => new DIV { class_ = "item" }._(
+                                        new IMG { src = item.Icon, title = item.Name }, new P(item.TotalPrice, new SPAN { class_ = "gold" })
+                                    ))
+                                )
+                            ))
+                        )
+                    ));
+
                     // Generate the item set
                     var itemSet = new JsonDict();
                     itemSet["associatedChampions"] = new JsonList { champ.Id };
                     itemSet["associatedMaps"] = new JsonList { 11 };
                     itemSet["map"] = "SR";
-                    itemSet["title"] = $"LoS - {champ.InternalName.SubstringSafe(0, 4)} - {role} - {total:#,0} games";
+                    itemSet["title"] = caption;
                     itemSet["mode"] = "any";
                     itemSet["type"] = "custom";
                     itemSet["sortrank"] = 1;
@@ -747,6 +767,17 @@ namespace LeagueOfStats.CmdGen
             foreach (var file in new PathManager(Path.Combine(leagueInstallPath, "Config", "Champions")).GetFiles())
                 if (file.Name.StartsWith("LOS_") && file.Name.EndsWith(".json") && !generatedFiles.Contains(file.FullName))
                     file.Delete();
+            // Generate HTML with all results
+            string css;
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.ItemSets.css"))
+                css = stream.ReadAllText();
+            var html = new HTML(
+                new HEAD(new STYLELiteral(css)),
+                new BODY(pagesHtml)
+            );
+            File.WriteAllText("ItemSets.html", html.ToString());
+            //Directory.CreateDirectory(outputPath);
+            //File.WriteAllText(Path.Combine(outputPath, "Items.html"), html.ToString());
         }
 
         public static JsonValue LoadPreferredSlots(string itemSetPath, string itemSetName)

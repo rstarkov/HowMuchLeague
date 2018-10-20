@@ -1,0 +1,51 @@
+﻿@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+
+body {
+    font-family: 'Open Sans', sans-serif;
+    background: #222;
+    color: #fff;
+    margin: 0;
+    padding: 15px;
+}
+
+p {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+h1 small {
+    padding-left: 50px;
+}
+
+div.set {
+    border: 1px solid white;
+    padding: 15px;
+    margin-left: 100px;
+    background: #111;
+    display: inline-block;
+}
+
+    div.set h3 {
+        margin-top: 0;
+    }
+
+div.item {
+    display: inline-block;
+    margin-right: 10px;
+    margin-bottom: 20px;
+}
+
+    div.item > img {
+        width: 50px;
+        border: 1px solid white;
+    }
+
+span.gold {
+    display: inline-block;
+    background-image: url(https://ddragon.leagueoflegends.com/cdn/5.5.1/img/ui/gold.png);
+    width: 22px;
+    height: 18px;
+    position: relative;
+    top: 3px;
+}
