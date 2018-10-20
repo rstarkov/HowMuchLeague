@@ -59,7 +59,7 @@ namespace LeagueOfStats.GlobalData
         public static CcAutoDictionary<Region, MatchIdContainer> LosMatchIdsNonExistent = new CcAutoDictionary<Region, MatchIdContainer>(
             region => new MatchIdContainer(Path.Combine(LosPath, $"{region}-match-id-nonexistent.losmid"), region));
 
-        public static void Initialise(string dataPath, string suffix)
+        public static void Initialise(string dataPath, string suffix, bool autoRewrites = true)
         {
             DataPath = dataPath;
             Suffix = suffix;
@@ -73,11 +73,13 @@ namespace LeagueOfStats.GlobalData
                 if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-id-existing\.losmid$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                    LosMatchIdsExisting[region].EnableAutoRewrite = autoRewrites;
                     LosMatchIdsExisting[region].Initialise();
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-id-nonexistent\.losmid$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                    LosMatchIdsNonExistent[region].EnableAutoRewrite = autoRewrites;
                     LosMatchIdsNonExistent[region].Initialise();
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-matches-(?<version>\d+\.\d+)-(?<queueId>\d+)\.losjs$")).Success)

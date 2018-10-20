@@ -38,7 +38,7 @@ namespace LeagueOfStats.CmdGen
 
         internal static void GenerateGameCounts(string dataPath)
         {
-            DataStore.Initialise(dataPath, "");
+            DataStore.Initialise(dataPath, "", autoRewrites: false);
             foreach (var region in DataStore.LosMatchInfos.Keys)
             {
                 var entries = DataStore.LosMatchInfos[region].ReadItems().Select(m => new ginfo { Id = m.MatchId, Date = m.GameCreationDate, QueueId = remapQueue(m.QueueId) })
@@ -584,7 +584,7 @@ namespace LeagueOfStats.CmdGen
         public static void GenerateRecentItemStats(string dataPath, string itemStatsFile)
         {
             writeLine("Initialising global data...");
-            DataStore.Initialise(dataPath, "");
+            DataStore.Initialise(dataPath, "", autoRewrites: false);
 
             writeLine($"Loading basic match infos...");
             var cutoff = DateTime.UtcNow - TimeSpan.FromDays(30);
