@@ -586,7 +586,9 @@ namespace LeagueOfStats.CmdGen
 
         public static void GenerateRecentItemStats(string dataPath)
         {
+            writeLine("Loading static data...");
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
+            writeLine("Initialising global data...");
             DataStore.Initialise(dataPath, "");
 
             writeLine($"Loading basic match infos...");
@@ -640,6 +642,7 @@ namespace LeagueOfStats.CmdGen
 
         public static void GenerateItemSets(string dataPath, string leagueInstallPath, JsonValue preferredSlots)
         {
+            writeLine("Generating item sets...");
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
 
             var generatedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -766,7 +769,10 @@ namespace LeagueOfStats.CmdGen
             // On successful completion, delete all item sets matching our naming scheme which we did not generate
             foreach (var file in new PathManager(Path.Combine(leagueInstallPath, "Config", "Champions")).GetFiles())
                 if (file.Name.StartsWith("LOS_") && file.Name.EndsWith(".json") && !generatedFiles.Contains(file.FullName))
+                {
+                    writeLine($"Deleting obsolete item set at {file.FullName}");
                     file.Delete();
+                }
             // Generate HTML with all results
             string css;
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.ItemSets.css"))
