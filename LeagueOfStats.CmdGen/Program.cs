@@ -24,10 +24,7 @@ namespace LeagueOfStats.CmdGen
                 PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
 
             if (settings.ItemSetsSettings != null && settings.LeagueInstallPath != null)
-            {
-                GlobalStats.GenerateRecentItemStats(settings.DataPath);
                 GlobalStats.GenerateItemSets(settings.DataPath, settings.LeagueInstallPath, settings.ItemSetsSettings);
-            }
         }
     }
 }

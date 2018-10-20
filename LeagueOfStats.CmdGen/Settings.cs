@@ -22,6 +22,8 @@ namespace LeagueOfStats.CmdGen
         public int MaxItemsPerRow = 8;
         public int MinGames = 1000;
         public double UsageCutoffPercent = 0.1;
+        public string ItemStatsCachePath = @"C:\Temp\League";
+        public double ItemStatsCacheExpiryHours = 20;
     }
 
     public class HumanInfo

@@ -581,7 +581,7 @@ namespace LeagueOfStats.CmdGen
             return LeagueStaticData.Champions[json["championId"].GetInt()].Name;
         }
 
-        public static void GenerateRecentItemStats(string dataPath)
+        public static void GenerateRecentItemStats(string dataPath, string itemStatsFile)
         {
             writeLine("Initialising global data...");
             DataStore.Initialise(dataPath, "");
@@ -628,15 +628,21 @@ namespace LeagueOfStats.CmdGen
                 }
             }
 
-            File.Delete("item-popularity.csv");
+            File.Delete(itemStatsFile);
             foreach (var champ in counts.Keys)
                 foreach (var lanerole in counts[champ].Keys)
                     foreach (var item in counts[champ][lanerole].Keys)
-                        File.AppendAllText("item-popularity.csv", $"{champ},{lanerole},{item},{counts[champ][lanerole][item]}\r\n");
+                        File.AppendAllText(itemStatsFile, $"{champ},{lanerole},{item},{counts[champ][lanerole][item]}\r\n");
         }
 
         public static void GenerateItemSets(string dataPath, string leagueInstallPath, ItemSetsSettings settings)
         {
+            Directory.CreateDirectory(settings.ItemStatsCachePath);
+            var itemStatsFile = Path.Combine(settings.ItemStatsCachePath, "item-popularity.csv");
+            if (!File.Exists(itemStatsFile) || (DateTime.UtcNow - File.GetLastWriteTimeUtc(itemStatsFile)).TotalHours > settings.ItemStatsCacheExpiryHours)
+                GenerateRecentItemStats(dataPath, itemStatsFile);
+            var refreshTime = File.GetLastWriteTime(itemStatsFile);
+
             writeLine("Generating item sets...");
 
             var generatedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -657,7 +663,7 @@ namespace LeagueOfStats.CmdGen
                 .Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && (i.NoUnconditionalChildren || boots.Contains(i) || starting.Contains(i)))
                 .ToDictionary(i => i.Id);
 
-            var itemStats = File.ReadAllLines("item-popularity.csv")
+            var itemStats = File.ReadAllLines(itemStatsFile)
                 .Where(l => l != "").Select(l => l.Split(','))
                 .Select(p => (champ: p[0], role: p[1], itemId: int.Parse(p[2]), count: int.Parse(p[3])))
                 .Where(p => itemsSR.ContainsKey(p.itemId))
@@ -682,7 +688,7 @@ namespace LeagueOfStats.CmdGen
 
                     // Section 1: preset for trinkets, pots, wards, elixirs
                     sections.Add(toprow.Select(t => (0, t)).ToList());
-                    titles.Add($"Consumables and trinkets ({DateTime.Today:dd MMM yyyy})");
+                    titles.Add($"Consumables and trinkets ({refreshTime:dd MMM yyyy})");
 
                     // Section 2: starting items
                     sections.Add(items.Where(i => starting.Contains(i.item) && i.count >= minUsage).Take(settings.MaxItemsPerRow).ToList());
