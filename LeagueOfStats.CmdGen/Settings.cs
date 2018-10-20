@@ -6,9 +6,13 @@ namespace LeagueOfStats.CmdGen
 {
     class Settings
     {
+        public string LeagueInstallPath = @"C:\Games\League";
         public string DataPath = @"C:\Temp\League\Data";
         public string PersonalOutputPathTemplate = @"C:\Temp\League\{0}-{1}{2}.html";
         public string ItemsOutputPath = @"C:\Temp\League";
+        public string ItemSetsReportPath = @"C:\Temp\League";
+        public string ItemSetsSlotsJson = @"C:\Games\League\Config\ItemSets.json";
+        public string ItemSetsSlotsName = @"My Preferred Slots";
         public List<HumanInfo> Humans = new List<HumanInfo>();
     }
 

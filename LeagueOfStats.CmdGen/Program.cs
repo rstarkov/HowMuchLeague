@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using LeagueOfStats.StaticData;
+using RT.Util.Json;
 using RT.Util.Serialization;
 
 namespace LeagueOfStats.CmdGen
@@ -22,6 +23,15 @@ namespace LeagueOfStats.CmdGen
 
             if (settings.PersonalOutputPathTemplate != null)
                 PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
+
+            if (settings.ItemSetsReportPath != null && settings.LeagueInstallPath != null)
+            {
+                GlobalStats.GenerateRecentItemStats(settings.DataPath);
+                JsonValue preferredSlots = null;
+                if (settings.ItemSetsSlotsJson != null && settings.ItemSetsSlotsName != null)
+                    preferredSlots = GlobalStats.LoadPreferredSlots(settings.ItemSetsSlotsJson, settings.ItemSetsSlotsName);
+                GlobalStats.GenerateItemSets(settings.DataPath, settings.LeagueInstallPath, settings.ItemSetsReportPath, preferredSlots);
+            }
         }
     }
 }

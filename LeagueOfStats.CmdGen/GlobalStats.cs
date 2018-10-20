@@ -640,7 +640,7 @@ namespace LeagueOfStats.CmdGen
                         File.AppendAllText("item-popularity.csv", $"{champ},{lanerole},{item},{counts[champ][lanerole][item]}\r\n");
         }
 
-        public static void GenerateItemSets(string dataPath, string leagueInstallPath, JsonValue preferredSlots)
+        public static void GenerateItemSets(string dataPath, string leagueInstallPath, string reportPath, JsonValue preferredSlots)
         {
             writeLine("Generating item sets...");
             LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
@@ -781,9 +781,8 @@ namespace LeagueOfStats.CmdGen
                 new HEAD(new STYLELiteral(css)),
                 new BODY(pagesHtml)
             );
-            File.WriteAllText("ItemSets.html", html.ToString());
-            //Directory.CreateDirectory(outputPath);
-            //File.WriteAllText(Path.Combine(outputPath, "Items.html"), html.ToString());
+            Directory.CreateDirectory(reportPath);
+            File.WriteAllText(Path.Combine(reportPath, "ItemSets.html"), html.ToString());
         }
 
         public static JsonValue LoadPreferredSlots(string itemSetPath, string itemSetName)
