@@ -4,9 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using RT.Util;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.GlobalData
 {
-    class CompactSetOfLong : IEnumerable<long>
+    /// <summary>
+    ///     Highly specialised for a specific access pattern to a large set of longs whose distribution properties are known.
+    ///     Gives up a reasonable amount of speed to gain large savings in RAM usage.</summary>
+    public class CompactSetOfLong : IEnumerable<long>
     {
         private class bucket
         {

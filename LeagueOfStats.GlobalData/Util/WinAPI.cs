@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace LeagueOfStats.GlobalData.Util
+namespace LeagueOfStats.GlobalData
 {
     public class LosWinAPI
     {

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Threading;
-using LeagueOfStats.GlobalData.Util;
 using RT.Util;
 using RT.Util.Json;
 

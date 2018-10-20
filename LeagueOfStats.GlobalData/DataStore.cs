@@ -1,13 +1,12 @@
 ﻿using System.IO;
 using System.Text.RegularExpressions;
 using LeagueOfStats.GlobalData;
-using LeagueOfStats.StaticData;
 using RT.Util;
 using RT.Util.Json;
 
 namespace LeagueOfStats.OneForAllStats
 {
-    static class DataStore
+    public static class DataStore
     {
         public static string DataPath;
         public static string Suffix;
@@ -27,7 +26,6 @@ namespace LeagueOfStats.OneForAllStats
 
         public static void Initialise(string dataPath, string suffix)
         {
-            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
             DataPath = dataPath;
             Suffix = suffix;
 

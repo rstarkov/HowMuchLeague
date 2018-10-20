@@ -53,6 +53,9 @@
     <Compile Include="BasicMatchInfo.cs" />
     <Compile Include="Container\BasicMatchInfoContainer.cs" />
     <Compile Include="Container\MatchIdContainer.cs" />
+    <Compile Include="DataStore.cs" />
+    <Compile Include="Util\CompactSet.cs" />
+    <Compile Include="Util\ConcurrentAutoDictionary.cs" />
     <Compile Include="Util\EndDetectionStream.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Container\JsonContainer.cs" />

@@ -2,10 +2,10 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.GlobalData
 {
     // A bit of a hack because the caller is not prevented from using the base dictionary's indexer, which does not have the "auto" behaviour.
-    class CcAutoDictionary<TKey, TValue> : ConcurrentDictionary<TKey, TValue>
+    public class CcAutoDictionary<TKey, TValue> : ConcurrentDictionary<TKey, TValue>
     {
         private Func<TKey, TValue> _initializer;
 
@@ -68,7 +68,7 @@ namespace LeagueOfStats.OneForAllStats
         }
     }
 
-    class CcAutoDictionary<TKey1, TKey2, TValue> : CcAutoDictionary<TKey1, CcAutoDictionary<TKey2, TValue>>
+    public class CcAutoDictionary<TKey1, TKey2, TValue> : CcAutoDictionary<TKey1, CcAutoDictionary<TKey2, TValue>>
     {
         public CcAutoDictionary(Func<TKey1, TKey2, TValue> initializer = null)
             : base(key1 => new CcAutoDictionary<TKey2, TValue>(key2 => initializer == null ? default(TValue) : initializer(key1, key2)))
@@ -79,7 +79,7 @@ namespace LeagueOfStats.OneForAllStats
         { }
     }
 
-    class CcAutoDictionary<TKey1, TKey2, TKey3, TValue> : CcAutoDictionary<TKey1, CcAutoDictionary<TKey2, CcAutoDictionary<TKey3, TValue>>>
+    public class CcAutoDictionary<TKey1, TKey2, TKey3, TValue> : CcAutoDictionary<TKey1, CcAutoDictionary<TKey2, CcAutoDictionary<TKey3, TValue>>>
     {
         public CcAutoDictionary(Func<TKey1, TKey2, TKey3, TValue> initializer = null)
             : base(key1 => new CcAutoDictionary<TKey2, CcAutoDictionary<TKey3, TValue>>(key2 => new CcAutoDictionary<TKey3, TValue>(key3 => initializer == null ? default(TValue) : initializer(key1, key2, key3))))
