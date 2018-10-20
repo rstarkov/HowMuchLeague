@@ -655,7 +655,7 @@ namespace LeagueOfStats.CmdGen
                 preferredSlots = json["itemSets"].GetList().First(l => l["title"].GetString() == settings.SlotsName)["preferredItemSlots"];
             }
 
-            var toprow = new[] { byName["Health Potion"], byName["Control Ward"], byName["Farsight Alteration"], byName["Oracle Lens"], byName["Corrupting Potion"], byName["Elixir of Iron"], byName["Elixir of Sorcery"], byName["Elixir of Wrath"] };
+            var toprow = settings.TopRowItems.Select(name => byName[name]).ToArray();
             var boots = new[] { byName["Boots of Swiftness"], byName["Boots of Mobility"], byName["Ionian Boots of Lucidity"], byName["Berserker's Greaves"], byName["Sorcerer's Shoes"], byName["Ninja Tabi"], byName["Mercury's Treads"] };
             var starting = new[] { byName["Refillable Potion"], byName["Corrupting Potion"], byName["The Dark Seal"], byName["Doran's Ring"], byName["Ancient Coin"], byName["Relic Shield"], byName["Spellthief's Edge"], byName["Doran's Shield"], byName["Doran's Blade"], byName["Cull"], byName["Hunter's Potion"], byName["Hunter's Talisman"], byName["Hunter's Machete"] };
 

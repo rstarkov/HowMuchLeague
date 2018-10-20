@@ -24,6 +24,7 @@ namespace LeagueOfStats.CmdGen
         public double UsageCutoffPercent = 0.1;
         public string ItemStatsCachePath = @"C:\Temp\League";
         public double ItemStatsCacheExpiryHours = 20;
+        public string[] TopRowItems = new[] { "Health Potion", "Control Ward", "Farsight Alteration", "Oracle Lens", "Corrupting Potion", "Elixir of Iron", "Elixir of Sorcery", "Elixir of Wrath" };
     }
 
     public class HumanInfo
