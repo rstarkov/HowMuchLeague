@@ -38,6 +38,7 @@ namespace LeagueOfStats.CmdGen
                 Console.WriteLine($"Processing {file.matchIds.Count:#,0} matches from {file.jsons.FileName}...");
                 foreach (var json in file.jsons.ReadItems().Where(m => file.matchIds.Contains(m["gameId"].GetLong())))
                 {
+                    file.matchIds.Remove(json["gameId"].GetLong()); // it's possible for a data file to contain duplicates, so make sure we don't count them twice
                     foreach (var plr in json["participants"].GetList())
                     {
                         var lane = plr["timeline"]["lane"].GetString();
