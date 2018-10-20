@@ -4,7 +4,7 @@ using LeagueOfStats.GlobalData;
 using RT.Util;
 using RT.Util.Json;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.GlobalData
 {
     public static class DataStore
     {

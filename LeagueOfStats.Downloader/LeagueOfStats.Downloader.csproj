@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>LeagueOfStats.OneForAllStats</RootNamespace>
-    <AssemblyName>LeagueOfStats.OneForAllStats</AssemblyName>
+    <RootNamespace>LeagueOfStats.Downloader</RootNamespace>
+    <AssemblyName>LeagueOfStats.Downloader</AssemblyName>
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

@@ -9,7 +9,7 @@ using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
 using RT.Util.Paths;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.Downloader
 {
     static class MergeDataStores
     {

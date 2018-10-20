@@ -9,7 +9,7 @@ using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Geometry;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.Downloader
 {
     class Downloader
     {

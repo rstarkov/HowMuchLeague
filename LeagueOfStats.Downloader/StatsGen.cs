@@ -12,7 +12,7 @@ using RT.Util.ExtensionMethods;
 using RT.Util.Json;
 using RT.Util.Paths;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.Downloader
 {
     class StatsGen
     {

@@ -8,7 +8,7 @@ using LeagueOfStats.GlobalData;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 
-namespace LeagueOfStats.OneForAllStats
+namespace LeagueOfStats.Downloader
 {
     class Program
     {
