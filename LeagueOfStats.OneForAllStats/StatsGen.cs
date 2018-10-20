@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
@@ -150,6 +151,28 @@ namespace LeagueOfStats.OneForAllStats
             }
         }
 
+        private static IEnumerable<JsonValue> LoadMatches(string dataPath, Func<(Region region, string version, int queueId), bool> fileFilter)
+        {
+            foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
+            {
+                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-(?<version>[0-9.]+)-(?<queue>\d+)\.losjs$");
+                if (!match.Success)
+                    continue;
+                var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
+                var version = match.Groups["version"].Value;
+                var queueId = int.Parse(match.Groups["queue"].Value);
+                if (!fileFilter((region, version, queueId)))
+                    continue;
+                Console.Write($"Loading {f.FullName}... ");
+                var thread = new CountThread(10000);
+                foreach (var m in new JsonContainer(f.FullName).ReadItems().PassthroughCount(thread.Count))
+                    yield return m;
+                thread.Stop();
+                Console.WriteLine();
+                writeLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
+            }
+        }
+
         private static List<T> LoadAllMatches<T>(string dataPath, string version, int queueId, Func<JsonValue, Region, T> loader)
         {
             var matches = new List<T>();
@@ -167,6 +190,29 @@ namespace LeagueOfStats.OneForAllStats
                 writeLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
             }
             return matches;
+        }
+
+        public static void GenerateTotalKDA(string dataPath)
+        {
+            LeagueStaticData.Load(Path.Combine(dataPath, "Static"));
+            var kills = new Dictionary<string, int>();
+            var deaths = new Dictionary<string, int>();
+            var games = new Dictionary<string, int>();
+            foreach (var m in LoadMatches(Path.Combine(dataPath, $"Global"), f => f.queueId == 4 || f.queueId == 6 || f.queueId == 410 || f.queueId == 420 || f.queueId == 440))
+            {
+                foreach (var p in m["participants"].GetList())
+                {
+                    var champ = LeagueStaticData.Champions[p["championId"].GetInt()].Name;
+                    var stats = p["stats"];
+                    games.IncSafe(champ);
+                    kills.IncSafe(champ, stats["kills"].GetInt());
+                    deaths.IncSafe(champ, stats["deaths"].GetInt());
+                }
+            }
+            writeLine($"");
+            writeLine($"Champion,Games,Kills,Deaths");
+            foreach (var c in LeagueStaticData.Champions.Values.Select(c => c.Name).Order())
+                writeLine($"{c},{games[c]},{kills[c]},{deaths[c]}");
         }
 
         public static void GenerateOneForAll(string dataPath)
