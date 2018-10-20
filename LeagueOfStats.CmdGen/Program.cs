@@ -20,8 +20,8 @@ namespace LeagueOfStats.CmdGen
             if (settings.ItemsOutputPath != null)
                 ItemSheet.Generate(settings.ItemsOutputPath);
 
-            if (settings.OutputPathTemplate != null)
-                PersonalStats.Generate(settings.DataPath, settings.OutputPathTemplate, settings.Humans);
+            if (settings.PersonalOutputPathTemplate != null)
+                PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
         }
     }
 }

@@ -7,7 +7,7 @@ namespace LeagueOfStats.CmdGen
     class Settings
     {
         public string DataPath = @"C:\Temp\League\Data";
-        public string OutputPathTemplate = @"C:\Temp\League\{0}-{1}{2}.html";
+        public string PersonalOutputPathTemplate = @"C:\Temp\League\{0}-{1}{2}.html";
         public string ItemsOutputPath = @"C:\Temp\League";
         public List<HumanInfo> Humans = new List<HumanInfo>();
     }
