@@ -27,6 +27,7 @@ namespace LeagueOfStats.StaticData
         public string Title { get; private set; }
         public string Blurb { get; private set; }
         public ChampionResource Resource { get; private set; }
+        public string ImageUrl { get; private set; }
 
         public decimal BaseHealth { get; private set; }
         public decimal PerLevelHealth { get; private set; }
@@ -72,6 +73,7 @@ namespace LeagueOfStats.StaticData
                 case "Crimson Rush": Resource = ChampionResource.CrimsonRush; break;
                 default: throw new Exception($"Unrecognized champion resource type: '{json["partype"].GetString()}'.");
             }
+            ImageUrl = $"https://ddragon.leagueoflegends.com/cdn/{json["version"].GetString()}/img/champion/{json["image"]["full"].GetString()}";
 
             var stats = json["stats"];
             BaseHealth = stats["hp"].GetDecimal();
