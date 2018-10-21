@@ -21,44 +21,28 @@ namespace LeagueOfStats.CmdGen
         {
             Console.WriteLine($"Loading basic match infos...");
             var cutoff = DateTime.UtcNow - TimeSpan.FromDays(30);
-            var matchFiles = DataStore.LosMatchInfos
-                .SelectMany(kvp => kvp.Value
-                    .ReadItems()
-                    .Where(mi => mi.GameCreationDate >= cutoff && (mi.QueueId == 420 || mi.QueueId == 400 || mi.QueueId == 430))
-                    .Select(mi => (region: kvp.Key, info: mi)))
-                .ToLookup(item => item.info.LosjsFileName(dataPath, "", item.region))
-                .Select(grp => (jsons: new JsonContainer(grp.Key), matchIds: grp.Select(item => item.info.MatchId).ToHashSet()))
-                .ToList();
-
-            var total = matchFiles.Sum(f => f.matchIds.Count);
-            Console.WriteLine($"Processing full matches... {total} total matches");
             var counts = new AutoDictionary<string, string, int, int>();
-            foreach (var file in matchFiles)
+            foreach (var json in DataStore.ReadMatchesByBasicInfo(mi => mi.GameCreationDate >= cutoff && (mi.QueueId == 420 || mi.QueueId == 400 || mi.QueueId == 430)))
             {
-                Console.WriteLine($"Processing {file.matchIds.Count:#,0} matches from {file.jsons.FileName}...");
-                foreach (var json in file.jsons.ReadItems().Where(m => file.matchIds.Contains(m["gameId"].GetLong())))
+                foreach (var plr in json["participants"].GetList())
                 {
-                    file.matchIds.Remove(json["gameId"].GetLong()); // it's possible for a data file to contain duplicates, so make sure we don't count them twice
-                    foreach (var plr in json["participants"].GetList())
-                    {
-                        var lane = plr["timeline"]["lane"].GetString();
-                        var role = plr["timeline"]["role"].GetString();
-                        var lanerole =
-                            lane == "MIDDLE" && role == "SOLO" ? "mid" :
-                            lane == "TOP" && role == "SOLO" ? "top" :
-                            lane == "JUNGLE" && role == "NONE" ? "jungle" :
-                            lane == "BOTTOM" && role == "DUO_CARRY" ? "adc" :
-                            lane == "BOTTOM" && role == "DUO_SUPPORT" ? "sup" : null;
-                        if (lanerole == null)
-                            continue;
-                        var champ = LeagueStaticData.Champions[plr["championId"].GetInt()].Name;
-                        counts[champ][lanerole][plr["stats"]["item0"].GetInt()]++;
-                        counts[champ][lanerole][plr["stats"]["item1"].GetInt()]++;
-                        counts[champ][lanerole][plr["stats"]["item2"].GetInt()]++;
-                        counts[champ][lanerole][plr["stats"]["item3"].GetInt()]++;
-                        counts[champ][lanerole][plr["stats"]["item4"].GetInt()]++;
-                        counts[champ][lanerole][plr["stats"]["item5"].GetInt()]++;
-                    }
+                    var lane = plr["timeline"]["lane"].GetString();
+                    var role = plr["timeline"]["role"].GetString();
+                    var lanerole =
+                        lane == "MIDDLE" && role == "SOLO" ? "mid" :
+                        lane == "TOP" && role == "SOLO" ? "top" :
+                        lane == "JUNGLE" && role == "NONE" ? "jungle" :
+                        lane == "BOTTOM" && role == "DUO_CARRY" ? "adc" :
+                        lane == "BOTTOM" && role == "DUO_SUPPORT" ? "sup" : null;
+                    if (lanerole == null)
+                        continue;
+                    var champ = LeagueStaticData.Champions[plr["championId"].GetInt()].Name;
+                    counts[champ][lanerole][plr["stats"]["item0"].GetInt()]++;
+                    counts[champ][lanerole][plr["stats"]["item1"].GetInt()]++;
+                    counts[champ][lanerole][plr["stats"]["item2"].GetInt()]++;
+                    counts[champ][lanerole][plr["stats"]["item3"].GetInt()]++;
+                    counts[champ][lanerole][plr["stats"]["item4"].GetInt()]++;
+                    counts[champ][lanerole][plr["stats"]["item5"].GetInt()]++;
                 }
             }
 

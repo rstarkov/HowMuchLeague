@@ -2,19 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
 using RT.Util;
 using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
-using RT.Util.Paths;
 
 namespace LeagueOfStats.CmdGen
 {
     static class GlobalStats
     {
+        // Note: everything in here is a mess of quick hacks to get specific stats out, and needs tidying up and moving out of this class
+
         class Match1FA
         {
             public string MatchId, Champion1, Champion2, Winner;
@@ -33,7 +33,7 @@ namespace LeagueOfStats.CmdGen
             public double TotalMatchCount = 0;
         }
 
-        internal static void GenerateGameCounts(string dataPath)
+        internal static void GenerateGameCounts()
         {
             foreach (var region in DataStore.LosMatchInfos.Keys)
             {
@@ -149,53 +149,13 @@ namespace LeagueOfStats.CmdGen
             }
         }
 
-        private static IEnumerable<JsonValue> LoadMatches(string dataPath, Func<(Region region, string version, int queueId), bool> fileFilter)
-        {
-            foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
-            {
-                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-(?<version>[0-9.]+)-(?<queue>\d+)\.losjs$");
-                if (!match.Success)
-                    continue;
-                var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                var version = match.Groups["version"].Value;
-                var queueId = int.Parse(match.Groups["queue"].Value);
-                if (!fileFilter((region, version, queueId)))
-                    continue;
-                Console.Write($"Loading {f.FullName}... ");
-                var thread = new CountThread(10000);
-                foreach (var m in new JsonContainer(f.FullName).ReadItems().PassthroughCount(thread.Count))
-                    yield return m;
-                thread.Stop();
-                Console.WriteLine();
-                writeLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
-            }
-        }
-
-        private static List<T> LoadAllMatches<T>(string dataPath, string version, int queueId, Func<JsonValue, Region, T> loader)
-        {
-            var matches = new List<T>();
-            foreach (var f in new PathManager(dataPath).GetFiles().OrderBy(f => f.FullName))
-            {
-                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-{version}-{queueId}\.losjs$");
-                if (!match.Success)
-                    continue;
-                var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                Console.Write($"Loading {f.FullName}... ");
-                var thread = new CountThread(10000);
-                matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => loader(json, region)).PassthroughCount(thread.Count));
-                thread.Stop();
-                Console.WriteLine();
-                writeLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
-            }
-            return matches;
-        }
-
-        public static void GenerateTotalKDA(string dataPath)
+        public static void GenerateTotalKDA()
         {
             var kills = new Dictionary<string, int>();
             var deaths = new Dictionary<string, int>();
             var games = new Dictionary<string, int>();
-            foreach (var m in LoadMatches(Path.Combine(dataPath, $"Global"), f => f.queueId == 4 || f.queueId == 6 || f.queueId == 410 || f.queueId == 420 || f.queueId == 440))
+            // TODO: this counts duplicate matches incorrectly
+            foreach (var m in DataStore.ReadMatchesByRegVerQue(f => f.queueId == 4 || f.queueId == 6 || f.queueId == 410 || f.queueId == 420 || f.queueId == 440))
             {
                 foreach (var p in m["participants"].GetList())
                 {
@@ -212,14 +172,13 @@ namespace LeagueOfStats.CmdGen
                 writeLine($"{c},{games[c]},{kills[c]},{deaths[c]}");
         }
 
-        public static void GenerateOneForAll(string dataPath)
+        public static void GenerateOneForAll()
         {
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            string dataSuffix = "";
-            var matches = LoadAllMatches(Path.Combine(dataPath, $"Global{dataSuffix}"), "8.6", 1020, match1FAFromJson)
-                .Concat(LoadAllMatches(Path.Combine(dataPath, $"Global{dataSuffix}"), "8.7", 1020, match1FAFromJson))
+            var matches = DataStore.LoadMatchesByVerQue("8.6", 1020, match1FAFromJson)
+                .Concat(DataStore.LoadMatchesByVerQue("8.7", 1020, match1FAFromJson))
                 .ToList();
             // Remove duplicates
             var hadCount = matches.Count;
@@ -363,16 +322,14 @@ namespace LeagueOfStats.CmdGen
             return ((a - b) / c, (a + b) / c);
         }
 
-        public static void GenerateSR5v5(string dataPath, string version)
+        public static void GenerateSR5v5(string version)
         {
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var dataSuffix = "";
-            dataPath = Path.Combine(dataPath, $"Global{dataSuffix}");
-            var matches = LoadAllMatches(dataPath, version, 420, matchSRFromJson) // ranked solo
-                .Concat(LoadAllMatches(dataPath, version, 400, matchSRFromJson)) // draft pick
-                .Concat(LoadAllMatches(dataPath, version, 430, matchSRFromJson)) // blind pick
+            var matches = DataStore.LoadMatchesByVerQue(version, 420, matchSRFromJson) // ranked solo
+                .Concat(DataStore.LoadMatchesByVerQue(version, 400, matchSRFromJson)) // draft pick
+                .Concat(DataStore.LoadMatchesByVerQue(version, 430, matchSRFromJson)) // blind pick
                 .ToList();
             // Remove duplicates
             var hadCount = matches.Count;
