@@ -157,7 +157,7 @@ namespace LeagueOfStats.CmdGen
             // TODO: this counts duplicate matches incorrectly
             foreach (var m in DataStore.ReadMatchesByRegVerQue(f => f.queueId == 4 || f.queueId == 6 || f.queueId == 410 || f.queueId == 420 || f.queueId == 440))
             {
-                foreach (var p in m["participants"].GetList())
+                foreach (var p in m.json["participants"].GetList())
                 {
                     var champ = LeagueStaticData.Champions[p["championId"].GetInt()].Name;
                     var stats = p["stats"];

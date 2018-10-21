@@ -31,8 +31,5 @@ namespace LeagueOfStats.GlobalData
                 GameVersionMinor = checked((byte) ver.Minor);
             }
         }
-
-        public string LosjsFileName(string dataPath, string dataSuffix, Region region)
-            => Path.Combine(dataPath, $"Global{dataSuffix}", $"{region}-matches-{GameVersion}-{QueueId}.losjs");
     }
 }

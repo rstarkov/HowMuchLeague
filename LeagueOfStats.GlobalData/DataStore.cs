@@ -128,8 +128,8 @@ namespace LeagueOfStats.GlobalData
                     .ReadItems()
                     .Where(filter)
                     .Select(mi => (region: kvp.Key, info: mi)))
-                .ToLookup(item => item.info.LosjsFileName(DataPath, Suffix, item.region))
-                .Select(grp => (jsons: new JsonContainer(grp.Key), matchIds: grp.Select(item => item.info.MatchId).ToHashSet()))
+                .ToLookup(item => (region: item.region, version: item.info.GameVersion, queue: item.info.QueueId))
+                .Select(grp => (jsons: LosMatchJsons[grp.Key.region][grp.Key.version][grp.Key.queue], matchIds: grp.Select(item => item.info.MatchId).ToHashSet()))
                 .ToList();
 
             var total = matchFiles.Sum(f => f.matchIds.Count);
@@ -148,46 +148,28 @@ namespace LeagueOfStats.GlobalData
         /// <summary>
         ///     Enumerates full match JSONs for all matches available for specific region, game version, and/or queue IDs.
         ///     Caller is responsible for filtering out duplicate matches.</summary>
-        public static IEnumerable<JsonValue> ReadMatchesByRegVerQue(Func<(Region region, string version, int queueId), bool> fileFilter)
+        public static IEnumerable<(JsonValue json, Region region)> ReadMatchesByRegVerQue(Func<(Region region, string version, int queueId), bool> fileFilter)
         {
-            foreach (var f in new DirectoryInfo(LosPath).GetFiles().OrderBy(f => f.FullName))
+            foreach (var f in LosMatchJsons.SelectMany(kvpR => kvpR.Value.SelectMany(kvpV => kvpV.Value.Select(kvpQ => (region: kvpR.Key, version: kvpV.Key, queueId: kvpQ.Key, file: kvpQ.Value)))))
             {
-                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-(?<version>[0-9.]+)-(?<queue>\d+)\.losjs$");
-                if (!match.Success)
+                if (!fileFilter((f.region, f.version, f.queueId)))
                     continue;
-                var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                var version = match.Groups["version"].Value;
-                var queueId = int.Parse(match.Groups["queue"].Value);
-                if (!fileFilter((region, version, queueId)))
-                    continue;
-                Console.Write($"Loading {f.FullName}... ");
+                Console.Write($"Loading {f.file.FileName}... ");
                 var thread = new CountThread(10000);
-                foreach (var m in new JsonContainer(f.FullName).ReadItems().PassthroughCount(thread.Count))
-                    yield return m;
+                foreach (var m in f.file.ReadItems().PassthroughCount(thread.Count))
+                    yield return (m, f.region);
                 thread.Stop();
                 Console.WriteLine();
-                Console.WriteLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
+                Console.WriteLine($"Loaded {thread.Count} matches from {f.file.FileName} in {thread.Duration.TotalSeconds:#,0.000} s");
             }
         }
 
         /// <summary>Caller is responsible for filtering out duplicate matches.</summary>
         public static List<T> LoadMatchesByVerQue<T>(string version, int queueId, Func<JsonValue, Region, T> loader)
         {
-            var matches = new List<T>();
-            foreach (var f in new DirectoryInfo(LosPath).GetFiles().OrderBy(f => f.FullName))
-            {
-                var match = Regex.Match(f.Name, $@"^(?<region>[A-Z]+)-matches-{version}-{queueId}\.losjs$");
-                if (!match.Success)
-                    continue;
-                var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                Console.Write($"Loading {f.FullName}... ");
-                var thread = new CountThread(10000);
-                matches.AddRange(new JsonContainer(f.FullName).ReadItems().Select(json => loader(json, region)).PassthroughCount(thread.Count));
-                thread.Stop();
-                Console.WriteLine();
-                Console.WriteLine($"Loaded {thread.Count} matches from {f.FullName} in {thread.Duration.TotalSeconds:#,0.000} s");
-            }
-            return matches;
+            return ReadMatchesByRegVerQue(f => f.version == version && f.queueId == queueId)
+                .Select(m => loader(m.json, m.region))
+                .ToList();
         }
     }
 }
