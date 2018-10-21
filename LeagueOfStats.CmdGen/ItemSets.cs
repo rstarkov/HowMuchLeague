@@ -203,6 +203,7 @@ namespace LeagueOfStats.CmdGen
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.ItemSets.css"))
                 css = stream.ReadAllText();
             var html = new HTML(
+                new META { charset = "utf-8" },
                 new HEAD(new STYLELiteral(css)),
                 new BODY(new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")), pagesHtml)
             );

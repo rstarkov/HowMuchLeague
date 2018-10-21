@@ -28,6 +28,7 @@ namespace LeagueOfStats.CmdGen
 
             var html = new HTML(
                 new HEAD(
+                    new META { charset = "utf-8" },
                     new STYLELiteral(css)
                 ),
                 new BODY(
