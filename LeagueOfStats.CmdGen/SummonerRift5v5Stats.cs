@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
+using RT.TagSoup;
 using RT.Util;
 using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
@@ -11,8 +13,15 @@ using RT.Util.Json;
 
 namespace LeagueOfStats.CmdGen
 {
-    static class SummonerRift5v5Stats
+    class SummonerRift5v5Stats
     {
+        private SummonerRift5v5StatsSettings _settings;
+
+        public SummonerRift5v5Stats(SummonerRift5v5StatsSettings settings)
+        {
+            _settings = settings;
+        }
+
         private struct LaneSR
         {
             public string ChampW;
@@ -53,24 +62,35 @@ namespace LeagueOfStats.CmdGen
             return LeagueStaticData.Champions[json["championId"].GetInt()].Name;
         }
 
-        public static void Generate(string version)
+        public void Generate()
         {
-            Generate(m => m.version == version);
+            var cutoff = DateTime.UtcNow - TimeSpan.FromDays(_settings.IncludeLastDays);
+            Generate((BasicMatchInfo mi) => mi.GameCreationDate >= cutoff, $"over the last {_settings.IncludeLastDays:0} days");
         }
 
-        public static void Generate(Func<(Region region, string version), bool> filter)
+        public void Generate(string version)
         {
-            generate(DataStore.ReadMatchesByRegVerQue(f => filter((f.region, f.version)) && (f.queueId == 420 /*ranked solo*/ || f.queueId == 400 /*draft pick*/ || f.queueId == 430 /*blind pick*/)));
+            Generate(m => m.version == version, $"for version {version}");
         }
 
-        public static void Generate(Func<BasicMatchInfo, bool> filter)
+        public void Generate(Func<(Region region, string version), bool> filter, string filterDesc = null)
         {
-            generate(DataStore.ReadMatchesByBasicInfo(m => filter(m) && (m.QueueId == 420 /*ranked solo*/ || m.QueueId == 400 /*draft pick*/ || m.QueueId == 430 /*blind pick*/)));
+            generate(
+                DataStore.ReadMatchesByRegVerQue(f => filter((f.region, f.version)) && (f.queueId == 420 /*ranked solo*/ || f.queueId == 400 /*draft pick*/ || f.queueId == 430 /*blind pick*/)),
+                filterDesc);
         }
 
-        private static void generate(IEnumerable<(JsonValue json, Region region)> jsons)
+        public void Generate(Func<BasicMatchInfo, bool> filter, string filterDesc = null)
+        {
+            generate(
+                DataStore.ReadMatchesByBasicInfo(m => filter(m) && (m.QueueId == 420 /*ranked solo*/ || m.QueueId == 400 /*draft pick*/ || m.QueueId == 430 /*blind pick*/)),
+                filterDesc);
+        }
+
+        private void generate(IEnumerable<(JsonValue json, Region region)> jsons, string filterDesc)
         {
             Console.WriteLine($"Generating stats at {DateTime.Now}...");
+            Directory.CreateDirectory(_settings.OutputPath);
 
             // Load matches
             var matches = jsons
@@ -78,53 +98,76 @@ namespace LeagueOfStats.CmdGen
                 .ToList();
             Console.WriteLine($"Distinct matches: {matches.Count:#,0}");
 
-            {
-                var duos = new AutoDictionary<string, (int winCount, int totalCount)>(_ => (0, 0));
-                void addDuo2(string duoDesc, bool win)
-                {
-                    var stat = duos[duoDesc];
-                    stat.totalCount++;
-                    if (win)
-                        stat.winCount++;
-                    duos[duoDesc] = stat;
-                }
-                void addDuo(LaneSR lane1, LaneSR lane2, string lane1type, string lane2type)
-                {
-                    if (lane1.ChampW != null && lane2.ChampW != null)
-                        addDuo2($"{lane1type}:{lane1.ChampW} + {lane2type}:{lane2.ChampW}", true);
-                    if (lane1.ChampL != null && lane2.ChampL != null)
-                        addDuo2($"{lane1type}:{lane1.ChampL} + {lane2type}:{lane2.ChampL}", false);
-                }
-                foreach (var match in matches)
-                {
-                    addDuo(match.Adc, match.Sup, "adc", "sup");
-                    addDuo(match.Adc, match.Jun, "adc", "jun");
-                    addDuo(match.Adc, match.Mid, "adc", "mid");
-                    addDuo(match.Adc, match.Top, "adc", "top");
-                    addDuo(match.Sup, match.Jun, "sup", "jun");
-                    addDuo(match.Sup, match.Mid, "sup", "mid");
-                    addDuo(match.Sup, match.Top, "sup", "top");
-                    addDuo(match.Jun, match.Mid, "jun", "mid");
-                    addDuo(match.Jun, match.Top, "jun", "top");
-                    addDuo(match.Mid, match.Top, "mid", "top");
-                }
-                var duoStats =
-                    from kvp in duos
-                    let wr = kvp.Value.winCount / (double) kvp.Value.totalCount
-                    let count = kvp.Value.totalCount
-                    let conf = Utils.WilsonConfidenceInterval(wr, count, 1.96)
-                    select new { duo = kvp.Key, count, wr, lower95 = conf.lower, upper95 = conf.upper };
-                File.WriteAllLines($"duos.csv", duoStats.Select(d => $"{d.duo},{d.wr * 100:0.000}%,{d.count},{d.lower95 * 100:0.000}%,{d.upper95 * 100:0.000}%"));
-            }
+            genDuos(matches);
 
-            genSRLaneMatchups("mid", matches.Select(m => m.Mid).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
-            genSRLaneMatchups("top", matches.Select(m => m.Top).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
-            genSRLaneMatchups("adc", matches.Select(m => m.Adc).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
-            genSRLaneMatchups("jun", matches.Select(m => m.Jun).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
-            genSRLaneMatchups("sup", matches.Select(m => m.Sup).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList());
+            var indexHtml = new List<object>();
+            indexHtml.Add(new H1("Champion winrates and matchups"));
+            indexHtml.Add(new P($"Analysed {matches.Count:#,0} matches " + (filterDesc ?? "using a custom filter")));
+            indexHtml.Add(new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")));
+
+            genSRLaneMatchups("mid", matches.Select(m => m.Mid).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
+            genSRLaneMatchups("top", matches.Select(m => m.Top).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
+            genSRLaneMatchups("adc", matches.Select(m => m.Adc).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
+            genSRLaneMatchups("jun", matches.Select(m => m.Jun).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
+            genSRLaneMatchups("sup", matches.Select(m => m.Sup).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
+
+            string css, sorttable;
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.GlobalStats.css"))
+                css = stream.ReadAllText();
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.sorttable.js"))
+                sorttable = stream.ReadAllText();
+            var html = new HTML(
+                new HEAD(
+                    new META { charset = "utf-8" },
+                    new STYLELiteral(css),
+                    new SCRIPTLiteral(sorttable)
+                ),
+                new BODY(indexHtml)
+            );
+            File.WriteAllText(Path.Combine(_settings.OutputPath, "Index.html"), html.ToString());
         }
 
-        private static MatchSR matchSRFromJson(JsonValue json, Region region)
+        private void genDuos(List<MatchSR> matches)
+        {
+            var duos = new AutoDictionary<string, (int winCount, int totalCount)>(_ => (0, 0));
+            void addDuo2(string duoDesc, bool win)
+            {
+                var stat = duos[duoDesc];
+                stat.totalCount++;
+                if (win)
+                    stat.winCount++;
+                duos[duoDesc] = stat;
+            }
+            void addDuo(LaneSR lane1, LaneSR lane2, string lane1type, string lane2type)
+            {
+                if (lane1.ChampW != null && lane2.ChampW != null)
+                    addDuo2($"{lane1type}:{lane1.ChampW} + {lane2type}:{lane2.ChampW}", true);
+                if (lane1.ChampL != null && lane2.ChampL != null)
+                    addDuo2($"{lane1type}:{lane1.ChampL} + {lane2type}:{lane2.ChampL}", false);
+            }
+            foreach (var match in matches)
+            {
+                addDuo(match.Adc, match.Sup, "adc", "sup");
+                addDuo(match.Adc, match.Jun, "adc", "jun");
+                addDuo(match.Adc, match.Mid, "adc", "mid");
+                addDuo(match.Adc, match.Top, "adc", "top");
+                addDuo(match.Sup, match.Jun, "sup", "jun");
+                addDuo(match.Sup, match.Mid, "sup", "mid");
+                addDuo(match.Sup, match.Top, "sup", "top");
+                addDuo(match.Jun, match.Mid, "jun", "mid");
+                addDuo(match.Jun, match.Top, "jun", "top");
+                addDuo(match.Mid, match.Top, "mid", "top");
+            }
+            var duoStats =
+                from kvp in duos
+                let wr = kvp.Value.winCount / (double) kvp.Value.totalCount
+                let count = kvp.Value.totalCount
+                let conf = Utils.WilsonConfidenceInterval(wr, count, 1.96)
+                select new { duo = kvp.Key, count, wr, lower95 = conf.lower, upper95 = conf.upper };
+            File.WriteAllLines(Path.Combine(_settings.OutputPath, $"duos.csv"), duoStats.Select(d => $"{d.duo},{d.wr * 100:0.000}%,{d.count},{d.lower95 * 100:0.000}%,{d.upper95 * 100:0.000}%"));
+        }
+
+        private MatchSR matchSRFromJson(JsonValue json, Region region)
         {
             Ut.Assert(json["gameMode"].GetString() == "CLASSIC");
             var teamW = json["teams"].GetList().Single(tj => tj["win"].GetString() == "Win")["teamId"].GetInt();
@@ -152,7 +195,7 @@ namespace LeagueOfStats.CmdGen
             return result;
         }
 
-        private static void genSRLaneMatchups(string lane, List<LaneSR> matches)
+        private void genSRLaneMatchups(string lane, List<LaneSR> matches, List<object> indexHtml)
         {
             Console.WriteLine($"Usable {lane} matchups: {matches.Count:#,0}");
             var byChamp = new AutoDictionary<string, List<LaneSR>>(_ => new List<LaneSR>());
@@ -164,24 +207,61 @@ namespace LeagueOfStats.CmdGen
 
             var overallPopularity = byChamp.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count / (double) matches.Count / 2);
 
+            var overallTable = new List<TR>();
             foreach (var kvp in percentile(byChamp, 0.95, kvp => kvp.Value.Count))
             {
                 Console.WriteLine($"Generating lane stats for {lane} - {kvp.Key}...");
-                genSRLaneMatchup(kvp.Value, kvp.Key, lane, overallPopularity, (string line) => { File.AppendAllLines($"{lane} - {kvp.Key}.txt", new[] { line }); });
+                genSRLaneMatchup(kvp.Value, kvp.Key, lane, overallPopularity, overallTable);
             }
+
+            indexHtml.Add(new H3($"{lane.Capitalise()}"));
+            indexHtml.Add(makeTable(
+                new TR(colAsc("Champion"), colDesc("Winrate"), colDesc("Matches"), colDesc("p95 lower", true), colAsc("p95 upper")),
+                overallTable));
         }
 
-        private static void genSRLaneMatchup(List<LaneSR> matches, string champ, string lane, Dictionary<string, double> overallPopularity, Action<string> writeLine)
+        private static TH colAsc(object caption, bool initial = false)
+            => new TH(caption) { class_ = initial ? "sorttable_initial" : "" };
+
+        private static TH colDesc(object caption, bool initial = false)
+            => new TH(caption) { class_ = (initial ? "sorttable_initial " : "") + "sorttable_startreversed" };
+
+        private static TD cell(object content, object sortkey, bool leftAlign)
+            => (TD) new TD { class_ = leftAlign ? "la" : "ra" }._(content).Data("sortkey", sortkey);
+
+        private static TD cellStr(string value)
+            => (TD) new TD { class_ = "la" }._(value);
+
+        private static TD cellPrc(double value, int decimalPlaces)
+            => (TD) new TD { class_ = "ra" }._(("{0:0." + new string('0', decimalPlaces) + "}%").Fmt(value * 100)).Data("sortkey", value);
+
+        private static TD cellPrcDelta(double value, int decimalPlaces)
+            => (TD) new TD { class_ = "ra" }._(value < 0 ? "−" : value > 0 ? "+" : " ", ("{0:0." + new string('0', decimalPlaces) + "}%").Fmt(value * 100).Replace("-", "")).Data("sortkey", value);
+
+        private static TD cellInt(int value)
+            => (TD) new TD { class_ = "ra" }._("{0:#,0}".Fmt(value)).Data("sortkey", value);
+
+        private static object makeTable(TR header, IEnumerable<TR> rows)
         {
-            writeLine("");
-            writeLine("");
-            writeLine("");
-            writeLine($"Usable matches for {lane} {champ}: {matches.Count:#,0}");
+            return new TABLE { class_ = "sortable" }._(
+                new THEAD(header),
+                new TBODY(rows)
+            );
+        }
+
+        private void genSRLaneMatchup(List<LaneSR> matches, string champ, string lane, Dictionary<string, double> overallPopularity, List<TR> overallTable)
+        {
+            var championHtml = new List<object>();
+            var champInfo = LeagueStaticData.Champions.Values.Single(ch => ch.Name == champ);
+            var filename = $"{lane}-{champInfo.InternalName}.html";
+            championHtml.Add(new IMG { src = champInfo.ImageUrl, style = "float:left; margin-right: 20px;", width = 110, height = 110 });
+            championHtml.Add(new H1($"{champ} – {lane}"));
+            championHtml.Add(new P($"Usable matches for {lane} {champ}: {matches.Count:#,0}"));
             var overallWinrate = matches.Count(m => m.ChampW == champ) / (double) matches.Count;
             {
                 var conf95 = Utils.WilsonConfidenceInterval(overallWinrate, matches.Count, 1.96);
-                writeLine($"Overall win rate: {overallWinrate * 100:0.0}% ({conf95.lower * 100:0}% - {conf95.upper * 100:0}%)");
-                File.AppendAllLines($"_overall_ - {lane}.txt", new[] { $"{champ,-15}, {overallWinrate * 100:0.0}%, {matches.Count,6}, {conf95.lower * 100:0.0}%, {conf95.upper * 100:0.0}%" });
+                championHtml.Add(new P($"Overall win rate: {overallWinrate * 100:0.0}% ({conf95.lower * 100:0}% - {conf95.upper * 100:0}%)"));
+                overallTable.Add(new TR(cell(new A($"{lane.Capitalise()} {champ}") { href = filename }, champ, true), cellPrc(overallWinrate, 1), cellInt(matches.Count), cellPrc(conf95.lower, 1), cellPrc(conf95.upper, 1)));
             }
 
             var matchups = matches.GroupBy(m => m.Other(champ)).ToDictionary(grp => grp.Key, grp => grp.ToList()).Select(kvp =>
@@ -198,10 +278,16 @@ namespace LeagueOfStats.CmdGen
                 .OrderByDescending(m => m.excessPopularity)
                 .Take(10)
                 .ToList();
-            writeLine("");
-            writeLine("Excessively popular enemies:");
-            foreach (var epe in excessivelyPopularEnemies)
-                writeLine($"{champ} vs {epe.enemy,-15} pop: +{epe.excessPopularity * 100:0.0}%, wr: {(matchups[epe.enemy].winrate - overallWinrate) * 100:+0.0'% (!!!)';-0.0'%      '; 0.0'%      '}  ({matchups[epe.enemy].count:#,0} matches)");
+            championHtml.Add(new H3("Excessively popular enemies"));
+            championHtml.Add(makeTable(
+                new TR(colAsc("Matchup"), colDesc("Popularity", true), colAsc("Δ winrate"), colDesc("Matches")),
+                excessivelyPopularEnemies.Select(epe => new TR(
+                    cellStr($"{champ} vs {epe.enemy}"),
+                    cellPrcDelta(epe.excessPopularity, 1),
+                    cellPrcDelta(matchups[epe.enemy].winrate - overallWinrate, 1).AppendStyle(matchups[epe.enemy].winrate > overallWinrate ? "color: #4e2" : "color: #e42"),
+                    cellInt(matchups[epe.enemy].count)
+                ))
+            ));
 
             var bans = LeagueStaticData.Champions.Values.Select(ch => ch.Name).Where(ch => ch != champ).Select(ban =>
             {
@@ -211,29 +297,63 @@ namespace LeagueOfStats.CmdGen
                 var winrateAll = msAll.Count == 0 ? -1 : msAll.Count(m => m.ChampW == champ) / (double) msAll.Count;
                 return new { ban, winrate, winrateAll, count = ms.Count, countAll = msAll.Count };
             }).ToList();
-            writeLine("");
-            writeLine($"Bans for {champ}:");
-            foreach (var b in bans.OrderByDescending(b => b.winrate).Take(5))
-                writeLine($"  {b.ban,-15} {(b.winrate - overallWinrate) * 100:+0.0;-0.0; 0.0}% winrate ({b.count:#,0} matches, {matches.Count - b.count:#,0} banned)");
 
-            writeLine("");
-            writeLine($"All lane bans for {champ}:");
-            foreach (var b in bans.OrderByDescending(b => b.winrateAll).Take(5))
-                writeLine($"  {b.ban,-15} {(b.winrateAll - overallWinrate) * 100:+0.0;-0.0; 0.0}% winrate ({b.countAll:#,0} matches, {matches.Count - b.countAll:#,0} banned)");
+            championHtml.Add(new H3($"Own lane bans for {champ}"));
+            championHtml.Add(makeTable(
+                new TR(colAsc("Champion"), colDesc("Δ winrate", true), colDesc("Matches"), colDesc("Banned")),
+                bans.OrderByDescending(b => b.winrate).Take(5).Select(b => new TR(
+                    cellStr(b.ban), cellPrcDelta(b.winrate - overallWinrate, 1), cellInt(b.count), cellInt(matches.Count - b.count)
+                ))
+            ));
 
-            writeLine("");
-            writeLine("Most frequent matchups (50%)");
-            foreach (var mu in percentile(matchups.Values.OrderByDescending(m => m.count), 0.50, m => m.count).OrderByDescending(m => m.winrate))
-                writeLine($"{champ} vs {mu.enemy,-15} {mu.winrate:0.0000}, {mu.count,5}            {mu.conf95.lower:0.0000} - {mu.conf95.upper:0.0000}");
-            writeLine("");
-            writeLine("Almost all matchups (95%)");
-            foreach (var mu in percentile(matchups.Values.OrderByDescending(m => m.count), 0.95, m => m.count).OrderByDescending(m => m.winrate))
-                writeLine($"{champ} vs {mu.enemy,-15} {mu.winrate:0.0000}, {mu.count,5}            {mu.conf95.lower:0.0000} - {mu.conf95.upper:0.0000}");
-            writeLine("");
-            writeLine("Remaining matchups (...5%)");
-            foreach (var mu in percentile(matchups.Values.OrderBy(m => m.count), 0.05, m => m.count).OrderByDescending(m => m.winrate))
-                writeLine($"{champ} vs {mu.enemy,-15} {mu.winrate:0.0000}, {mu.count,5}            {mu.conf95.lower:0.0000} - {mu.conf95.upper:0.0000}");
-            writeLine("");
+            championHtml.Add(new H3($"All lane bans for {champ}"));
+            championHtml.Add(makeTable(
+                new TR(colAsc("Champion"), colDesc("Δ winrate", true), colDesc("Matches"), colDesc("Banned")),
+                bans.OrderByDescending(b => b.winrateAll).Take(5).Select(b => new TR(
+                    cellStr(b.ban), cellPrcDelta(b.winrateAll - overallWinrate, 1), cellInt(b.countAll), cellInt(matches.Count - b.countAll)
+                ))
+            ));
+
+            championHtml.Add(new H3("Most frequent matchups (50%)"));
+            championHtml.Add(makeTable(
+                new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
+                percentile(matchups.Values.OrderByDescending(m => m.count), 0.50, m => m.count).OrderByDescending(m => m.winrate).Select(mu => new TR(
+                    cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
+                ))
+            ));
+
+            championHtml.Add(new H3("Almost all matchups (95%)"));
+            championHtml.Add(makeTable(
+                new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
+                percentile(matchups.Values.OrderByDescending(m => m.count), 0.95, m => m.count).OrderByDescending(m => m.winrate).Select(mu => new TR(
+                    cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
+                ))
+            ));
+
+            championHtml.Add(new H3("Remaining matchups (...5%)"));
+            championHtml.Add(makeTable(
+                new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
+                percentile(matchups.Values.OrderBy(m => m.count), 0.05, m => m.count).OrderByDescending(m => m.winrate).Select(mu => new TR(
+                    cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
+                ))
+            ));
+
+            championHtml.Add(new P { style = "margin-top: 30px;" }._("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")));
+
+            string css, sorttable;
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.GlobalStats.css"))
+                css = stream.ReadAllText();
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.sorttable.js"))
+                sorttable = stream.ReadAllText();
+            var html = new HTML(
+                new HEAD(
+                    new META { charset = "utf-8" },
+                    new STYLELiteral(css),
+                    new SCRIPTLiteral(sorttable)
+                ),
+                new BODY(championHtml)
+            );
+            File.WriteAllText(Path.Combine(_settings.OutputPath, filename), html.ToString());
         }
     }
 }

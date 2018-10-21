@@ -81,6 +81,12 @@
   <ItemGroup>
     <EmbeddedResource Include="Css\ItemSets.css" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Css\sorttable.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Css\GlobalStats.css" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

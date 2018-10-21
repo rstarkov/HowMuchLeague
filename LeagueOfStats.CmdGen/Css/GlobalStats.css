@@ -1,0 +1,85 @@
+﻿@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+body {
+    font-family: 'Roboto', sans-serif;
+    font-size: 15px;
+    background: #222;
+    color: #fff;
+    margin: 0;
+    padding: 15px;
+}
+
+h1, h2, h3, h4, h5, th {
+    font-family: 'Open Sans', sans-serif;
+}
+
+h1 {
+    margin-top: 0;
+}
+
+h3 {
+    margin-top: 30px;
+}
+
+p {
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: #e9cb05;
+}
+
+    a:visited {
+        color: #de7910;
+    }
+
+.ra {
+    text-align: right;
+}
+
+.la {
+    text-align: left;
+}
+
+table {
+    border: 1px solid #888;
+    border-collapse: collapse;
+}
+
+    table.sortable th {
+        cursor: pointer;
+        padding-right: 6px;
+    }
+
+td, th {
+    border: 1px solid #444;
+    padding: 3px 15px 3px;
+}
+
+th {
+    background-color: #050505;
+    text-align: left;
+}
+
+table.sortable th:not(.sorttable_sorted):not(.sorttable_sorted_reverse):not(.sorttable_nosort):after {
+    content: " \25B4";
+    visibility: hidden;
+}
+
+#sorttable_sortfwdind, #sorttable_sortrevind {
+    color: #f0f;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #101010;
+}
+
+tbody tr:nth-child(odd) {
+    background-color: #181818;
+}
+
+tbody tr:hover {
+    background-color: #333;
+}

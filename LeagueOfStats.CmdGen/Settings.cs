@@ -11,6 +11,7 @@ namespace LeagueOfStats.CmdGen
         public string PersonalOutputPathTemplate = @"C:\Temp\League\{0}-{1}{2}.html";
         public string ItemsOutputPath = @"C:\Temp\League";
         public ItemSetsSettings ItemSetsSettings = new ItemSetsSettings();
+        public SummonerRift5v5StatsSettings SummonerRift5v5StatsSettings = new SummonerRift5v5StatsSettings();
         public List<HumanInfo> Humans = new List<HumanInfo>();
     }
 
@@ -25,6 +26,12 @@ namespace LeagueOfStats.CmdGen
         public string ItemStatsCachePath = @"C:\Temp\League";
         public double ItemStatsCacheExpiryHours = 20;
         public string[] TopRowItems = new[] { "Health Potion", "Control Ward", "Farsight Alteration", "Oracle Lens", "Corrupting Potion", "Elixir of Iron", "Elixir of Sorcery", "Elixir of Wrath" };
+    }
+
+    class SummonerRift5v5StatsSettings
+    {
+        public string OutputPath = @"C:\Temp\SummonerRiftMatchups";
+        public double IncludeLastDays = 30;
     }
 
     public class HumanInfo

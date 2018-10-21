@@ -14,6 +14,14 @@ namespace LeagueOfStats.CmdGen
             return tag;
         }
 
+        public static T AppendStyle<T>(this T tag, string style) where T : HtmlTag
+        {
+            tag.style = (tag.style ?? "") + style;
+            return tag;
+        }
+
+        public static string Capitalise(this string str) => str.Substring(0, 1).ToUpper() + str.Substring(1);
+
         public static (double lower, double upper) WilsonConfidenceInterval(double p, int n, double z)
         {
             // https://github.com/msn0/wilson-score-interval/blob/master/index.js

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
@@ -30,6 +30,10 @@ namespace LeagueOfStats.CmdGen
 
             if (settings.ItemSetsSettings != null && settings.LeagueInstallPath != null)
                 ItemSets.Generate(settings.DataPath, settings.LeagueInstallPath, settings.ItemSetsSettings);
+
+            if (settings.SummonerRift5v5StatsSettings != null)
+                new SummonerRift5v5Stats(settings.SummonerRift5v5StatsSettings).Generate();
+
         }
     }
 }
