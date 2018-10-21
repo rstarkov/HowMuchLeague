@@ -154,7 +154,6 @@ namespace LeagueOfStats.CmdGen
             var kills = new Dictionary<string, int>();
             var deaths = new Dictionary<string, int>();
             var games = new Dictionary<string, int>();
-            // TODO: this counts duplicate matches incorrectly
             foreach (var m in DataStore.ReadMatchesByRegVerQue(f => f.queueId == 4 || f.queueId == 6 || f.queueId == 410 || f.queueId == 420 || f.queueId == 440))
             {
                 foreach (var p in m.json["participants"].GetList())
@@ -177,13 +176,10 @@ namespace LeagueOfStats.CmdGen
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = DataStore.LoadMatchesByVerQue("8.6", 1020, match1FAFromJson)
-                .Concat(DataStore.LoadMatchesByVerQue("8.7", 1020, match1FAFromJson))
+            var matches = DataStore.ReadMatchesByRegVerQue(f => f.queueId == 1020 && (f.version == "8.6" || f.version == "8.7"))
+                .Select(m => match1FAFromJson(m.json, m.region))
                 .ToList();
-            // Remove duplicates
-            var hadCount = matches.Count;
-            matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
-            writeLine($"Distinct matches: {matches.Count:#,0} (duplicates removed: {hadCount - matches.Count:#,0})");
+            writeLine($"Distinct matches: {matches.Count:#,0}");
             writeLine($"Distinct matchups: {matches.GroupBy(m => new { m.Champion1, m.Champion2 }).Count():#,0} / {9453 + 138:#,0}"); // 138 choose 2 + 138 mirror matchups (Teemo/Karthus not allowed)
             // Champions seen
             var champions = matches.Select(m => m.Champion1).Concat(matches.Select(m => m.Champion2)).Distinct().ToList();
@@ -327,14 +323,10 @@ namespace LeagueOfStats.CmdGen
             writeLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = DataStore.LoadMatchesByVerQue(version, 420, matchSRFromJson) // ranked solo
-                .Concat(DataStore.LoadMatchesByVerQue(version, 400, matchSRFromJson)) // draft pick
-                .Concat(DataStore.LoadMatchesByVerQue(version, 430, matchSRFromJson)) // blind pick
+            var matches = DataStore.ReadMatchesByRegVerQue(f => f.version == version && (f.queueId == 420 /*ranked solo*/ || f.queueId == 400 /*draft pick*/ || f.queueId == 430 /*blind pick*/))
+                .Select(m => matchSRFromJson(m.json, m.region))
                 .ToList();
-            // Remove duplicates
-            var hadCount = matches.Count;
-            matches = matches.GroupBy(m => m.MatchId).Select(m => m.First()).ToList();
-            writeLine($"Distinct matches: {matches.Count:#,0} (duplicates removed: {hadCount - matches.Count:#,0})");
+            writeLine($"Distinct matches: {matches.Count:#,0}");
 
             {
                 var duos = new AutoDictionary<string, (int winCount, int totalCount)>(_ => (0, 0));

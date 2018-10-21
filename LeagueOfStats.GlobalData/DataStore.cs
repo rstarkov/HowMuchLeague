@@ -146,8 +146,7 @@ namespace LeagueOfStats.GlobalData
         }
 
         /// <summary>
-        ///     Enumerates full match JSONs for all matches available for specific region, game version, and/or queue IDs.
-        ///     Caller is responsible for filtering out duplicate matches.</summary>
+        ///     Enumerates full match JSONs for all matches available for specific region, game version, and/or queue IDs.</summary>
         public static IEnumerable<(JsonValue json, Region region)> ReadMatchesByRegVerQue(Func<(Region region, string version, int queueId), bool> fileFilter)
         {
             foreach (var f in LosMatchJsons.SelectMany(kvpR => kvpR.Value.SelectMany(kvpV => kvpV.Value.Select(kvpQ => (region: kvpR.Key, version: kvpV.Key, queueId: kvpQ.Key, file: kvpQ.Value)))))
@@ -156,20 +155,13 @@ namespace LeagueOfStats.GlobalData
                     continue;
                 Console.Write($"Loading {f.file.FileName}... ");
                 var thread = new CountThread(10000);
-                foreach (var m in f.file.ReadItems().PassthroughCount(thread.Count))
+                var matchIds = new HashSet<long>();
+                foreach (var m in f.file.ReadItems().PassthroughCount(thread.Count).Where(js => matchIds.Add(js["gameId"].GetLong())))
                     yield return (m, f.region);
                 thread.Stop();
                 Console.WriteLine();
                 Console.WriteLine($"Loaded {thread.Count} matches from {f.file.FileName} in {thread.Duration.TotalSeconds:#,0.000} s");
             }
-        }
-
-        /// <summary>Caller is responsible for filtering out duplicate matches.</summary>
-        public static List<T> LoadMatchesByVerQue<T>(string version, int queueId, Func<JsonValue, Region, T> loader)
-        {
-            return ReadMatchesByRegVerQue(f => f.version == version && f.queueId == queueId)
-                .Select(m => loader(m.json, m.region))
-                .ToList();
         }
     }
 }
