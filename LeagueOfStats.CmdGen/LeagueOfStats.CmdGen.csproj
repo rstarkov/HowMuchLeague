@@ -46,13 +46,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IsLeagueDyingStats.cs" />
     <Compile Include="ItemSets.cs" />
+    <Compile Include="OneForAllStats.cs" />
     <Compile Include="PersonalStats.cs" />
-    <Compile Include="GlobalStats.cs" />
+    <Compile Include="MiscStats.cs" />
     <Compile Include="ItemSheet.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Settings.cs" />
+    <Compile Include="SummonerRift5v5Stats.cs" />
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
