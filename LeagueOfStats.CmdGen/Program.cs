@@ -25,11 +25,11 @@ namespace LeagueOfStats.CmdGen
             if (settings.ItemsOutputPath != null)
                 ItemSheet.Generate(settings.ItemsOutputPath);
 
-            if (settings.PersonalOutputPathTemplate != null)
-                PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
-
             if (settings.ItemSetsSettings != null && settings.LeagueInstallPath != null)
                 ItemSets.Generate(settings.DataPath, settings.LeagueInstallPath, settings.ItemSetsSettings);
+
+            if (settings.PersonalOutputPathTemplate != null)
+                PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
 
             if (settings.SummonerRift5v5StatsSettings != null)
                 new SummonerRift5v5Stats(settings.SummonerRift5v5StatsSettings).Generate();
