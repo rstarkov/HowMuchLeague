@@ -204,7 +204,7 @@ namespace LeagueOfStats.CmdGen
                 css = stream.ReadAllText();
             var html = new HTML(
                 new HEAD(new STYLELiteral(css)),
-                new BODY(pagesHtml)
+                new BODY(new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")), pagesHtml)
             );
             Directory.CreateDirectory(settings.ReportPath);
             File.WriteAllText(Path.Combine(settings.ReportPath, "ItemSets.html"), html.ToString());
