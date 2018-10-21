@@ -22,9 +22,9 @@ namespace LeagueOfStats.CmdGen
             Console.WriteLine($"Loading basic match infos...");
             var cutoff = DateTime.UtcNow - TimeSpan.FromDays(30);
             var counts = new AutoDictionary<string, string, int, int>();
-            foreach (var json in DataStore.ReadMatchesByBasicInfo(mi => mi.GameCreationDate >= cutoff && (mi.QueueId == 420 || mi.QueueId == 400 || mi.QueueId == 430)))
+            foreach (var match in DataStore.ReadMatchesByBasicInfo(mi => mi.GameCreationDate >= cutoff && (mi.QueueId == 420 || mi.QueueId == 400 || mi.QueueId == 430)))
             {
-                foreach (var plr in json["participants"].GetList())
+                foreach (var plr in match.json["participants"].GetList())
                 {
                     var lane = plr["timeline"]["lane"].GetString();
                     var role = plr["timeline"]["role"].GetString();

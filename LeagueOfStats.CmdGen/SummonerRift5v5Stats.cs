@@ -55,10 +55,25 @@ namespace LeagueOfStats.CmdGen
 
         public static void Generate(string version)
         {
+            Generate(m => m.version == version);
+        }
+
+        public static void Generate(Func<(Region region, string version), bool> filter)
+        {
+            generate(DataStore.ReadMatchesByRegVerQue(f => filter((f.region, f.version)) && (f.queueId == 420 /*ranked solo*/ || f.queueId == 400 /*draft pick*/ || f.queueId == 430 /*blind pick*/)));
+        }
+
+        public static void Generate(Func<BasicMatchInfo, bool> filter)
+        {
+            generate(DataStore.ReadMatchesByBasicInfo(m => filter(m) && (m.QueueId == 420 /*ranked solo*/ || m.QueueId == 400 /*draft pick*/ || m.QueueId == 430 /*blind pick*/)));
+        }
+
+        private static void generate(IEnumerable<(JsonValue json, Region region)> jsons)
+        {
             Console.WriteLine($"Generating stats at {DateTime.Now}...");
 
             // Load matches
-            var matches = DataStore.ReadMatchesByRegVerQue(f => f.version == version && (f.queueId == 420 /*ranked solo*/ || f.queueId == 400 /*draft pick*/ || f.queueId == 430 /*blind pick*/))
+            var matches = jsons
                 .Select(m => matchSRFromJson(m.json, m.region))
                 .ToList();
             Console.WriteLine($"Distinct matches: {matches.Count:#,0}");

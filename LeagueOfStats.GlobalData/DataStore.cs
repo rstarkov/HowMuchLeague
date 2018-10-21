@@ -6,7 +6,6 @@ using System.Text.RegularExpressions;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Json;
-using RT.Util.Paths;
 
 namespace LeagueOfStats.GlobalData
 {
@@ -121,7 +120,7 @@ namespace LeagueOfStats.GlobalData
         }
 
         /// <summary>Enumerates full match JSONs for matches that satisfy a filter on basic match properties.</summary>
-        public static IEnumerable<JsonValue> ReadMatchesByBasicInfo(Func<BasicMatchInfo, bool> filter)
+        public static IEnumerable<(JsonValue json, Region region)> ReadMatchesByBasicInfo(Func<BasicMatchInfo, bool> filter)
         {
             var matchFiles = LosMatchInfos
                 .SelectMany(kvp => kvp.Value
@@ -129,7 +128,7 @@ namespace LeagueOfStats.GlobalData
                     .Where(filter)
                     .Select(mi => (region: kvp.Key, info: mi)))
                 .ToLookup(item => (region: item.region, version: item.info.GameVersion, queue: item.info.QueueId))
-                .Select(grp => (jsons: LosMatchJsons[grp.Key.region][grp.Key.version][grp.Key.queue], matchIds: grp.Select(item => item.info.MatchId).ToHashSet()))
+                .Select(grp => (jsons: LosMatchJsons[grp.Key.region][grp.Key.version][grp.Key.queue], matchIds: grp.Select(item => item.info.MatchId).ToHashSet(), region: grp.Key.region))
                 .ToList();
 
             var total = matchFiles.Sum(f => f.matchIds.Count);
@@ -140,7 +139,7 @@ namespace LeagueOfStats.GlobalData
                 foreach (var json in file.jsons.ReadItems().Where(m => file.matchIds.Contains(m["gameId"].GetLong())))
                 {
                     file.matchIds.Remove(json["gameId"].GetLong()); // it's possible for a data file to contain duplicates, so make sure we don't return them twice
-                    yield return json;
+                    yield return (json, file.region);
                 }
             }
         }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using RT.Util.Json;
 
 namespace LeagueOfStats.GlobalData
