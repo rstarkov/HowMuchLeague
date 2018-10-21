@@ -17,10 +17,10 @@ namespace LeagueOfStats.CmdGen
 {
     static class ItemSets
     {
-        public static void GenerateRecentItemStats(string dataPath, string itemStatsFile)
+        public static void GenerateRecentItemStats(string dataPath, string itemStatsFile, double includeLastDays)
         {
             Console.WriteLine($"Loading basic match infos...");
-            var cutoff = DateTime.UtcNow - TimeSpan.FromDays(30);
+            var cutoff = DateTime.UtcNow - TimeSpan.FromDays(includeLastDays);
             var counts = new AutoDictionary<string, string, int, int>();
             foreach (var match in DataStore.ReadMatchesByBasicInfo(mi => mi.GameCreationDate >= cutoff && (mi.QueueId == 420 || mi.QueueId == 400 || mi.QueueId == 430)))
             {
@@ -58,7 +58,7 @@ namespace LeagueOfStats.CmdGen
             Directory.CreateDirectory(settings.ItemStatsCachePath);
             var itemStatsFile = Path.Combine(settings.ItemStatsCachePath, "item-popularity.csv");
             if (!File.Exists(itemStatsFile) || (DateTime.UtcNow - File.GetLastWriteTimeUtc(itemStatsFile)).TotalHours > settings.ItemStatsCacheExpiryHours)
-                GenerateRecentItemStats(dataPath, itemStatsFile);
+                GenerateRecentItemStats(dataPath, itemStatsFile, settings.IncludeLastDays);
             var refreshTime = File.GetLastWriteTime(itemStatsFile);
 
             Console.WriteLine("Generating item sets...");
