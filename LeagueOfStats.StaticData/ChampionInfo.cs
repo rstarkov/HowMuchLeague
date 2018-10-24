@@ -92,7 +92,7 @@ namespace LeagueOfStats.StaticData
             PerLevelCrit = stats["critperlevel"].GetDecimal();
             BaseAttackDamage = stats["attackdamage"].GetDecimal();
             PerLevelAttackDamage = stats["attackdamageperlevel"].GetDecimal();
-            BaseAttackSpeedDelay = stats["attackspeedoffset"].GetDecimal();
+            BaseAttackSpeedDelay = stats.Safe["attackspeedoffset"].GetDecimalSafe() ?? -1; // mysteriously gone in 8.21
             PerLevelAttackSpeed = stats["attackspeedperlevel"].GetDecimal();
             BaseMoveSpeed = stats["movespeed"].GetDecimal();
             BaseAttackRange = stats["attackrange"].GetDecimal();
