@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using LeagueOfStats.GlobalData;
 using RT.Util;
+using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueOfStats.Downloader
@@ -64,8 +65,9 @@ namespace LeagueOfStats.Downloader
             Console.WriteLine("    ... done.");
 
             var downloaders = new List<Downloader>();
+            var keys = apiKeys.Select(k => new ApiKeyWithPrompt(k)).ToArray();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(apiKeys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
+                downloaders.Add(new Downloader(keys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever();
@@ -80,7 +82,7 @@ namespace LeagueOfStats.Downloader
             Console.WriteLine($"Initialising...");
             DataStore.Initialise(dataPath, "");
             Console.WriteLine($"Downloading...");
-            var downloader = new MatchDownloader(apiKey, region);
+            var downloader = new MatchDownloader(new ApiKeyWithPrompt(apiKey), region);
             downloader.OnEveryResponse = (_, __) => { };
             var ids = File.ReadAllLines(idFilePath).Select(l => l.Trim()).Where(l => long.TryParse(l, out _)).Select(l => long.Parse(l)).ToList();
             foreach (var matchId in ids)
@@ -151,7 +153,7 @@ namespace LeagueOfStats.Downloader
             }
         }
 
-        private static void RecheckNonexistentIds(string dataPath, string[] apiKeys)
+        private static void RecheckNonexistentIds(string dataPath, ApiKeyWrapper[] apiKeys)
         {
             Console.WriteLine($"Initialising...");
             DataStore.Initialise(dataPath, "");
@@ -166,7 +168,7 @@ namespace LeagueOfStats.Downloader
             foreach (var t in threads)
                 t.Join();
         }
-        private static void RecheckNonexistentIdsRegion(Region region, string[] apiKeys)
+        private static void RecheckNonexistentIdsRegion(Region region, ApiKeyWrapper[] apiKeys)
         {
             var path = @"P:\LeagueOfStats\LeagueOfStats\Builds\";
             var doneFile = Path.Combine(path, $"redone-{region}.txt");
@@ -217,5 +219,36 @@ namespace LeagueOfStats.Downloader
             }
         }
 
+    }
+
+    class ApiKeyWithPrompt : ApiKeyWrapper
+    {
+        private string _apiKey;
+        private object _lock = new object();
+        private DateTime _noPromptUntil = DateTime.MinValue;
+
+        public ApiKeyWithPrompt(string initialApiKey)
+        {
+            _apiKey = initialApiKey;
+        }
+
+        public override string GetApiKey() => _apiKey;
+
+        public override void ReportInvalid()
+        {
+            lock (_lock)
+            {
+                if (DateTime.UtcNow < _noPromptUntil)
+                {
+                    Thread.Sleep(TimeSpan.FromSeconds(15));
+                    return;
+                }
+                LosWinAPI.FlashConsoleTaskbarIcon(true);
+                _apiKey = InputBox.GetLine($"Key {_apiKey} may have expired. Enter new key:") ?? _apiKey;
+                LosWinAPI.FlashConsoleStop();
+                _noPromptUntil = DateTime.UtcNow + TimeSpan.FromMinutes(1.5);
+                Thread.Sleep(60);
+            }
+        }
     }
 }

@@ -13,7 +13,7 @@ namespace LeagueOfStats.Downloader
 {
     class Downloader
     {
-        public string[] ApiKeys;
+        public ApiKeyWrapper[] ApiKeys;
         public Region Region;
         public string Version;
         public int? QueueId;
@@ -30,7 +30,7 @@ namespace LeagueOfStats.Downloader
         private MatchDownloader[] _downloaders;
         private int _nextDownloader = 0;
 
-        public Downloader(string[] apiKeys, Region region, string version, int? queueId, long initialMatchId, long matchIdRange)
+        public Downloader(ApiKeyWrapper[] apiKeys, Region region, string version, int? queueId, long initialMatchId, long matchIdRange)
         {
             ApiKeys = apiKeys;
             Region = region;

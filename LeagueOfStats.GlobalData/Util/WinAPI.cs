@@ -40,5 +40,10 @@ namespace LeagueOfStats.GlobalData
         {
             FlashWindow(Process.GetCurrentProcess().MainWindowHandle, FLASHW_ALL | (blinky ? FLASHW_TIMER : 0));
         }
+
+        public static void FlashConsoleStop()
+        {
+            FlashWindow(Process.GetCurrentProcess().MainWindowHandle, 0);
+        }
     }
 }

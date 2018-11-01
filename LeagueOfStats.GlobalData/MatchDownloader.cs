@@ -10,7 +10,7 @@ namespace LeagueOfStats.GlobalData
 
     public class MatchDownloader
     {
-        public string ApiKey;
+        private ApiKeyWrapper _apiKey;
         public Region Region;
         public int RetryCount = 10;
         public DateTime OverQuotaUntil;
@@ -19,9 +19,9 @@ namespace LeagueOfStats.GlobalData
         public Action<HResponse> OnUnparseableJson = (resp) => { Console.WriteLine($"Download failed! JSON unparseable:\r\n" + resp.DataString); };
         public Action<HResponse> OnRetryLimitReached = (resp) => { Console.WriteLine($"Download failed! Retry limit reached, status: {(int) resp.StatusCode}, text: {resp.DataString}"); };
 
-        public MatchDownloader(string apiKey, Region region)
+        public MatchDownloader(ApiKeyWrapper apiKey, Region region)
         {
-            ApiKey = apiKey;
+            _apiKey = apiKey;
             Region = region;
         }
 
@@ -30,9 +30,9 @@ namespace LeagueOfStats.GlobalData
             if (DateTime.UtcNow < OverQuotaUntil)
                 return (MatchDownloadResult.OverQuota, null);
 
-            var url = $@"https://{Region.ToApiHost()}/lol/match/v3/matches/{matchId}?api_key={ApiKey}";
             int attempts = 0;
             retry:;
+            var url = $@"https://{Region.ToApiHost()}/lol/match/v3/matches/{matchId}?api_key={_apiKey.GetApiKey()}";
             try
             {
                 attempts++;
@@ -42,9 +42,7 @@ namespace LeagueOfStats.GlobalData
                 if (resp.StatusCode == (HttpStatusCode) 403)
                 {
                     attempts--;
-                    Console.WriteLine($"API key expired / invalid? Sleeping for 60s. Key: {ApiKey}");
-                    LosWinAPI.FlashConsoleTaskbarIcon(true);
-                    Thread.Sleep(TimeSpan.FromSeconds(60));
+                    _apiKey.ReportInvalid();
                     goto retry;
                 }
 
@@ -78,6 +76,30 @@ namespace LeagueOfStats.GlobalData
                 goto retry;
             }
         }
+    }
 
+    public abstract class ApiKeyWrapper
+    {
+        public abstract string GetApiKey();
+        public abstract void ReportInvalid();
+    }
+
+    public class StaticApiKey : ApiKeyWrapper
+    {
+        private string _apiKey;
+
+        public StaticApiKey(string apiKey)
+        {
+            _apiKey = apiKey;
+        }
+
+        public override string GetApiKey() => _apiKey;
+
+        public override void ReportInvalid()
+        {
+            Console.WriteLine($"API key expired / invalid? Key: {_apiKey}");
+            LosWinAPI.FlashConsoleTaskbarIcon(true);
+            Thread.Sleep(60);
+        }
     }
 }
