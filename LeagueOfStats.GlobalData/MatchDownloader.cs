@@ -6,14 +6,14 @@ using RT.Util.Json;
 
 namespace LeagueOfStats.GlobalData
 {
-    public enum MatchDownloadResult { OK, NonExistent, Failed, OverQuota }
+    public enum MatchDownloadResult { OK, NonExistent, Failed, BackOff }
 
     public class MatchDownloader
     {
         private ApiKeyWrapper _apiKey;
         public Region Region;
         public int RetryCount = 10;
-        public DateTime OverQuotaUntil;
+        public DateTime BackOffUntil;
 
         public Action<string, HResponse> OnEveryResponse = (url, resp) => { Console.WriteLine($"{url} --- {(int) resp.StatusCode}"); };
         public Action<HResponse> OnUnparseableJson = (resp) => { Console.WriteLine($"Download failed! JSON unparseable:\r\n" + resp.DataString); };
@@ -27,12 +27,15 @@ namespace LeagueOfStats.GlobalData
 
         public (MatchDownloadResult result, JsonValue json) DownloadMatch(long matchId)
         {
-            if (DateTime.UtcNow < OverQuotaUntil)
-                return (MatchDownloadResult.OverQuota, null);
+            if (DateTime.UtcNow < BackOffUntil)
+                return (MatchDownloadResult.BackOff, null);
 
             int attempts = 0;
             retry:;
-            var url = $@"https://{Region.ToApiHost()}/lol/match/v3/matches/{matchId}?api_key={_apiKey.GetApiKey()}";
+            if (attempts > 0)
+                Thread.Sleep(1000);
+            var keyUsed = _apiKey.GetApiKey();
+            var url = $@"https://{Region.ToApiHost()}/lol/match/v3/matches/{matchId}?api_key={keyUsed}";
             try
             {
                 attempts++;
@@ -41,8 +44,13 @@ namespace LeagueOfStats.GlobalData
 
                 if (resp.StatusCode == (HttpStatusCode) 403)
                 {
-                    attempts--;
-                    _apiKey.ReportInvalid();
+                    if (attempts > 3)
+                    {
+                        BackOffUntil = DateTime.UtcNow.AddMinutes(1);
+                        _apiKey.ReportInvalid(keyUsed);
+                        Console.WriteLine($"{Region}: API key appears to have expired.");
+                        return (MatchDownloadResult.BackOff, null);
+                    }
                     goto retry;
                 }
 
@@ -51,14 +59,15 @@ namespace LeagueOfStats.GlobalData
                     if (retryAfter < 1)
                         retryAfter = 1;
                     Console.WriteLine($"{Region}: over quota for {retryAfter} seconds...");
-                    OverQuotaUntil = DateTime.UtcNow.AddSeconds(retryAfter);
-                    return (MatchDownloadResult.OverQuota, null);
+                    BackOffUntil = DateTime.UtcNow.AddSeconds(retryAfter);
+                    return (MatchDownloadResult.BackOff, null);
                 }
 
                 if (resp.StatusCode == HttpStatusCode.NotFound)
                     return (MatchDownloadResult.NonExistent, null);
                 else if (resp.StatusCode == HttpStatusCode.OK)
                 {
+                    _apiKey.ReportValid(keyUsed);
                     try { return (MatchDownloadResult.OK, resp.DataJson); }// make sure it can be parsed as JSON
                     catch
                     {
@@ -81,7 +90,8 @@ namespace LeagueOfStats.GlobalData
     public abstract class ApiKeyWrapper
     {
         public abstract string GetApiKey();
-        public abstract void ReportInvalid();
+        public abstract void ReportValid(string keyUsed);
+        public abstract void ReportInvalid(string keyUsed);
     }
 
     public class StaticApiKey : ApiKeyWrapper
@@ -95,11 +105,12 @@ namespace LeagueOfStats.GlobalData
 
         public override string GetApiKey() => _apiKey;
 
-        public override void ReportInvalid()
+        public override void ReportValid(string keyUsed)
         {
-            Console.WriteLine($"API key expired / invalid? Key: {_apiKey}");
-            LosWinAPI.FlashConsoleTaskbarIcon(true);
-            Thread.Sleep(60);
+        }
+
+        public override void ReportInvalid(string keyUsed)
+        {
         }
     }
 }
