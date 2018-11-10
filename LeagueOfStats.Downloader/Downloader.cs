@@ -204,7 +204,7 @@ namespace LeagueOfStats.Downloader
             var gapstat = new ValueStat();
             foreach (var gap in _heap.Take(_heapLength))
                 gapstat.AddObservation(gap.Length);
-            Console.ForegroundColor = Program.Colors[Region];
+            Console.ForegroundColor = MainWindow.Colors[Region];
             Console.WriteLine();
             Console.WriteLine($"{Region}: {MatchCount:#,0}; {searchMin:#,0} - {searchMax:#,0}; {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
             Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
@@ -260,7 +260,7 @@ namespace LeagueOfStats.Downloader
             var downloader = _downloaders[_nextDownloader];
             _nextDownloader = (_nextDownloader + 1) % _downloaders.Length;
             var dl = downloader.DownloadMatch(matchId);
-            if (dl.result == MatchDownloadResult.OverQuota)
+            if (dl.result == MatchDownloadResult.BackOff)
             {
                 Thread.Sleep(Rnd.Next(500, 1500)); // slowly de-sync multiple Downloaders over time
                 goto again2;
@@ -287,7 +287,7 @@ namespace LeagueOfStats.Downloader
                         rebuild();
                     printStats();
                 }
-                Console.ForegroundColor = Program.Colors[Region] - (added ? 0 : 8);
+                Console.ForegroundColor = MainWindow.Colors[Region] - (added ? 0 : 8);
                 if (matchId < (wasEarliest + wasLatest) / 2)
                     Console.Write($">{matchId - wasEarliest:#,0}   ");
                 else

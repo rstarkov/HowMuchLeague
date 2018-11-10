@@ -1,35 +1,96 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Media;
 using LeagueOfStats.GlobalData;
 using RT.Util;
-using RT.Util.Dialogs;
+using RT.Util.Consoles;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueOfStats.Downloader
 {
-    class Program
+    public partial class MainWindow : Window
     {
-        public static Dictionary<Region, ConsoleColor> Colors;
-
-        static void Main(string[] args)
+        public static Dictionary<Region, ConsoleColor> Colors = new Dictionary<Region, ConsoleColor>
         {
+            [Region.EUW] = ConsoleColor.Green,
+            [Region.EUNE] = ConsoleColor.Red,
+            [Region.NA] = ConsoleColor.Yellow,
+            [Region.KR] = ConsoleColor.Magenta,
+        };
+        private Dictionary<ConsoleColor, Brush> _brushes = new Dictionary<ConsoleColor, Brush>
+        {
+            [ConsoleColor.Black] = Brushes.Black,
+            [ConsoleColor.DarkBlue] = Brushes.DarkBlue,
+            [ConsoleColor.DarkGreen] = Brushes.Green,
+            [ConsoleColor.DarkCyan] = Brushes.DarkCyan,
+            [ConsoleColor.DarkRed] = Brushes.DarkRed,
+            [ConsoleColor.DarkMagenta] = Brushes.DarkMagenta,
+            [ConsoleColor.DarkYellow] = Brushes.DarkOrange,
+            [ConsoleColor.Gray] = Brushes.LightGray,
+            [ConsoleColor.DarkGray] = Brushes.DarkGray,
+            [ConsoleColor.Blue] = Brushes.Blue,
+            [ConsoleColor.Green] = Brushes.Lime,
+            [ConsoleColor.Cyan] = Brushes.Cyan,
+            [ConsoleColor.Red] = Brushes.Red,
+            [ConsoleColor.Magenta] = Brushes.Fuchsia,
+            [ConsoleColor.Yellow] = Brushes.Yellow,
+            [ConsoleColor.White] = Brushes.White,
+        };
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            new Thread(WorkThread) { IsBackground = true }.Start();
+        }
+
+        public void AddText(string value, ConsoleColor color)
+        {
+            var t = new TextRange(txtConsole.Document.ContentEnd, txtConsole.Document.ContentEnd);
+            t.Text = value.Replace("\r\n", "\n");
+            t.ApplyPropertyValue(TextElement.ForegroundProperty, _brushes[color]);
+            txtConsole.ScrollToEnd();
+        }
+
+        private void WorkThread()
+        {
+            //Console.SetOut(new ConsoleToWpfWriter(this));
+
+            //while (true)
+            //{
+            //    ConsoleUtil.Write("Test".Color(ConsoleColor.Red) + " Stuff ".Color(ConsoleColor.Green));
+            //    ConsoleUtil.Write("Test".Color(ConsoleColor.Yellow) + " Stuff".Color(ConsoleColor.Gray));
+            //    Thread.Sleep(100);
+            //}
+
+            var args = Environment.GetCommandLineArgs().Subarray(1);
             if (args[0] == "download")
-                DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: args.Subarray(4));
+            {
+                var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
+                var apiKeys = args.Subarray(4).Zip(txts, (key, txt) => new ApiKeyWithPrompt(key, txt)).ToArray();
+                DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys);
+            }
             else if (args[0] == "download-ids")
-                DownloadIds(apiKey: args[1], dataPath: args[2], idFilePath: args[4]);
+                DownloadIds(apiKey: new ApiKeyWithPrompt(args[1], txtApiKey1), dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
                 MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
             else if (args[0] == "merge-all")
                 MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: true);
             else
                 Console.WriteLine("Unknown command");
+
+            Console.WriteLine("Work thread terminated.");
         }
 
-        private static void MergeIds(string region, string outputFile, string[] inputFiles)
+        private void MergeIds(string region, string outputFile, string[] inputFiles)
         {
             var output = new MatchIdContainer(outputFile, EnumStrong.Parse<Region>(region));
             var files = new[] { outputFile }.Concat(inputFiles).Select(file => new { file, count = new CountResult() }).ToList();
@@ -41,7 +102,7 @@ namespace LeagueOfStats.Downloader
             output.Rewrite();
         }
 
-        private static void DownloadMatches(string dataPath, string version, string queueId, string[] apiKeys)
+        private void DownloadMatches(string dataPath, string version, string queueId, ApiKeyWrapper[] apiKeys)
         {
             using (var p = Process.GetCurrentProcess())
                 p.PriorityClass = ProcessPriorityClass.Idle;
@@ -52,22 +113,14 @@ namespace LeagueOfStats.Downloader
                 [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 300_000),
                 [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 300_000),
             };
-            Colors = new Dictionary<Region, ConsoleColor>
-            {
-                [Region.EUW] = ConsoleColor.Green,
-                [Region.EUNE] = ConsoleColor.Red,
-                [Region.NA] = ConsoleColor.Yellow,
-                [Region.KR] = ConsoleColor.Magenta,
-            };
 
             Console.WriteLine("Initialising data store ...");
             DataStore.Initialise(dataPath, "");
             Console.WriteLine("    ... done.");
 
             var downloaders = new List<Downloader>();
-            var keys = apiKeys.Select(k => new ApiKeyWithPrompt(k)).ToArray();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(keys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
+                downloaders.Add(new Downloader(apiKeys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever();
@@ -76,13 +129,13 @@ namespace LeagueOfStats.Downloader
                 Thread.Sleep(9999);
         }
 
-        private static void DownloadIds(string apiKey, string dataPath, string idFilePath)
+        private void DownloadIds(ApiKeyWrapper apiKey, string dataPath, string idFilePath)
         {
             var region = EnumStrong.Parse<Region>(Path.GetFileName(idFilePath).Split('-')[0]);
             Console.WriteLine($"Initialising...");
             DataStore.Initialise(dataPath, "");
             Console.WriteLine($"Downloading...");
-            var downloader = new MatchDownloader(new ApiKeyWithPrompt(apiKey), region);
+            var downloader = new MatchDownloader(apiKey, region);
             downloader.OnEveryResponse = (_, __) => { };
             var ids = File.ReadAllLines(idFilePath).Select(l => l.Trim()).Where(l => long.TryParse(l, out _)).Select(l => long.Parse(l)).ToList();
             foreach (var matchId in ids)
@@ -105,7 +158,7 @@ namespace LeagueOfStats.Downloader
             }
         }
 
-        private static void MergeMatches(string outputPath, string searchPath, bool mergeJsons)
+        private void MergeMatches(string outputPath, string searchPath, bool mergeJsons)
         {
             if (Directory.Exists(outputPath))
             {
@@ -116,7 +169,7 @@ namespace LeagueOfStats.Downloader
             MergeDataStores.MergePreVer(outputPath, searchPath, mergeJsons);
         }
 
-        private static void RewriteBasicInfos(string dataPath)
+        private void RewriteBasicInfos(string dataPath)
         {
             DataStore.Initialise(dataPath, "");
             foreach (var region in DataStore.LosMatchJsons.Keys)
@@ -143,7 +196,7 @@ namespace LeagueOfStats.Downloader
             }
         }
 
-        private static void GenRedownloadList(string dataPath)
+        private void GenRedownloadList(string dataPath)
         {
             DataStore.Initialise(dataPath, "");
             foreach (var region in DataStore.LosMatchJsons.Keys)
@@ -153,7 +206,7 @@ namespace LeagueOfStats.Downloader
             }
         }
 
-        private static void RecheckNonexistentIds(string dataPath, ApiKeyWrapper[] apiKeys)
+        private void RecheckNonexistentIds(string dataPath, ApiKeyWrapper[] apiKeys)
         {
             Console.WriteLine($"Initialising...");
             DataStore.Initialise(dataPath, "");
@@ -168,7 +221,7 @@ namespace LeagueOfStats.Downloader
             foreach (var t in threads)
                 t.Join();
         }
-        private static void RecheckNonexistentIdsRegion(Region region, ApiKeyWrapper[] apiKeys)
+        private void RecheckNonexistentIdsRegion(Region region, ApiKeyWrapper[] apiKeys)
         {
             var path = @"P:\LeagueOfStats\LeagueOfStats\Builds\";
             var doneFile = Path.Combine(path, $"redone-{region}.txt");
@@ -191,7 +244,7 @@ namespace LeagueOfStats.Downloader
                 again:;
                 var dl = downloaders[nextDownloader].DownloadMatch(matchId);
                 nextDownloader = (nextDownloader + 1) % downloaders.Count;
-                if (dl.result == MatchDownloadResult.OverQuota)
+                if (dl.result == MatchDownloadResult.BackOff)
                 {
                     Thread.Sleep(Rnd.Next(500, 1500));
                     goto again;
@@ -218,37 +271,69 @@ namespace LeagueOfStats.Downloader
                 File.AppendAllLines(doneFile, new[] { matchId.ToString() });
             }
         }
-
     }
 
     class ApiKeyWithPrompt : ApiKeyWrapper
     {
         private string _apiKey;
-        private object _lock = new object();
-        private DateTime _noPromptUntil = DateTime.MinValue;
+        private TextBox _txt;
 
-        public ApiKeyWithPrompt(string initialApiKey)
+        public ApiKeyWithPrompt(string initialApiKey, TextBox txt)
         {
             _apiKey = initialApiKey;
+            _txt = txt;
+            _txt.TextChanged += delegate { _apiKey = _txt.Text.Trim(); _txt.Foreground = Brushes.MediumBlue; };
+            _txt.Dispatcher.Invoke(() => { _txt.Text = initialApiKey; });
         }
 
         public override string GetApiKey() => _apiKey;
 
-        public override void ReportInvalid()
+        public override void ReportValid(string keyUsed)
         {
-            lock (_lock)
-            {
-                if (DateTime.UtcNow < _noPromptUntil)
-                {
-                    Thread.Sleep(TimeSpan.FromSeconds(15));
-                    return;
-                }
-                LosWinAPI.FlashConsoleTaskbarIcon(true);
-                _apiKey = InputBox.GetLine($"Key {_apiKey} may have expired. Enter new key:") ?? _apiKey;
-                LosWinAPI.FlashConsoleStop();
-                _noPromptUntil = DateTime.UtcNow + TimeSpan.FromMinutes(1.5);
-                Thread.Sleep(60);
-            }
+            if (keyUsed != _apiKey)
+                return;
+            _txt.Dispatcher.Invoke(() => { _txt.Foreground = Brushes.Green; });
+            LosWinAPI.FlashConsoleStop();
+        }
+
+        public override void ReportInvalid(string keyUsed)
+        {
+            if (keyUsed != _apiKey)
+                return;
+            _txt.Dispatcher.Invoke(() => { _txt.Foreground = Brushes.Red; });
+            LosWinAPI.FlashConsoleTaskbarIcon(true);
+        }
+    }
+
+    class ConsoleToWpfWriter : TextWriter
+    {
+        private MainWindow _window;
+
+        public ConsoleToWpfWriter(MainWindow window)
+        {
+            _window = window;
+        }
+
+        public override Encoding Encoding => Encoding.UTF8;
+
+        public override void Write(char value)
+        {
+            if (value == '\r')
+                return;
+            Write(new string(value, 1));
+        }
+
+        public override void WriteLine(string value)
+        {
+            Write(value + "\n");
+        }
+
+        public override void Write(string value)
+        {
+            var color = Console.ForegroundColor;
+            try { _window.Dispatcher.Invoke(() => _window.AddText(value, color)); }
+            catch (TaskCanceledException) { } // occurs on shutdown
         }
     }
 }
+
