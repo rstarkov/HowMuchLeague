@@ -13,7 +13,9 @@ namespace LeagueOfStats.Downloader
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
-            //ShowWindow(GetConsoleWindow(), 0);
+            // We must build as a console app and hide the console on startup, because all components print colored text to the console.
+            // It's possible to intercept the text without a console attached, but reading Console.ForegroundColor works only in "true" console apps
+            ShowWindow(GetConsoleWindow(), 0);
         }
     }
 }

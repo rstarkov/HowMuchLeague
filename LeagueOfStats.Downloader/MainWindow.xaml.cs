@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
+using System.Windows.Interop;
 using System.Windows.Media;
 using LeagueOfStats.GlobalData;
 using RT.Util;
@@ -49,37 +49,36 @@ namespace LeagueOfStats.Downloader
         public MainWindow()
         {
             InitializeComponent();
-            new Thread(WorkThread) { IsBackground = true }.Start();
         }
+
+        protected override void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+            if (_workThread != null)
+                return;
+            _workThread = new Thread(WorkThread) { IsBackground = true };
+            _workThread.Start();
+        }
+        private Thread _workThread;
 
         public void AddText(string value, ConsoleColor color)
         {
-            var t = new TextRange(txtConsole.Document.ContentEnd, txtConsole.Document.ContentEnd);
-            t.Text = value.Replace("\r\n", "\n");
-            t.ApplyPropertyValue(TextElement.ForegroundProperty, _brushes[color]);
-            txtConsole.ScrollToEnd();
+            cnvConsole.AddText(value, _brushes[color]);
         }
 
         private void WorkThread()
         {
-            //Console.SetOut(new ConsoleToWpfWriter(this));
-
-            //while (true)
-            //{
-            //    ConsoleUtil.Write("Test".Color(ConsoleColor.Red) + " Stuff ".Color(ConsoleColor.Green));
-            //    ConsoleUtil.Write("Test".Color(ConsoleColor.Yellow) + " Stuff".Color(ConsoleColor.Gray));
-            //    Thread.Sleep(100);
-            //}
+            Console.SetOut(new ConsoleToWpfWriter(this));
 
             var args = Environment.GetCommandLineArgs().Subarray(1);
             if (args[0] == "download")
             {
                 var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
-                var apiKeys = args.Subarray(4).Zip(txts, (key, txt) => new ApiKeyWithPrompt(key, txt)).ToArray();
+                var apiKeys = args.Subarray(4).Zip(txts, (key, txt) => new ApiKeyWithPrompt(key, txt, this)).ToArray();
                 DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys);
             }
             else if (args[0] == "download-ids")
-                DownloadIds(apiKey: new ApiKeyWithPrompt(args[1], txtApiKey1), dataPath: args[2], idFilePath: args[4]);
+                DownloadIds(apiKey: new ApiKeyWithPrompt(args[1], txtApiKey1, this), dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
                 MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
             else if (args[0] == "merge-all")
@@ -277,10 +276,13 @@ namespace LeagueOfStats.Downloader
     {
         private string _apiKey;
         private TextBox _txt;
+        private Window _window;
+        private bool _flashing = false;
 
-        public ApiKeyWithPrompt(string initialApiKey, TextBox txt)
+        public ApiKeyWithPrompt(string initialApiKey, TextBox txt, Window window)
         {
             _apiKey = initialApiKey;
+            _window = window;
             _txt = txt;
             _txt.TextChanged += delegate { _apiKey = _txt.Text.Trim(); _txt.Foreground = Brushes.MediumBlue; };
             _txt.Dispatcher.Invoke(() => { _txt.Text = initialApiKey; });
@@ -293,7 +295,11 @@ namespace LeagueOfStats.Downloader
             if (keyUsed != _apiKey)
                 return;
             _txt.Dispatcher.Invoke(() => { _txt.Foreground = Brushes.Green; });
-            LosWinAPI.FlashConsoleStop();
+            if (_flashing)
+            {
+                _flashing = false;
+                LosWinAPI.FlashTaskbarStop(new WindowInteropHelper(_window).Handle);
+            }
         }
 
         public override void ReportInvalid(string keyUsed)
@@ -301,7 +307,8 @@ namespace LeagueOfStats.Downloader
             if (keyUsed != _apiKey)
                 return;
             _txt.Dispatcher.Invoke(() => { _txt.Foreground = Brushes.Red; });
-            LosWinAPI.FlashConsoleTaskbarIcon(true);
+            LosWinAPI.FlashTaskbarIcon(new WindowInteropHelper(_window).Handle, true);
+            _flashing = true;
         }
     }
 

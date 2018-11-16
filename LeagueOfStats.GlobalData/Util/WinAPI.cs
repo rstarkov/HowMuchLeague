@@ -45,5 +45,15 @@ namespace LeagueOfStats.GlobalData
         {
             FlashWindow(Process.GetCurrentProcess().MainWindowHandle, 0);
         }
+
+        public static void FlashTaskbarIcon(IntPtr hwnd, bool blinky)
+        {
+            FlashWindow(hwnd, FLASHW_ALL | (blinky ? FLASHW_TIMER : 0));
+        }
+
+        public static void FlashTaskbarStop(IntPtr hwnd)
+        {
+            FlashWindow(hwnd, 0);
+        }
     }
 }

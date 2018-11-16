@@ -24,13 +24,8 @@
             </StackPanel>
         </StackPanel>
 
-        <RichTextBox Name="txtConsole" Background="Black" BorderThickness="0">
-            <RichTextBox.Resources>
-                <Style TargetType="{x:Type Paragraph}">
-                    <Setter Property="Margin" Value="0"/>
-                </Style>
-            </RichTextBox.Resources>
-        </RichTextBox>
+        <local:ConsoleBox x:Name="cnvConsole" UseLayoutRounding="True">
+        </local:ConsoleBox>
 
     </DockPanel>
 </Window>
