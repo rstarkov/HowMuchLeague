@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LeagueOfStats.Downloader"
         mc:Ignorable="d"
-        Title="LeagueOfStats Downloader" Height="450" Width="900">
+        Title="LeagueOfStats Downloader" Height="450" Width="900" Icon="Resources/icon-MatRider90-blu.ico">
     <DockPanel LastChildFill="True" Background="{x:Static SystemColors.ControlBrush}">
 
         <StackPanel DockPanel.Dock="Top" Margin="8" Orientation="Horizontal">
