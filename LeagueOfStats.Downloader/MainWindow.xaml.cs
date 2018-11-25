@@ -294,21 +294,27 @@ namespace LeagueOfStats.Downloader
         {
             if (keyUsed != _apiKey)
                 return;
-            _txt.Dispatcher.Invoke(() => { _txt.Foreground = Brushes.Green; });
-            if (_flashing)
+            _txt.Dispatcher.Invoke(() =>
             {
-                _flashing = false;
-                LosWinAPI.FlashTaskbarStop(new WindowInteropHelper(_window).Handle);
-            }
+                _txt.Foreground = Brushes.Green;
+                if (_flashing)
+                {
+                    _flashing = false;
+                    LosWinAPI.FlashTaskbarStop(new WindowInteropHelper(_window).Handle);
+                }
+            });
         }
 
         public override void ReportInvalid(string keyUsed)
         {
             if (keyUsed != _apiKey)
                 return;
-            _txt.Dispatcher.Invoke(() => { _txt.Foreground = Brushes.Red; });
-            LosWinAPI.FlashTaskbarIcon(new WindowInteropHelper(_window).Handle, true);
-            _flashing = true;
+            _txt.Dispatcher.Invoke(() =>
+            {
+                _txt.Foreground = Brushes.Red;
+                LosWinAPI.FlashTaskbarIcon(new WindowInteropHelper(_window).Handle, true);
+                _flashing = true;
+            });
         }
     }
 
