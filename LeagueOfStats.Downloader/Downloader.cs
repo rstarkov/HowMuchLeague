@@ -86,6 +86,9 @@ namespace LeagueOfStats.Downloader
             // Take only the last two months' worth of points
             entries = entries.Where(pt => pt.X >= (DateTime.UtcNow.AddMonths(-2) - new DateTime(1970, 1, 1)).TotalMilliseconds).ToList();
 
+            if (entries.Count < 100)
+                yield break;
+
             // Linear fit them (https://stackoverflow.com/a/19040841/33080)
             double sumX = 0.0;
             double sumX2 = 0.0;
@@ -120,7 +123,7 @@ namespace LeagueOfStats.Downloader
             var searchMax = Math.Max(InitialMatchId, LatestMatchId) + MatchIdRange;
             var maxByDate = (long) (_matchIdOffset + _matchIdSlope * (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds);
             _needRebuildAfter = DateTime.MaxValue;
-            if (searchMax > maxByDate)
+            if (searchMax > maxByDate && maxByDate > 0)
             {
                 searchMax = maxByDate;
                 _needRebuildAfter = DateTime.UtcNow.AddMinutes(30);
