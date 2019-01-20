@@ -31,6 +31,7 @@ namespace LeagueOfStats.GlobalData
     {
         public string FileName { get; private set; }
         public bool EnableAutoRewrite { get; set; } = true;
+        public uint ChunkLengthLimit { get; set; } = uint.MaxValue / 4 * 3;
 
         public LosContainer(string filename)
         {
@@ -391,43 +392,50 @@ namespace LeagueOfStats.GlobalData
             {
                 if (chunkFormat == LosChunkFormat.Deflate)
                 {
-                    op.Writer.Write((byte) 1); // chunk type - compressed
+                    var enumerate = items.GetEnumerator();
                     var memoryStream = new MemoryStream(); // reuse it to avoid constant array reallocation
-                    op.Writer.Write((byte) 0); // item format version - patched in later
-                    op.Writer.Write((uint) 0); // chunk length - patched in later
-                    var chunkStartPos = op.Stream.Position;
-                    int itemFormatAll = -1;
-                    uint crc32;
-                    using (var deflate = new DeflateStream(op.Stream, CompressionLevel.Optimal, leaveOpen: true))
+                    while (enumerate.MoveNext())
                     {
-                        var crc32stream = new CRC32Stream(deflate);
-                        var state = GetInitialChunkState();
-                        foreach (var item in items)
+                        op.Writer.Write((byte) 1); // chunk type - compressed
+                        op.Writer.Write((byte) 0); // item format version - patched in later
+                        op.Writer.Write((uint) 0); // chunk length - patched in later
+                        var chunkStartPos = op.Stream.Position;
+                        int itemFormatAll = -1;
+                        uint crc32;
+                        using (var deflate = new DeflateStream(op.Stream, CompressionLevel.Optimal, leaveOpen: true))
                         {
-                            memoryStream.Position = 0;
-                            memoryStream.SetLength(0);
-                            byte itemFormatVersion = WriteItem(memoryStream, item, state);
-                            if (itemFormatAll < 0)
-                                itemFormatAll = itemFormatVersion;
-                            else if (itemFormatAll != itemFormatVersion)
-                                throw new Exception("Inconsistent item format.");
-                            if (op.OldestItemFormatVersion == 0)
-                                op.OldestItemFormatVersion = itemFormatVersion;
-                            crc32stream.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
-                            crc32stream.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
-                            op.Stats.CompressedItemsCount++;
+                            var crc32stream = new CRC32Stream(deflate);
+                            var state = GetInitialChunkState();
+                            do
+                            {
+                                memoryStream.Position = 0;
+                                memoryStream.SetLength(0);
+                                byte itemFormatVersion = WriteItem(memoryStream, enumerate.Current, state);
+                                if (itemFormatAll < 0)
+                                    itemFormatAll = itemFormatVersion;
+                                else if (itemFormatAll != itemFormatVersion)
+                                    throw new Exception("Inconsistent item format.");
+                                if (op.OldestItemFormatVersion == 0)
+                                    op.OldestItemFormatVersion = itemFormatVersion;
+                                crc32stream.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
+                                crc32stream.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
+                                op.Stats.CompressedItemsCount++;
+                                if (op.Stream.Position - chunkStartPos > ChunkLengthLimit) // this is approximate because of buffering in DeflateStream
+                                    break;
+                            }
+                            while (enumerate.MoveNext());
+                            crc32 = crc32stream.CRC;
+                            op.Stats.ShortChunkCount++;
                         }
-                        crc32 = crc32stream.CRC;
-                        op.Stats.ShortChunkCount++;
+                        long chunkLength = op.Stream.Position - chunkStartPos;
+                        if (chunkLength > uint.MaxValue)
+                            throw new Exception("Chunk too long - should have aborted earlier");
+                        op.Writer.Write(crc32);
+                        op.ValidLength = op.Stream.Position;
+                        op.Stream.Position = chunkStartPos - 5;
+                        op.Writer.Write((byte) itemFormatAll);
+                        op.Writer.Write((uint) chunkLength);
                     }
-                    long chunkLength = op.Stream.Position - chunkStartPos;
-                    if (chunkLength > uint.MaxValue)
-                        throw new Exception("Chunk too long - should have aborted earlier");
-                    op.Writer.Write(crc32);
-                    op.ValidLength = op.Stream.Position;
-                    op.Stream.Position = chunkStartPos - 5;
-                    op.Writer.Write((byte) itemFormatAll);
-                    op.Writer.Write((uint) chunkLength);
                 }
                 else if (chunkFormat == LosChunkFormat.Raw)
                 {
@@ -448,39 +456,46 @@ namespace LeagueOfStats.GlobalData
                 }
                 else if (chunkFormat == LosChunkFormat.LZ4 || chunkFormat == LosChunkFormat.LZ4HC)
                 {
-                    op.Writer.Write((byte) 3); // chunk type - lz4
+                    var enumerate = items.GetEnumerator();
                     var memoryStream = new MemoryStream(); // reuse it to avoid constant array reallocation
-                    op.Writer.Write((byte) 0); // item format version - patched in later
-                    op.Writer.Write((uint) 0); // chunk length - patched in later
-                    var chunkStartPos = op.Stream.Position;
-                    int itemFormatAll = -1;
-                    using (var lz4 = new LZ4Stream(op.Stream, LZ4StreamMode.Compress, LZ4StreamFlags.IsolateInnerStream | (chunkFormat == LosChunkFormat.LZ4HC ? LZ4StreamFlags.HighCompression : 0)))
+                    while (enumerate.MoveNext())
                     {
-                        var state = GetInitialChunkState();
-                        foreach (var item in items)
+                        op.Writer.Write((byte) 3); // chunk type - lz4
+                        op.Writer.Write((byte) 0); // item format version - patched in later
+                        op.Writer.Write((uint) 0); // chunk length - patched in later
+                        var chunkStartPos = op.Stream.Position;
+                        int itemFormatAll = -1;
+                        using (var lz4 = new LZ4Stream(op.Stream, LZ4StreamMode.Compress, LZ4StreamFlags.IsolateInnerStream | (chunkFormat == LosChunkFormat.LZ4HC ? LZ4StreamFlags.HighCompression : 0)))
                         {
-                            memoryStream.Position = 0;
-                            memoryStream.SetLength(0);
-                            byte itemFormatVersion = WriteItem(memoryStream, item, state);
-                            if (itemFormatAll < 0)
-                                itemFormatAll = itemFormatVersion;
-                            else if (itemFormatAll != itemFormatVersion)
-                                throw new Exception("Inconsistent item format.");
-                            if (op.OldestItemFormatVersion == 0)
-                                op.OldestItemFormatVersion = itemFormatVersion;
-                            lz4.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
-                            lz4.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
-                            op.Stats.CompressedItemsCount++;
+                            var state = GetInitialChunkState();
+                            do
+                            {
+                                memoryStream.Position = 0;
+                                memoryStream.SetLength(0);
+                                byte itemFormatVersion = WriteItem(memoryStream, enumerate.Current, state);
+                                if (itemFormatAll < 0)
+                                    itemFormatAll = itemFormatVersion;
+                                else if (itemFormatAll != itemFormatVersion)
+                                    throw new Exception("Inconsistent item format.");
+                                if (op.OldestItemFormatVersion == 0)
+                                    op.OldestItemFormatVersion = itemFormatVersion;
+                                lz4.WriteUInt64Optim((ulong) memoryStream.Length); // ulong is very slightly more compact than long
+                                lz4.Write(memoryStream.GetBuffer(), 0, (int) memoryStream.Length);
+                                op.Stats.CompressedItemsCount++;
+                                if (op.Stream.Position - chunkStartPos > ChunkLengthLimit) // this is approximate because of buffering in LZ4Stream
+                                    break;
+                            }
+                            while (enumerate.MoveNext());
+                            op.Stats.ShortChunkCount++;
                         }
-                        op.Stats.ShortChunkCount++;
+                        long chunkLength = op.Stream.Position - chunkStartPos;
+                        if (chunkLength > uint.MaxValue)
+                            throw new Exception("Chunk too long - should have aborted earlier");
+                        op.ValidLength = op.Stream.Position;
+                        op.Stream.Position = chunkStartPos - 5;
+                        op.Writer.Write((byte) itemFormatAll);
+                        op.Writer.Write((uint) chunkLength);
                     }
-                    long chunkLength = op.Stream.Position - chunkStartPos;
-                    if (chunkLength > uint.MaxValue)
-                        throw new Exception("Chunk too long - should have aborted earlier");
-                    op.ValidLength = op.Stream.Position;
-                    op.Stream.Position = chunkStartPos - 5;
-                    op.Writer.Write((byte) itemFormatAll);
-                    op.Writer.Write((uint) chunkLength);
                 }
                 rewriteNeeded = op.Stats.ShortChunkCount > 3000 || op.Stats.UncompressedItemsCount > 10000;
 
