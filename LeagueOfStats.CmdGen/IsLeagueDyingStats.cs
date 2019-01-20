@@ -137,5 +137,23 @@ namespace LeagueOfStats.CmdGen
                 default: return queueId;
             }
         }
+
+        public static void EstimateActivePlayers_Extract()
+        {
+            var seenMatches = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
+            foreach (var f in DataStore.LosMatchJsons.SelectMany(kvpR => kvpR.Value.SelectMany(kvpV => kvpV.Value.Select(kvpQ => (region: kvpR.Key, version: kvpV.Key, queueId: kvpQ.Key, file: kvpQ.Value)))))
+            {
+                if (f.queueId == 0)
+                    continue;
+                Console.WriteLine($"Processing {f.file.FileName} ...");
+                var count = new CountThread(10000);
+                File.WriteAllLines($"ActivePlayersExtract-{f.region}-{f.version}-{f.queueId}.csv",
+                    f.file.ReadItems()
+                        .PassthroughCount(count.Count)
+                        .Where(js => seenMatches[f.region].Add(js["gameId"].GetLong()) && js.ContainsKey("participantIdentities") && js["participantIdentities"].Count > 0)
+                        .Select(js => $"{js["gameId"].GetLong()},{js["gameCreation"].GetLong()},{js["gameDuration"].GetLong()},{js["participantIdentities"].GetList().Select(p => p["player"]["accountId"].GetLong()).JoinString(",")}"));
+                count.Stop();
+            }
+        }
     }
 }

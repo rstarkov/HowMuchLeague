@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
 using RT.TagSoup;
@@ -354,6 +355,82 @@ namespace LeagueOfStats.CmdGen
                 new BODY(championHtml)
             );
             File.WriteAllText(Path.Combine(_settings.OutputPath, filename), html.ToString());
+        }
+
+        public static void TeamCompExtract()
+        {
+            var seenMatches = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
+            foreach (var f in DataStore.LosMatchJsons.SelectMany(kvpR => kvpR.Value.SelectMany(kvpV => kvpV.Value.Select(kvpQ => (region: kvpR.Key, version: kvpV.Key, queueId: kvpQ.Key, file: kvpQ.Value)))))
+            {
+                if (f.queueId != 2 && f.queueId != 4 && f.queueId != 6 && f.queueId != 14 && f.queueId != 42 && f.queueId != 61 && f.queueId != 400 && f.queueId != 410 && f.queueId != 420 && f.queueId != 430 && f.queueId != 440)
+                    continue;
+                var fname = $"TeamCompExtract-{f.region}-{f.version}-{f.queueId}.csv";
+                if (File.Exists(fname))
+                    continue;
+                Console.WriteLine($"Processing {f.file.FileName} ...");
+                var count = new CountThread(10000);
+                File.WriteAllLines(fname,
+                    f.file.ReadItems()
+                        .PassthroughCount(count.Count)
+                        .Where(js => seenMatches[f.region].Add(js["gameId"].GetLong()))
+                        .Select(js => TeamCompExtractMatch(js, f))
+                        .Where(line => line != null));
+                count.Stop();
+            }
+        }
+
+        private static string TeamCompExtractMatch(JsonValue js, (Region region, string version, int queueId, JsonContainer file) f)
+        {
+            try
+            {
+                var sb = new StringBuilder();
+                sb.Append(f.region.ToString());
+                sb.Append(js["gameId"].GetLong());
+                sb.Append(',');
+                sb.Append(f.queueId);
+                sb.Append(',');
+                sb.Append(js["gameCreation"].GetLong());
+                sb.Append(',');
+                sb.Append(js["gameDuration"].GetLong());
+                sb.Append(',');
+                var tw = js["participants"].GetList().Where(p => p["stats"]["win"].GetBool()).ToList();
+                var tl = js["participants"].GetList().Where(p => !p["stats"]["win"].GetBool()).ToList();
+                if (tw.Count != 5 || tl.Count != 5)
+                {
+                    File.AppendAllLines("jsons-non-5-winners-losers.txt", new[] { js.ToStringIndented() });
+                    return null;
+                }
+                if (tw.Select(p => p["championId"].GetInt()).Distinct().Count() != 5 || tl.Select(p => p["championId"].GetInt()).Distinct().Count() != 5)
+                {
+                    File.AppendAllLines("jsons-duplicate-champs.txt", new[] { js.ToStringIndented() });
+                    return null;
+                }
+                if (tw.Concat(tl.AsEnumerable()).Any(p => p["stats"].Safe["wasAfk"].GetBoolSafe() == true || p["stats"].Safe["leaver"].GetBoolSafe() == true))
+                {
+                    File.AppendAllLines("jsons-afk-or-leaver.txt", new[] { $"{f.region}{js["gameId"].GetLong()}" });
+                    return null;
+                }
+                foreach (var p in tw.Concat(tl.AsEnumerable()))
+                {
+                    sb.Append(p["championId"].GetInt());
+                    sb.Append(',');
+                    if (p.ContainsKey("highestAchievedSeasonTier"))
+                        sb.Append(p["highestAchievedSeasonTier"].GetString()[0]);
+                    else
+                        sb.Append('U');
+                    sb.Append(',');
+                    sb.Append(p["spell1Id"].GetInt());
+                    sb.Append(',');
+                    sb.Append(p["spell2Id"].GetInt());
+                    sb.Append(',');
+                }
+                return sb.ToString();
+            }
+            catch (Exception e)
+            {
+                File.AppendAllLines("jsons-exceptions.txt", new[] { $"EXCEPTION: {e.GetType().Name} {e.Message}", e.StackTrace, js.ToStringIndented() });
+                return null;
+            }
         }
     }
 }
