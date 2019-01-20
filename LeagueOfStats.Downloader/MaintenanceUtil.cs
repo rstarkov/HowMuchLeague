@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -65,17 +65,17 @@ namespace LeagueOfStats.Downloader
 
             var haveIds = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
             var containers = DataStore.LosMatchJsons.SelectMany(v1 => v1.Value.Values.SelectMany(v2 => v2.Values.Select(c => new { container = c, region = v1.Key, stats = c.GetContainerStats() })))
-                .OrderByDescending(c => c.stats.UncompressedItemsCount + c.stats.ShortChunkCount);
+                .OrderByDescending(c => c.stats.UncompressedItemsCount + c.stats.CompressedChunkCount);
             foreach (var val in containers)
             {
                 var stats = val.container.GetContainerStats();
-                if (stats.ShortChunkCount < 5 && stats.UncompressedItemsCount < 10)
+                if (stats.CompressedChunkCount < 5 && stats.UncompressedItemsCount < 10)
                 {
                     Console.WriteLine(val.container.FileName + " - SKIPPED");
                     continue;
                 }
                 // Recompress as one chunk while eliminating any duplicates
-                Console.WriteLine($"{val.container.FileName} - {stats.UncompressedItemsCount:#,0} uncompressed, {stats.ShortChunkCount:#,0} short chunks");
+                Console.WriteLine($"{val.container.FileName} - {stats.UncompressedItemsCount:#,0}/{stats.CompressedItemsCount:#,0} uncompressed/compressed items, {stats.CompressedChunkCount:#,0} compressed chunks");
                 var savedIds = new HashSet<long>();
                 val.container.Rewrite(jsons => jsons.Where(json => savedIds.Add(json["gameId"].GetLong())));
                 haveIds[val.region].AddRange(savedIds);
