@@ -74,7 +74,10 @@ namespace LeagueOfStats.Downloader
             if (args[0] == "download")
             {
                 var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
-                var apiKeys = args.Subarray(4).Zip(txts, (key, txt) => new ApiKeyWithPrompt(key, txt, this)).ToArray();
+                var lastKeys = new[] { "", "", "" };
+                try { lastKeys = File.ReadAllLines("Downloader.LastApiKeys.txt"); }
+                catch { }
+                var apiKeys = lastKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray();
                 DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys);
             }
             else if (args[0] == "download-ids")
@@ -87,6 +90,11 @@ namespace LeagueOfStats.Downloader
                 Console.WriteLine("Unknown command");
 
             Console.WriteLine("Work thread terminated.");
+        }
+
+        public void SaveApiKeys()
+        {
+            File.WriteAllLines("Downloader.LastApiKeys.txt", new[] { txtApiKey1, txtApiKey2, txtApiKey3 }.Select(txt => txt.Text));
         }
 
         private void MergeIds(string region, string outputFile, string[] inputFiles)
@@ -279,12 +287,12 @@ namespace LeagueOfStats.Downloader
         private Window _window;
         private bool _flashing = false;
 
-        public ApiKeyWithPrompt(string initialApiKey, TextBox txt, Window window)
+        public ApiKeyWithPrompt(string initialApiKey, TextBox txt, MainWindow window)
         {
             _apiKey = initialApiKey;
             _window = window;
             _txt = txt;
-            _txt.TextChanged += delegate { _apiKey = _txt.Text.Trim(); _txt.Foreground = Brushes.MediumBlue; };
+            _txt.TextChanged += delegate { _apiKey = _txt.Text.Trim(); _txt.Foreground = Brushes.MediumBlue; window.SaveApiKeys(); };
             _txt.Dispatcher.Invoke(() => { _txt.Text = initialApiKey; });
         }
 
