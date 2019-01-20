@@ -21,12 +21,12 @@ namespace LeagueOfStats.GlobalData
 
     public class ContainerStats
     {
-        public uint ShortChunkCount;
+        public uint CompressedChunkCount;
         public uint CompressedItemsCount;
         public uint UncompressedItemsCount;
 
         public uint TotalItemsCount => CompressedItemsCount + UncompressedItemsCount;
-        public bool RewriteNeeded => (ShortChunkCount + UncompressedItemsCount) / (double) TotalItemsCount > 0.25;
+        public bool RewriteNeeded => (CompressedChunkCount + UncompressedItemsCount) / (double) TotalItemsCount > 0.25;
     }
 
     public abstract class LosContainer
@@ -167,9 +167,9 @@ namespace LeagueOfStats.GlobalData
                     op.OldestItemFormatVersion = (byte) (newFile ? 0 : op.Reader.ReadByte());
                     if (newFile)
                         op.Writer.Write(op.OldestItemFormatVersion);
-                    op.Stats.ShortChunkCount = newFile ? 0 : op.Reader.ReadUInt32();
+                    op.Stats.CompressedChunkCount = newFile ? 0 : op.Reader.ReadUInt32();
                     if (newFile)
-                        op.Writer.Write(op.Stats.ShortChunkCount);
+                        op.Writer.Write(op.Stats.CompressedChunkCount);
                     op.Stats.CompressedItemsCount = newFile ? 0 : op.Reader.ReadUInt32();
                     if (newFile)
                         op.Writer.Write(op.Stats.CompressedItemsCount);
@@ -219,7 +219,7 @@ namespace LeagueOfStats.GlobalData
                         // Update stats
                         op.Stream.Position = statsPos;
                         op.Writer.Write(op.OldestItemFormatVersion);
-                        op.Writer.Write(op.Stats.ShortChunkCount);
+                        op.Writer.Write(op.Stats.CompressedChunkCount);
                         op.Writer.Write(op.Stats.CompressedItemsCount);
                         op.Writer.Write(op.Stats.UncompressedItemsCount);
                     }
@@ -253,7 +253,7 @@ namespace LeagueOfStats.GlobalData
             if (stats == null)
                 return;
 
-            if (compact && (stats.ShortChunkCount > 10 || stats.UncompressedItemsCount > 0))
+            if (compact && (stats.CompressedChunkCount > 10 || stats.UncompressedItemsCount > 0))
                 Rewrite();
             else if (EnableAutoRewrite && stats.RewriteNeeded)
                 Rewrite();
@@ -427,7 +427,7 @@ namespace LeagueOfStats.GlobalData
                             }
                             while (enumerate.MoveNext());
                             crc32 = crc32stream.CRC;
-                            op.Stats.ShortChunkCount++;
+                            op.Stats.CompressedChunkCount++;
                         }
                         long chunkLength = op.Stream.Position - chunkStartPos;
                         if (chunkLength > uint.MaxValue)
@@ -488,7 +488,7 @@ namespace LeagueOfStats.GlobalData
                                     break;
                             }
                             while (enumerate.MoveNext());
-                            op.Stats.ShortChunkCount++;
+                            op.Stats.CompressedChunkCount++;
                         }
                         long chunkLength = op.Stream.Position - chunkStartPos;
                         if (chunkLength > uint.MaxValue)
