@@ -187,6 +187,7 @@ namespace LeagueOfStats.CmdGen
                         itemSet["preferredItemSlots"] = preferredSlots;
 
                     var fileName = Path.Combine(leagueInstallPath, "Config", "Champions", champ.InternalName, "Recommended", $"LOS_{champ.InternalName}_{role}.json");
+                    Directory.CreateDirectory(Path.GetDirectoryName(fileName));
                     File.WriteAllText(fileName, itemSet.ToStringIndented());
                     generatedFiles.Add(fileName);
                 }
