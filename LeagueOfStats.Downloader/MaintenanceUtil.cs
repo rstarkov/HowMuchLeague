@@ -11,7 +11,7 @@ using RT.Util.Paths;
 
 namespace LeagueOfStats.Downloader
 {
-    static class MergeDataStores
+    static class MaintenanceUtil
     {
         public static void MergeFailed(string dataPath, string mergeLosjs, Region region)
         {

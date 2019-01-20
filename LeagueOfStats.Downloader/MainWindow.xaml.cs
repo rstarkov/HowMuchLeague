@@ -12,7 +12,6 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using LeagueOfStats.GlobalData;
 using RT.Util;
-using RT.Util.Consoles;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueOfStats.Downloader
@@ -173,7 +172,7 @@ namespace LeagueOfStats.Downloader
                 return;
             }
             Directory.CreateDirectory(outputPath);
-            MergeDataStores.MergePreVer(outputPath, searchPath, mergeJsons);
+            MaintenanceUtil.MergePreVer(outputPath, searchPath, mergeJsons);
         }
 
         private void RewriteBasicInfos(string dataPath)
