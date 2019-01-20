@@ -82,9 +82,9 @@ namespace LeagueOfStats.Downloader
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: new ApiKeyWithPrompt(args[1], txtApiKey1, this), dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
-                MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
+                MaintenanceUtil.MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
             else if (args[0] == "merge-all")
-                MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: true);
+                MaintenanceUtil.MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: true);
             else
                 Console.WriteLine("Unknown command");
 
@@ -161,120 +161,6 @@ namespace LeagueOfStats.Downloader
                 }
                 else
                     throw new Exception();
-            }
-        }
-
-        private void MergeMatches(string outputPath, string searchPath, bool mergeJsons)
-        {
-            if (Directory.Exists(outputPath))
-            {
-                Console.WriteLine("This command requires the output directory not to exist; it will be created.");
-                return;
-            }
-            Directory.CreateDirectory(outputPath);
-            MaintenanceUtil.MergePreVer(outputPath, searchPath, mergeJsons);
-        }
-
-        private void RewriteBasicInfos(string dataPath)
-        {
-            DataStore.Initialise(dataPath, "");
-            foreach (var region in DataStore.LosMatchJsons.Keys)
-            {
-                var existing = new HashSet<long>();
-                var countRead = new CountThread(10000);
-                countRead.OnInterval = count => { Console.Write($"R:{count:#,0} ({countRead.Rate:#,0}/s)  "); };
-                var countWrite = new CountThread(10000);
-                countWrite.OnInterval = count => { Console.Write($"W:{count:#,0} ({countWrite.Rate:#,0}/s)  "); };
-                var matchInfos = DataStore.LosMatchJsons[region].Values
-                    .SelectMany(x => x.Values)
-                    .SelectMany(container => container.ReadItems())
-                    .Select(json => new BasicMatchInfo(json))
-                    .PassthroughCount(countRead.Count)
-                    .OrderBy(m => m.MatchId)
-                    .Where(m => existing.Add(m.MatchId))
-                    .PassthroughCount(countWrite.Count);
-                if (File.Exists(DataStore.LosMatchInfos[region].FileName))
-                    DataStore.LosMatchInfos[region].Rewrite(_ => matchInfos);
-                else
-                    DataStore.LosMatchInfos[region].AppendItems(matchInfos, LosChunkFormat.LZ4HC);
-                countRead.Stop();
-                countWrite.Stop();
-            }
-        }
-
-        private void GenRedownloadList(string dataPath)
-        {
-            DataStore.Initialise(dataPath, "");
-            foreach (var region in DataStore.LosMatchJsons.Keys)
-            {
-                var minId = DataStore.LosMatchInfos[region].ReadItems().Where(m => m.GameCreationDate >= new DateTime(2018, 3, 1)).Min(m => m.MatchId);
-                File.WriteAllLines($"redo-{region}.txt", DataStore.NonexistentMatchIds[region].Where(id => id > minId).Distinct().Order().Select(id => id.ToString()));
-            }
-        }
-
-        private void RecheckNonexistentIds(string dataPath, ApiKeyWrapper[] apiKeys)
-        {
-            Console.WriteLine($"Initialising...");
-            DataStore.Initialise(dataPath, "");
-            Console.WriteLine($"Downloading...");
-            var threads = new List<Thread>();
-            foreach (var region in DataStore.NonexistentMatchIds.Keys)
-            {
-                var t = new Thread(() => { RecheckNonexistentIdsRegion(region, apiKeys); });
-                t.Start();
-                threads.Add(t);
-            }
-            foreach (var t in threads)
-                t.Join();
-        }
-        private void RecheckNonexistentIdsRegion(Region region, ApiKeyWrapper[] apiKeys)
-        {
-            var path = @"P:\LeagueOfStats\LeagueOfStats\Builds\";
-            var doneFile = Path.Combine(path, $"redone-{region}.txt");
-            long maxDoneId = 0;
-            int hits = 0;
-            if (File.Exists(doneFile))
-                foreach (var line in File.ReadLines(doneFile).Select(s => s.Trim()).Where(s => s != ""))
-                {
-                    if (line.StartsWith("hits:"))
-                        hits = int.Parse(line.Substring("hits:".Length));
-                    else
-                        maxDoneId = Math.Max(maxDoneId, long.Parse(line));
-                }
-            var idsToProcess = File.ReadAllLines(Path.Combine(path, $"redo-{region}.txt")).Select(l => long.Parse(l)).Where(id => id > maxDoneId).ToList();
-            var downloaders = apiKeys.Select(apiKey => new MatchDownloader(apiKey, region) { OnEveryResponse = (_, __) => { } }).ToList();
-            var nextDownloader = 0;
-            int remaining = idsToProcess.Count;
-            foreach (var matchId in idsToProcess)
-            {
-                again:;
-                var dl = downloaders[nextDownloader].DownloadMatch(matchId);
-                nextDownloader = (nextDownloader + 1) % downloaders.Count;
-                if (dl.result == MatchDownloadResult.BackOff)
-                {
-                    Thread.Sleep(Rnd.Next(500, 1500));
-                    goto again;
-                }
-                remaining--;
-                if (dl.result == MatchDownloadResult.NonExistent)
-                {
-                    Console.ForegroundColor = ConsoleColor.DarkGray;
-                    Console.Write($"{region}:{remaining:#,0}  ");
-                    //DataStore.AddNonExistentMatch(region, matchId); - it's already in there, as that's how we built the list for rechecking
-                }
-                else if (dl.result == MatchDownloadResult.Failed)
-                    Console.WriteLine($"Download failed: {matchId}");
-                else if (dl.result == MatchDownloadResult.OK)
-                {
-                    hits++;
-                    File.AppendAllLines(doneFile, new[] { $"hits:{hits}" });
-                    DataStore.AddMatch(region, dl.json);
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.Write($"{region}:{remaining:#,0}:{hits:#,0}  ");
-                }
-                else
-                    throw new Exception();
-                File.AppendAllLines(doneFile, new[] { matchId.ToString() });
             }
         }
     }
