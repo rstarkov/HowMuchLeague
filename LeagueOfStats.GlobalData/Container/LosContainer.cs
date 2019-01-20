@@ -14,7 +14,6 @@ using RT.Util.Streams;
 // Wishlist:
 //    Do not create empty files / empty chunks when appending an empty enumerable
 //    Allow derived types to determine for themselves whether a rewrite is worth doing
-//    Correctly support long chunks instead of throwing an exception
 
 namespace LeagueOfStats.GlobalData
 {
@@ -25,6 +24,9 @@ namespace LeagueOfStats.GlobalData
         public uint ShortChunkCount;
         public uint CompressedItemsCount;
         public uint UncompressedItemsCount;
+
+        public uint TotalItemsCount => CompressedItemsCount + UncompressedItemsCount;
+        public bool RewriteNeeded => (ShortChunkCount + UncompressedItemsCount) / (double) TotalItemsCount > 0.25;
     }
 
     public abstract class LosContainer
@@ -251,9 +253,9 @@ namespace LeagueOfStats.GlobalData
             if (stats == null)
                 return;
 
-            if (compact && (stats.ShortChunkCount > 1 || stats.UncompressedItemsCount > 0))
+            if (compact && (stats.ShortChunkCount > 10 || stats.UncompressedItemsCount > 0))
                 Rewrite();
-            else if (EnableAutoRewrite && (stats.ShortChunkCount > 2000 || stats.UncompressedItemsCount > 5000))
+            else if (EnableAutoRewrite && stats.RewriteNeeded)
                 Rewrite();
         }
 
@@ -497,7 +499,7 @@ namespace LeagueOfStats.GlobalData
                         op.Writer.Write((uint) chunkLength);
                     }
                 }
-                rewriteNeeded = op.Stats.ShortChunkCount > 3000 || op.Stats.UncompressedItemsCount > 10000;
+                rewriteNeeded = op.Stats.RewriteNeeded;
 
                 return Enumerable.Empty<bool>();
             }).ToList();

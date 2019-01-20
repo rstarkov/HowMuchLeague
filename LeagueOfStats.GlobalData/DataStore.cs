@@ -91,13 +91,13 @@ namespace LeagueOfStats.GlobalData
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
                     var queueId = int.Parse(match.Groups["queueId"].Value);
                     var version = match.Groups["version"].Value;
-                    LosMatchJsons[region][version][queueId].EnableAutoRewrite = false;
+                    LosMatchJsons[region][version][queueId].EnableAutoRewrite = autoRewrites;
                     LosMatchJsons[region][version][queueId].Initialise();
                 }
                 else if ((match = Regex.Match(file.Name, @"^(?<region>[A-Z]+)-match-infos\.losbi$")).Success)
                 {
                     var region = EnumStrong.Parse<Region>(match.Groups["region"].Value);
-                    LosMatchInfos[region].EnableAutoRewrite = false;
+                    LosMatchInfos[region].EnableAutoRewrite = autoRewrites;
                     LosMatchInfos[region].Initialise();
                 }
             }
