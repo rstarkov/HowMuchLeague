@@ -7,7 +7,7 @@ using RT.Util;
 
 namespace LeagueOfStats.StaticData
 {
-    class QueueInfo
+    public class QueueInfo
     {
         public int Id { get; private set; }
         public string FullName { get; private set; }
@@ -26,7 +26,7 @@ namespace LeagueOfStats.StaticData
         }
     }
 
-    enum MapId
+    public enum MapId
     {
         SummonersRiftOldSummer = 1,
         SummonersRiftOldAutumn = 2,
@@ -44,7 +44,7 @@ namespace LeagueOfStats.StaticData
         NexusBlitz = 21,
     }
 
-    static class Queues
+    public static class Queues
     {
         private static QueueInfo[] _queues = Ut.NewArray(
             new QueueInfo(0, 0, "Custom", ""),
