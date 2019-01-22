@@ -26,7 +26,7 @@ namespace LeagueOfStats.GlobalData
         public uint UncompressedItemsCount;
 
         public uint TotalItemsCount => CompressedItemsCount + UncompressedItemsCount;
-        public bool RewriteNeeded => (CompressedChunkCount + UncompressedItemsCount) / (double) TotalItemsCount > 0.25;
+        public bool RewriteNeeded => TotalItemsCount > 50 && (CompressedChunkCount + UncompressedItemsCount) / (double) TotalItemsCount > 0.25;
     }
 
     public abstract class LosContainer
