@@ -48,6 +48,7 @@ namespace LeagueOfStats.GlobalData
                     Thread.Sleep(1000);
                 }
             });
+            _t.IsBackground = true;
             _t.Start();
         }
         public void Stop()
