@@ -86,8 +86,8 @@ namespace LeagueOfStats.Downloader
             // Take only the last two months' worth of points
             entries = entries.Where(pt => pt.X >= (DateTime.UtcNow.AddMonths(-2) - new DateTime(1970, 1, 1)).TotalMilliseconds).ToList();
 
-            if (entries.Count < 100)
-                yield break;
+            if (entries.Count < 30)
+                throw new Exception("Unable to rebuild slope"); // if hit, the fix is to take more months / take 100 last points by date / have a special flag which allows operation without slope, which risks attempting to download match IDs that haven't been recorded yet
 
             // Linear fit them (https://stackoverflow.com/a/19040841/33080)
             double sumX = 0.0;
