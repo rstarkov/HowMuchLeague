@@ -13,10 +13,11 @@ using System.Windows.Media;
 using LeagueOfStats.GlobalData;
 using RT.Util;
 using RT.Util.ExtensionMethods;
+using RT.Util.Forms;
 
 namespace LeagueOfStats.Downloader
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : ManagedWindow
     {
         public static Dictionary<Region, ConsoleColor> Colors = new Dictionary<Region, ConsoleColor>
         {
@@ -46,6 +47,7 @@ namespace LeagueOfStats.Downloader
         };
 
         public MainWindow()
+            : base(App.Settings.MainWindowSettings)
         {
             InitializeComponent();
         }
