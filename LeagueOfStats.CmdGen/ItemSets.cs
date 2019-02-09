@@ -64,7 +64,8 @@ namespace LeagueOfStats.CmdGen
             Console.WriteLine("Generating item sets...");
 
             var generatedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var byName = LeagueStaticData.Items.Values.Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && !i.HideFromAll).ToDictionary(i => i.Name);
+            var byName = LeagueStaticData.Items.Values.Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && !i.HideFromAll)
+                .GroupBy(i => i.Name).Where(g => g.Count() == 1).ToDictionary(g => g.Key, g => g.First());
 
             JsonValue preferredSlots = null;
             if (settings.SlotsJsonFile != null && settings.SlotsName != null)
