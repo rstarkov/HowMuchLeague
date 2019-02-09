@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -56,7 +56,9 @@ namespace LeagueOfStats.Downloader
 
         public static void Recompress(string dataPath)
         {
+            Console.WriteLine("Initialising...");
             DataStore.Initialise(dataPath, "");
+            Console.WriteLine("Recompressing...");
 
             foreach (var store in DataStore.LosMatchIdsNonExistent.Values)
                 store.Rewrite();
