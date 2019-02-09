@@ -75,10 +75,7 @@ namespace LeagueOfStats.Downloader
             if (args[0] == "download")
             {
                 var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
-                var lastKeys = new[] { "", "", "" };
-                try { lastKeys = File.ReadAllLines("Downloader.LastApiKeys.txt"); }
-                catch { }
-                var apiKeys = lastKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray();
+                var apiKeys = App.Settings.LastApiKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray();
                 DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys);
             }
             else if (args[0] == "download-ids")
@@ -95,7 +92,8 @@ namespace LeagueOfStats.Downloader
 
         public void SaveApiKeys()
         {
-            File.WriteAllLines("Downloader.LastApiKeys.txt", new[] { txtApiKey1, txtApiKey2, txtApiKey3 }.Select(txt => txt.Text));
+            App.Settings.LastApiKeys = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }.Select(txt => txt.Text).ToList();
+            App.Settings.SaveQuiet();
         }
 
         private void MergeIds(string region, string outputFile, string[] inputFiles)
