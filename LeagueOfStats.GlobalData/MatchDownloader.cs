@@ -111,10 +111,32 @@ namespace LeagueOfStats.GlobalData
         {
             var key = GetApiKey();
             var url = $@"https://{region.ToApiHost()}/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={key}";
-            var resp = new HClient().Get(url).Expect(HttpStatusCode.OK).DataJson;
-            var id = resp["id"].GetString();
-            var hash = new HMACSHA256(Encoding.UTF8.GetBytes(hmackey)).ComputeHash(Encoding.UTF8.GetBytes(id));
-            _downloadedById = BitConverter.ToInt64(hash, 0);
+            int hardErrors = 0;
+            while (true)
+            {
+                var resp = new HClient().Get(url);
+                if ((int) resp.StatusCode == 429)
+                {
+                    var sleep = 5;
+                    if (int.TryParse(resp.Headers["Retry-After"], out int retryAfter))
+                        sleep = retryAfter;
+                    Console.WriteLine($"429, sleeping for {sleep} seconds...");
+                    Thread.Sleep(sleep * 1000);
+                    continue;
+                }
+                if (resp.StatusCode != HttpStatusCode.OK)
+                {
+                    hardErrors++;
+                    if (hardErrors >= 5)
+                        throw new Exception("Unable to download; giving up");
+                    Thread.Sleep(5000);
+                    continue;
+                }
+                var id = resp.DataJson["id"].GetString();
+                var hash = new HMACSHA256(Encoding.UTF8.GetBytes(hmackey)).ComputeHash(Encoding.UTF8.GetBytes(id));
+                _downloadedById = BitConverter.ToInt64(hash, 0);
+                return;
+            }
         }
     }
 
