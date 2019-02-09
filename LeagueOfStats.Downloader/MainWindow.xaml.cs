@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -123,6 +123,13 @@ namespace LeagueOfStats.Downloader
             Console.WriteLine("Initialising data store ...");
             DataStore.Initialise(dataPath, "");
             Console.WriteLine("    ... done.");
+
+            Console.WriteLine("Initialising API keys...");
+            foreach (var apiKey in apiKeys)
+            {
+                apiKey.InitDownloadedById(App.Settings.DownloadedByIdRegion, App.Settings.DownloadedByIdSummoner, App.Settings.DownloadedByIdHmac);
+                Console.WriteLine($"Downloaded by ID for {apiKey.GetApiKey()}: {apiKey.GetDownloadedById():#,0}");
+            }
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)

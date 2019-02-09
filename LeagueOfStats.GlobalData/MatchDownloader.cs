@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using RT.Util;
 using RT.Util.Json;
@@ -35,7 +37,7 @@ namespace LeagueOfStats.GlobalData
             if (attempts > 0)
                 Thread.Sleep(1000);
             var keyUsed = _apiKey.GetApiKey();
-            var url = $@"https://{Region.ToApiHost()}/lol/match/v3/matches/{matchId}?api_key={keyUsed}";
+            var url = $@"https://{Region.ToApiHost()}/lol/match/v4/matches/{matchId}?api_key={keyUsed}";
             try
             {
                 attempts++;
@@ -68,12 +70,15 @@ namespace LeagueOfStats.GlobalData
                 else if (resp.StatusCode == HttpStatusCode.OK)
                 {
                     _apiKey.ReportValid(keyUsed);
-                    try { return (MatchDownloadResult.OK, resp.DataJson); }// make sure it can be parsed as JSON
+                    JsonValue json;
+                    try { json = resp.DataJson; }// make sure it can be parsed as JSON
                     catch
                     {
                         OnUnparseableJson(resp);
                         return (MatchDownloadResult.Failed, null);
                     }
+                    json["LOS-Downloaded-By"] = _apiKey.GetDownloadedById();
+                    return (MatchDownloadResult.OK, json);
                 }
                 if (attempts <= RetryCount)
                     goto retry;
@@ -92,6 +97,25 @@ namespace LeagueOfStats.GlobalData
         public abstract string GetApiKey();
         public abstract void ReportValid(string keyUsed);
         public abstract void ReportInvalid(string keyUsed);
+
+        private long? _downloadedById = null;
+
+        public long GetDownloadedById()
+        {
+            if (_downloadedById == null)
+                throw new InvalidOperationException($"Must call {nameof(InitDownloadedById)} first");
+            return _downloadedById.Value;
+        }
+
+        public void InitDownloadedById(Region region, string summonerName, string hmackey)
+        {
+            var key = GetApiKey();
+            var url = $@"https://{region.ToApiHost()}/lol/summoner/v4/summoners/by-name/{summonerName}?api_key={key}";
+            var resp = new HClient().Get(url).Expect(HttpStatusCode.OK).DataJson;
+            var id = resp["id"].GetString();
+            var hash = new HMACSHA256(Encoding.UTF8.GetBytes(hmackey)).ComputeHash(Encoding.UTF8.GetBytes(id));
+            _downloadedById = BitConverter.ToInt64(hash, 0);
+        }
     }
 
     public class StaticApiKey : ApiKeyWrapper
