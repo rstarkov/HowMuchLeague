@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -129,7 +129,7 @@ namespace LeagueOfStats.Downloader
                 downloaders.Add(new Downloader(apiKeys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
-                dl.DownloadForever();
+                dl.DownloadForever(background: true);
 
             while (true)
                 Thread.Sleep(9999);
