@@ -7,6 +7,7 @@ using System.Threading;
 using LeagueOfStats.GlobalData;
 using RT.Util;
 using RT.Util.Collections;
+using RT.Util.Consoles;
 using RT.Util.ExtensionMethods;
 using RT.Util.Paths;
 
@@ -243,6 +244,138 @@ namespace LeagueOfStats.Downloader
             {
                 var minId = DataStore.LosMatchInfos[region].ReadItems().Where(m => m.GameCreationDate >= new DateTime(2018, 3, 1)).Min(m => m.MatchId);
                 File.WriteAllLines($"redo-{region}.txt", DataStore.NonexistentMatchIds[region].Where(id => id > minId).Distinct().Order().Select(id => id.ToString()));
+            }
+        }
+
+        public static void RecheckNonexistent(ApiKeyWithPrompt[] apiKeys)
+        {
+            var threads = new List<Thread>();
+            foreach (var region in DataStore.NonexistentMatchIds.Keys)
+            {
+                var t = new Thread(() => { RecheckNonexistentRegion(region, apiKeys); });
+                t.IsBackground = true;
+                t.Start();
+                threads.Add(t);
+            }
+            foreach (var t in threads)
+                t.Join();
+        }
+
+        class nmiBucket
+        {
+            public long MinId;
+            public long MaxId;
+            public List<long> Ids = new List<long>();
+            public int TotalChecked;
+            public int ActuallyExisting;
+            public double ActuallyExistingRatio => TotalChecked == 0 ? 0 : ActuallyExisting / (double) TotalChecked;
+            public double RndPickProb => Ids.Count == 0 ? 0 : TotalChecked < 5 ? 1 : Math.Max(1.0 / TotalChecked / TotalChecked, ActuallyExistingRatio);
+        }
+
+        private static void RecheckNonexistentRegion(Region region, ApiKeyWithPrompt[] apiKeys)
+        {
+            var existing = DataStore.ExistingMatchIds[region].ToHashSet();
+            int removed = 0;
+            DataStore.LosMatchIdsNonExistent[region].Rewrite(ids => ids.Where(id => { var contains = existing.Contains(id); if (contains) removed++; return !contains; }));
+            Console.WriteLine($"{region}: removed {removed:#,0} existing IDs from the non-existent ID list");
+            if (removed > 0)
+                DataStore.ReloadNonexistentMatchIds(region);
+
+            var doneFile = Path.Combine(DataStore.LosPath, $"rechecked-nonexistent-{region}.txt");
+            var doneIds = new HashSet<long>();
+            if (File.Exists(doneFile))
+                doneIds = File.ReadLines(doneFile).Select(l => long.TryParse(l, out var res) ? res : -1).Where(i => i > 0).ToHashSet();
+            var nmi = DataStore.NonexistentMatchIds[region];
+            var min = long.MaxValue;
+            var max = long.MinValue;
+            foreach (var id in nmi)
+            {
+                if (min > id)
+                    min = id;
+                if (max < id)
+                    max = id;
+            }
+            max = min + (max - min) * 95 / 100; // don't check the last 5% of IDs
+            Console.WriteLine($"{region}: IDs from {min:#,0} to {max:#,0}");
+            var buckets = new nmiBucket[100];
+            for (int i = 0; i < buckets.Length; i++)
+            {
+                buckets[i] = new nmiBucket();
+                buckets[i].MinId = min + (max - min) * i / buckets.Length;
+                buckets[i].MaxId = min + (max - min) * (i + 1) / buckets.Length;
+            }
+            foreach (var id in nmi.Where(id => id < max && !doneIds.Contains(id)))
+            {
+                var b = (id - min) * buckets.Length / (max - min);
+                if (id == buckets[b].MaxId)
+                    b++;
+                Ut.Assert(id >= buckets[b].MinId && id < buckets[b].MaxId);
+                buckets[b].Ids.Add(id);
+            }
+            doneIds = null;
+            existing = null;
+            GC.Collect(2, GCCollectionMode.Forced, true, true);
+            foreach (var bucket in buckets)
+                bucket.Ids.Shuffle();
+            lock ("no-mixed-printing-d7f3hajigk48rde7fg")
+            {
+                ConsoleUtil.Write((region + ": ").Color(MainWindow.Colors[region]));
+                foreach (var bucket in buckets)
+                    Console.Write($"{bucket.Ids.Count:#,0} ");
+                Console.WriteLine();
+                Console.WriteLine();
+            }
+
+            var downloaders = apiKeys.Select(apiKey => new MatchDownloader(apiKey, region) { OnEveryResponse = (_, __) => { } }).ToList();
+            var nextDownloader = 0;
+            while (true)
+            {
+                var sum = buckets.Sum(b => b.RndPickProb);
+                var rnd = Rnd.NextDouble(0, sum);
+                var bucket = buckets.SkipWhile(b => { rnd -= b.RndPickProb; return rnd >= 0; }).First();
+                var matchId = bucket.Ids[bucket.Ids.Count - 1];
+                bucket.Ids.RemoveAt(bucket.Ids.Count - 1);
+                again:;
+                var dl = downloaders[nextDownloader].DownloadMatch(matchId);
+                nextDownloader = (nextDownloader + 1) % downloaders.Count;
+                if (dl.result == MatchDownloadResult.BackOff)
+                {
+                    Thread.Sleep(Rnd.Next(500, 1500));
+                    goto again;
+                }
+                bucket.TotalChecked++;
+                if (dl.result == MatchDownloadResult.NonExistent)
+                {
+                    //DataStore.AddNonExistentMatch(region, matchId); - it's already in there, as that's how we built the list for rechecking
+                }
+                else if (dl.result == MatchDownloadResult.Failed)
+                    Console.WriteLine($"Download failed: {matchId}");
+                else if (dl.result == MatchDownloadResult.OK)
+                {
+                    bucket.ActuallyExisting++;
+                    DataStore.AddMatch(region, dl.json);
+
+                    lock ("no-mixed-printing-d7f3hajigk48rde7fg")
+                    {
+                        ConsoleUtil.Write((region + ": ").Color(MainWindow.Colors[region]));
+                        foreach (var bkt in buckets)
+                        {
+                            if (bkt.ActuallyExisting == 0)
+                                ConsoleUtil.Write((bkt.TotalChecked + " ").Color(ConsoleColor.DarkGray));
+                            else
+                                ConsoleUtil.Write((bkt.ActuallyExisting + "/" + bkt.TotalChecked + " ").Color(ConsoleColor.Green));
+                        }
+                        ConsoleUtil.WriteLine("");
+                        ConsoleUtil.WriteLine("");
+                    }
+
+                    Ut.WaitSharingVio(() => File.AppendAllLines(doneFile, new[] { $"STATS: {buckets.Sum(b => b.ActuallyExisting):#,0} existing, {buckets.Sum(b => b.TotalChecked):#,0} total checked" }));
+                }
+                else
+                    throw new Exception();
+
+                if (dl.result != MatchDownloadResult.Failed)
+                    Ut.WaitSharingVio(() => File.AppendAllLines(doneFile, new[] { matchId.ToString() }));
             }
         }
 

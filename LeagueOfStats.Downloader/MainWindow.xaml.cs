@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -76,6 +76,8 @@ namespace LeagueOfStats.Downloader
             var apiKeys = App.Settings.LastApiKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray();
             if (args[0] == "download")
                 DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys);
+            else if (args[0] == "recheck-nonexistent")
+                RecheckNonexistent(dataPath: args[1], apiKeys: apiKeys);
             else if (args[0] == "download-ids")
                 DownloadIds(apiKey: apiKeys[0], dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
@@ -152,6 +154,14 @@ namespace LeagueOfStats.Downloader
 
             while (true)
                 Thread.Sleep(9999);
+        }
+
+        private void RecheckNonexistent(string dataPath, ApiKeyWithPrompt[] apiKeys)
+        {
+            initProcessIdle();
+            initDataStore(dataPath);
+            initApiKeys(apiKeys);
+            MaintenanceUtil.RecheckNonexistent(apiKeys);
         }
 
         private void DownloadIds(ApiKeyWrapper apiKey, string dataPath, string idFilePath)
