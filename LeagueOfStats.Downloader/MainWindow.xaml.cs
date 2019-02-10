@@ -72,14 +72,12 @@ namespace LeagueOfStats.Downloader
             Console.SetOut(new ConsoleToWpfWriter(this));
 
             var args = Environment.GetCommandLineArgs().Subarray(1);
+            var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
+            var apiKeys = App.Settings.LastApiKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray();
             if (args[0] == "download")
-            {
-                var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
-                var apiKeys = App.Settings.LastApiKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray();
                 DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys);
-            }
             else if (args[0] == "download-ids")
-                DownloadIds(apiKey: new ApiKeyWithPrompt(args[1], txtApiKey1, this), dataPath: args[2], idFilePath: args[4]);
+                DownloadIds(apiKey: apiKeys[0], dataPath: args[2], idFilePath: args[4]);
             else if (args[0] == "merge-ids")
                 MaintenanceUtil.MergeMatches(outputPath: args[1], searchPath: args[2], mergeJsons: false);
             else if (args[0] == "merge-all")
