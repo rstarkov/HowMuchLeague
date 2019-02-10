@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -66,7 +66,6 @@ namespace LeagueOfStats.Downloader
             foreach (var store in DataStore.LosMatchInfos.Values)
                 store.Rewrite();
 
-            var haveIds = new AutoDictionary<Region, HashSet<long>>(_ => new HashSet<long>());
             var containers = DataStore.LosMatchJsons.SelectMany(v1 => v1.Value.Values.SelectMany(v2 => v2.Values.Select(c => new { container = c, region = v1.Key, stats = c.GetContainerStats() })))
                 .OrderByDescending(c => c.stats.UncompressedItemsCount + c.stats.CompressedChunkCount);
             foreach (var val in containers)
@@ -81,15 +80,7 @@ namespace LeagueOfStats.Downloader
                 Console.WriteLine($"{val.container.FileName} - {stats.UncompressedItemsCount:#,0}/{stats.CompressedItemsCount:#,0} uncompressed/compressed items, {stats.CompressedChunkCount:#,0} compressed chunks");
                 var savedIds = new HashSet<long>();
                 val.container.Rewrite(jsons => jsons.Where(json => savedIds.Add(json["gameId"].GetLong())));
-                haveIds[val.region].AddRange(savedIds);
                 DataStore.LosMatchIdsExisting[val.region].AppendItems(savedIds, LosChunkFormat.LZ4);
-            }
-
-            foreach (var kvp in DataStore.LosMatchIdsExisting)
-            {
-                kvp.Value.Rewrite();
-                var redownload = kvp.Value.ReadItems().Except(haveIds[kvp.Key]).Order().Select(id => id.ToString());
-                File.WriteAllLines(Path.Combine(DataStore.LosPath, $"_{kvp.Key}_redownload.txt"), redownload);
             }
         }
 
@@ -443,6 +434,61 @@ namespace LeagueOfStats.Downloader
                 else
                     throw new Exception();
                 File.AppendAllLines(doneFile, new[] { matchId.ToString() });
+            }
+        }
+
+        public static void HealthCheck()
+        {
+            (List<long> AnotB, List<long> BnotA) diff(HashSet<long> A, HashSet<long> B)
+            {
+                var AnotB = new List<long>();
+                var BnotA = new List<long>();
+                foreach (var a in A)
+                    if (!B.Contains(a))
+                        AnotB.Add(a);
+                foreach (var b in B)
+                    if (!A.Contains(b))
+                        BnotA.Add(b);
+                return (AnotB, BnotA);
+            }
+
+            List<long> overlap(HashSet<long> A, HashSet<long> B)
+            {
+                var result = new List<long>();
+                foreach (var a in A)
+                    if (B.Contains(a))
+                        result.Add(a);
+                return result;
+            }
+
+            foreach (var region in DataStore.LosMatchJsons.Keys)
+            {
+                Console.WriteLine($"Region: {region}");
+
+                Console.WriteLine($"    reading from full jsons...");
+                var idsFromFull = DataStore.LosMatchJsons[region].Values.SelectMany(l1 => l1.Values.SelectMany(l2 => l2.ReadItems().Select(i => i.GetLong()))).ToHashSet();
+
+                int removed = 0;
+                DataStore.LosMatchIdsNonExistent[region].Rewrite(ids => ids.Where(id => { var contains = idsFromFull.Contains(id); if (contains) removed++; return !contains; }));
+                Console.WriteLine($"{region}: removed {removed:#,0} existing IDs from the non-existent ID list");
+                if (removed > 0)
+                    DataStore.ReloadNonexistentMatchIds(region);
+
+                Console.WriteLine($"    reading existing...");
+                var idsExisting = DataStore.LosMatchIdsExisting[region].ReadItems().ToHashSet();
+                Console.WriteLine($"    reading non-existent...");
+                var idsNonexistent = DataStore.LosMatchIdsNonExistent[region].ReadItems().ToHashSet();
+                Console.WriteLine($"    reading from basic infos...");
+                var idsFromBasicInfos = DataStore.LosMatchInfos[region].ReadItems().Select(i => i.MatchId).ToHashSet();
+
+                var fullVSbasic = diff(idsFromFull, idsFromBasicInfos);
+                var basicVSexisting = diff(idsFromBasicInfos, idsExisting);
+                Console.WriteLine($"Full vs Basic; in full only: {fullVSbasic.AnotB.Count:#,0}; in basic only: {fullVSbasic.BnotA.Count:#,0}");
+                Console.WriteLine($"Basic vs Existing; in basic only: {basicVSexisting.AnotB.Count:#,0}; in existing only: {basicVSexisting.BnotA.Count:#,0}");
+
+                var nonExistentInFull = overlap(idsNonexistent, idsFromFull);
+                var nonExistentInBasic = overlap(idsNonexistent, idsFromBasicInfos);
+                Console.WriteLine($"Non-existent in full: {nonExistentInFull.Count:#,0}; non-existent in basic: {nonExistentInBasic.Count:#,0}");
             }
         }
     }
