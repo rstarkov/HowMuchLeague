@@ -162,5 +162,27 @@ namespace LeagueOfStats.GlobalData
                 Console.WriteLine($"Loaded {thread.Count} matches from {f.file.FileName} in {thread.Duration.TotalSeconds:#,0.000} s");
             }
         }
+
+        /// <summary>
+        ///     Re-initialises existing match IDs by dropping the cached ID collection and optionally immediately
+        ///     re-loading it from disk. Use after making changes directly to the data file.</summary>
+        public static void ReinitExistingMatchIds(Region region, bool immediateReload = false)
+        {
+            lock (_existingMatchIdsLock)
+            {
+                _existingMatchIds[region] = new CompactSetOfLong(LosMatchIdsExisting[region].ReadItems());
+            }
+        }
+
+        /// <summary>
+        ///     Re-initialises non-existent match IDs by dropping the cached ID collection and optionally immediately
+        ///     re-loading it from disk. Use after making changes directly to the data file.</summary>
+        public static void ReloadNonexistentMatchIds(Region region)
+        {
+            lock (_nonexistentMatchIdsLock)
+            {
+                _nonexistentMatchIds[region] = new CompactSetOfLong(LosMatchIdsNonExistent[region].ReadItems());
+            }
+        }
     }
 }
