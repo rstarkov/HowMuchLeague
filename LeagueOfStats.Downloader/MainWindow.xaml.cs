@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -94,6 +94,29 @@ namespace LeagueOfStats.Downloader
             App.Settings.SaveQuiet();
         }
 
+        private static void initProcessIdle()
+        {
+            using (var p = Process.GetCurrentProcess())
+                p.PriorityClass = ProcessPriorityClass.Idle;
+        }
+
+        private static void initDataStore(string dataPath)
+        {
+            Console.WriteLine("Initialising data store ...");
+            DataStore.Initialise(dataPath, "");
+            Console.WriteLine("    ... done.");
+        }
+
+        private static void initApiKeys(ApiKeyWrapper[] apiKeys)
+        {
+            Console.WriteLine("Initialising API keys...");
+            foreach (var apiKey in apiKeys)
+            {
+                apiKey.InitDownloadedById(App.Settings.DownloadedByIdRegion, App.Settings.DownloadedByIdSummoner, App.Settings.DownloadedByIdHmac);
+                Console.WriteLine($"Downloaded by ID for {apiKey.GetApiKey()}: {apiKey.GetDownloadedById():#,0}");
+            }
+        }
+
         private void MergeIds(string region, string outputFile, string[] inputFiles)
         {
             var output = new MatchIdContainer(outputFile, EnumStrong.Parse<Region>(region));
@@ -108,8 +131,10 @@ namespace LeagueOfStats.Downloader
 
         private void DownloadMatches(string dataPath, string version, string queueId, ApiKeyWrapper[] apiKeys)
         {
-            using (var p = Process.GetCurrentProcess())
-                p.PriorityClass = ProcessPriorityClass.Idle;
+            initProcessIdle();
+            initDataStore(dataPath);
+            initApiKeys(apiKeys);
+
             var regionLimits = new Dictionary<Region, (long initial, long range)>
             {
                 [Region.EUW] = ((3_582_500_000L + 3_587_650_000) / 2, 500_000),
@@ -117,17 +142,6 @@ namespace LeagueOfStats.Downloader
                 [Region.KR] = ((3_159_900_000L + 3_163_700_000) / 2, 300_000),
                 [Region.NA] = ((2_751_200_000L + 2_754_450_000) / 2, 300_000),
             };
-
-            Console.WriteLine("Initialising data store ...");
-            DataStore.Initialise(dataPath, "");
-            Console.WriteLine("    ... done.");
-
-            Console.WriteLine("Initialising API keys...");
-            foreach (var apiKey in apiKeys)
-            {
-                apiKey.InitDownloadedById(App.Settings.DownloadedByIdRegion, App.Settings.DownloadedByIdSummoner, App.Settings.DownloadedByIdHmac);
-                Console.WriteLine($"Downloaded by ID for {apiKey.GetApiKey()}: {apiKey.GetDownloadedById():#,0}");
-            }
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
