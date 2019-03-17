@@ -432,5 +432,25 @@ namespace LeagueOfStats.CmdGen
                 return null;
             }
         }
+
+        public static void GameDurations()
+        {
+            var buckets = new AutoDictionary<int, List<int>>(_ => new List<int>());
+            foreach (var bi in DataStore.LosMatchInfos.Values.SelectMany(c => c.ReadItems()))
+            {
+                var q = Queues.GetInfo(bi.QueueId);
+                if (q.Map == MapId.SummonersRift && q.ModeName == "5v5" && (q.Variant == "Blind Pick" || q.Variant == "Draft Pick" || q.Variant.StartsWith("Ranked")))
+                    buckets[(int) ((double) bi.GameCreation / 1000 / 86400 / 30.4375)].Add(bi.GameDuration);
+            }
+            var keys = buckets.Keys.Order().ToList();
+            File.WriteAllText("gameDurations.csv", "");
+            foreach (var key in keys)
+            {
+                var list = buckets[key];
+                list.Sort();
+                int prc(double p) => list[(int) (list.Count * p)];
+                File.AppendAllLines("gameDurations.csv", new[] { $"{key},{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)}" });
+            }
+        }
     }
 }
