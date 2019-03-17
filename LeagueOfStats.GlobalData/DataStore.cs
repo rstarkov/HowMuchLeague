@@ -181,6 +181,8 @@ namespace LeagueOfStats.GlobalData
         {
             lock (_nonexistentMatchIdsLock)
             {
+                if (_nonexistentMatchIds == null)
+                    return; // hasn't been used, so no need to force a reload
                 _nonexistentMatchIds[region] = new CompactSetOfLong(LosMatchIdsNonExistent[region].ReadItems());
             }
         }
