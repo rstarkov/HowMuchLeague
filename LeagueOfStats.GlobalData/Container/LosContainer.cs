@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -103,7 +103,7 @@ namespace LeagueOfStats.GlobalData
 
         protected class operationData
         {
-            public Stream Stream;
+            public FileStream Stream;
             public BinaryReader Reader;
             public BinaryWriter Writer;
 
@@ -214,6 +214,7 @@ namespace LeagueOfStats.GlobalData
                         if (op.Stream.Length < op.ValidLength * 101 / 100) // add more any time free space falls below 1%
                             op.Stream.SetLength(op.ValidLength * 102 / 100);
                         // Commit this write
+                        op.Stream.Flush(flushToDisk: true);
                         op.Stream.Position = validLengthPos;
                         op.Writer.Write(op.ValidLength);
                         // Update stats
