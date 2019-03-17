@@ -11,6 +11,7 @@ namespace LeagueOfStats.GlobalData
         public string GameVersion => $"{GameVersionMajor}.{GameVersionMinor}";
         public long GameCreation;
         public DateTime GameCreationDate => new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMilliseconds(GameCreation);
+        public int GameDuration;
 
         public BasicMatchInfo()
         {
@@ -29,6 +30,7 @@ namespace LeagueOfStats.GlobalData
                 GameVersionMajor = checked((byte) ver.Major);
                 GameVersionMinor = checked((byte) ver.Minor);
             }
+            GameDuration = json["gameDuration"].GetInt();
         }
     }
 }

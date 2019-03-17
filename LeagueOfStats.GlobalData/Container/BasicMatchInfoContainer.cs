@@ -50,6 +50,7 @@ namespace LeagueOfStats.GlobalData
             public int PrevQueueId;
             public int PrevGameVersion;
             public long PrevGameCreation;
+            public int PrevGameDuration;
         }
 
         protected override ChunkState GetInitialChunkState()
@@ -77,6 +78,8 @@ namespace LeagueOfStats.GlobalData
                 result.GameVersionMinor = (byte) (ver & 0xFF);
                 result.GameCreation = state.PrevGameCreation + stream.ReadInt64Optim();
                 state.PrevGameCreation = result.GameCreation;
+                result.GameDuration = state.PrevGameDuration + stream.ReadInt32Optim();
+                state.PrevGameDuration = result.GameDuration;
                 return result;
             }
             else
@@ -94,6 +97,8 @@ namespace LeagueOfStats.GlobalData
             state.PrevGameVersion = ver;
             stream.WriteInt64Optim(item.GameCreation - state.PrevGameCreation);
             state.PrevGameCreation = item.GameCreation;
+            stream.WriteInt32Optim(item.GameDuration - state.PrevGameDuration);
+            state.PrevGameDuration = item.GameDuration;
             return 1;
         }
 
