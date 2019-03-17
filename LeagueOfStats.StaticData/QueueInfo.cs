@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using RT.Util;
 
 namespace LeagueOfStats.StaticData
@@ -10,19 +7,24 @@ namespace LeagueOfStats.StaticData
     public class QueueInfo
     {
         public int Id { get; private set; }
-        public string FullName { get; private set; }
         public MapId Map { get; private set; }
-        public bool IsTemporary { get; private set; }
-        public int? FoldIntoId { get; private set; }
-        // is pvp
-        // 
+        public string ModeName { get; private set; }
+        public string Variant { get; private set; }
+        public int? ReplacedBy { get; private set; }
+        public bool Deprecated { get; private set; }
+        public bool IsPvp { get; private set; }
+        public bool IsEvent { get; private set; }
 
-        public QueueInfo(int id, MapId map, string fullName, string variant, int? replacedBy = null, bool deprecated = false, bool pvp = true, bool isEvent = false)
+        public QueueInfo(int id, MapId map, string modeName, string variant, int? replacedBy = null, bool deprecated = false, bool pvp = true, bool isEvent = false)
         {
             Id = id;
-            FullName = fullName;
             Map = map;
-            FoldIntoId = replacedBy;
+            ModeName = modeName;
+            Variant = variant;
+            ReplacedBy = replacedBy;
+            Deprecated = deprecated;
+            IsPvp = pvp;
+            IsEvent = isEvent;
         }
     }
 
@@ -128,7 +130,25 @@ namespace LeagueOfStats.StaticData
             new QueueInfo(1050, MapId.CrashSite, "Odyssey Extraction", "Crewmember", pvp: false, isEvent: true),
             new QueueInfo(1060, MapId.CrashSite, "Odyssey Extraction", "Captain", pvp: false, isEvent: true),
             new QueueInfo(1070, MapId.CrashSite, "Odyssey Extraction", "Onslaught", pvp: false, isEvent: true),
-            new QueueInfo(1200, MapId.NexusBlitz, "Nexus Blitz", "", isEvent: true)
+            new QueueInfo(1200, MapId.NexusBlitz, "Nexus Blitz", "", isEvent: true),
+
+            new QueueInfo(67, 0, "Unknown", "Unknown"),
+            new QueueInfo(860, 0, "Unknown", "Unknown"),
+            new QueueInfo(2000, 0, "Unknown", "Unknown"),
+            new QueueInfo(2010, 0, "Unknown", "Unknown"),
+            new QueueInfo(2020, 0, "Unknown", "Unknown")
         );
+
+        private static Dictionary<int, QueueInfo> _byId;
+
+        static Queues()
+        {
+            _byId = _queues.ToDictionary(q => q.Id);
+        }
+
+        public static QueueInfo GetInfo(int queueId)
+        {
+            return _byId[queueId];
+        }
     }
 }
