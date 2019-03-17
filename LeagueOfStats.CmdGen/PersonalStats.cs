@@ -518,9 +518,9 @@ namespace LeagueOfStats.CmdGen
             result.Add(makePlotY("Game duration over time", plotGameDurationProgress, runningAverage(plotGameDurationProgress, 49).ToList()));
             var plotHoursPerWeek = Enumerable.Range(0, gamesByWeek.Keys.Max() + 1).Select(wk => gamesByWeek.ContainsKey(wk) ? gamesByWeek[wk].Sum(g => g.Duration.TotalHours) : 0).ToList();
             result.Add(makePlotY("Hours played per week", plotHoursPerWeek, runningAverage(plotHoursPerWeek, 25).ToList()));
-            //result.Add(makeCsPlotOverTime("CS@20m as ADC over time", games, playerId, Role.DuoCarry, Lane.Bottom));
-            //result.Add(makeCsPlotOverTime("CS@20m as Mid over time", games, playerId, Role.Solo, Lane.Middle));
-            //result.Add(makeCsPlotOverTime("CS@20m as Top over time", games, playerId, Role.Solo, Lane.Top));
+            result.Add(makeCsPlotOverTime("CS@20m as ADC over time", games, Role.DuoCarry, Lane.Bottom));
+            result.Add(makeCsPlotOverTime("CS@20m as Mid over time", games, Role.Solo, Lane.Middle));
+            result.Add(makeCsPlotOverTime("CS@20m as Top over time", games, Role.Solo, Lane.Top));
 
             result.Add(new P(
                 new B("Total games: "), games.Count().ToString("#,0"), new SPAN { class_ = "hspace" },
@@ -607,6 +607,19 @@ namespace LeagueOfStats.CmdGen
         private object makePlotY(string title, params IEnumerable<double>[] datas)
         {
             return makePlotXY(title, datas.Select(data => data.Select((p, i) => (x: (double) i, y: p)).ToList()).ToArray());
+        }
+
+        private object makeCsPlotOverTime(string title, IEnumerable<Game> games, Role role, Lane lane)
+        {
+            var first = games.Min(g => g.DateUtc);
+            var plot = games
+                .Select(g => (g: g, plr: thisPlayer(g)))
+                .Where(x => x.plr.Role == role && x.plr.Lane == lane)
+                .Select(x => (x: (x.g.DateUtc - first).TotalDays, y: (double) x.plr.CreepsAt20))
+                .ToList();
+            if (plot.Count == 0)
+                return null;
+            return makePlotXY(title, plot, runningAverage(plot.Select(p => p.y), 25).Zip(plot, (y, p) => (x: p.x, y: y)).ToList());
         }
 
         private IEnumerable<int> range(int first, int count, int modulus = int.MaxValue)
