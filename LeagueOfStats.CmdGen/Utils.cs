@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using RT.TagSoup;
+using RT.Util;
 
 namespace LeagueOfStats.CmdGen
 {
@@ -32,6 +34,11 @@ namespace LeagueOfStats.CmdGen
             var b = z * Math.Sqrt((p * (1 - p) + z * z / (4 * n)) / n);
             var c = 1 + z * z / n;
             return ((a - b) / c, (a + b) / c);
+        }
+
+        public static void SortBy<TItem, TBy>(this List<TItem> list, Func<TItem, TBy> by)
+        {
+            list.Sort(CustomComparer<TItem>.By(by));
         }
     }
 }

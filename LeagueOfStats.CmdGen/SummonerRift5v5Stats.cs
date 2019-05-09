@@ -437,20 +437,138 @@ namespace LeagueOfStats.CmdGen
         {
             var buckets = new AutoDictionary<int, List<int>>(_ => new List<int>());
             foreach (var bi in DataStore.LosMatchInfos.Values.SelectMany(c => c.ReadItems()))
-            {
-                var q = Queues.GetInfo(bi.QueueId);
-                if (q.Map == MapId.SummonersRift && q.ModeName == "5v5" && (q.Variant == "Blind Pick" || q.Variant == "Draft Pick" || q.Variant.StartsWith("Ranked")))
+                if (IsSR5v5(bi.QueueId, rankedOnly: false))
                     buckets[(int) ((double) bi.GameCreation / 1000 / 86400 / 30.4375)].Add(bi.GameDuration);
-            }
             var keys = buckets.Keys.Order().ToList();
             File.WriteAllText("gameDurations.csv", "");
             foreach (var key in keys)
             {
                 var list = buckets[key];
                 list.Sort();
-                int prc(double p) => list[(int) (list.Count * p)];
-                File.AppendAllLines("gameDurations.csv", new[] { $"{key},{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)}" });
+                int prc(double p) => list[(int) (list.Count * p)]; // percentile duration
+                double lng(int minutes) => list.Count(d => d >= minutes * 60) / (double) list.Count; // percent games longer than
+                File.AppendAllLines("gameDurations.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count},{new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375):yyyy-MM-dd}" });
             }
+        }
+
+        public static void FullDbScanStats()
+        {
+            var durationBuckets = new AutoDictionary<int, List<short>>(_ => new List<short>());
+            var kdBuckets = new AutoDictionary<int, List<(byte winTK, byte winTD, byte winPK, byte winPD, byte losePK, byte losePD)>>(_ => new List<(byte winTK, byte winTD, byte winPK, byte winPD, byte lossPK, byte lossPD)>());
+            var firstbloodBuckets = new AutoDictionary<int, string, (int total, int wins)>((_, __) => (0, 0));
+
+            foreach (var mi in DataStore.ReadMatchesByRegVerQue(x => IsSR5v5(x.queueId, rankedOnly: true)))
+            {
+                if (mi.json["gameDuration"].GetInt() < 12 * 60)
+                    continue;
+                //var bkt = (int) ((3 + mi.json["gameCreation"].GetLong() / 1000.0 / 86400.0) / 7); // week
+                var bkt = (int) (mi.json["gameCreation"].GetLong() / 1000.0 / 86400.0 / 30.4375); // rounded month
+
+                durationBuckets[bkt].Add((short) mi.json["gameDuration"].GetInt());
+
+                var winTeam = mi.json["teams"].GetList().Single(t => t["win"].GetString() == "Win")["teamId"].GetInt();
+                var loseTeam = mi.json["teams"].GetList().Single(t => t["win"].GetString() != "Win")["teamId"].GetInt();
+                var winTK = (byte) mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == winTeam).Sum(j => j["stats"]["kills"].GetInt());
+                var winTD = (byte) mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == loseTeam).Sum(j => j["stats"]["kills"].GetInt());
+                var winHighestPlr = mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == winTeam).MaxElement(p => p["stats"]["kills"].GetInt() - p["stats"]["deaths"].GetInt());
+                var loseHighestPlr = mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == loseTeam).MaxElement(p => p["stats"]["kills"].GetInt() - p["stats"]["deaths"].GetInt());
+                var winPK = (byte) winHighestPlr["stats"]["kills"].GetInt();
+                var winPD = (byte) winHighestPlr["stats"]["deaths"].GetInt();
+                var losePK = (byte) loseHighestPlr["stats"]["kills"].GetInt();
+                var losePD = (byte) loseHighestPlr["stats"]["deaths"].GetInt();
+                kdBuckets[bkt].Add((winTK, winTD, winPK, winPD, losePK, losePD));
+
+                var firstbloodPlr = mi.json["participants"].GetList().FirstOrDefault(j => j["stats"].Safe["firstBloodKill"].GetBoolSafe() == true);
+                string firstbloodLane = null;
+                if (firstbloodPlr != null)
+                {
+                    var lane = firstbloodPlr["timeline"].Safe["lane"].GetString();
+                    var role = firstbloodPlr["timeline"].Safe["role"].GetString();
+                    if (lane == "JUNGLE" && role == "NONE")
+                        firstbloodLane = "jungle";
+                    else if (lane == "TOP" && role == "SOLO")
+                        firstbloodLane = "top";
+                    else if (lane == "MIDDLE" && role == "SOLO")
+                        firstbloodLane = "mid";
+                    else if (lane == "BOTTOM" && role == "DUO_CARRY")
+                        firstbloodLane = "adc";
+                    else if (lane == "BOTTOM" && role == "DUO_SUPPORT")
+                        firstbloodLane = "sup";
+                    else if (lane == "BOTTOM" && role == "DUO")
+                        firstbloodLane = "bottom";
+                }
+                if (firstbloodLane != null)
+                {
+                    var r = firstbloodBuckets[bkt][firstbloodLane];
+                    r.total++;
+                    if (firstbloodPlr["teamId"].GetInt() == winTeam)
+                        r.wins++;
+                    firstbloodBuckets[bkt][firstbloodLane] = r;
+                }
+            }
+
+            File.WriteAllText("gameDurations.csv", "");
+            foreach (var key in durationBuckets.Keys.Order().ToList())
+            {
+                var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
+                var list = durationBuckets[key];
+                list.Sort();
+                int prc(double p) => list[(int) (list.Count * p)]; // percentile duration
+                double lng(int minutes) => list.Count(d => d >= minutes * 60) / (double) list.Count; // percent games longer than
+                File.AppendAllLines("gameDurations.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count},{date:yyyy-MM-dd}" });
+            }
+
+            File.WriteAllText("winnerTeamKdRatioOverTime.csv", "");
+            File.WriteAllText("winnerTeamKdDifferenceOverTime.csv", "");
+            File.WriteAllText("bestWinningPlayerKdDifferenceOverTime.csv", "");
+            File.WriteAllText("bestLosingPlayerKdDifferenceOverTime.csv", "");
+            File.WriteAllText("gamesByScore.csv", "");
+            foreach (var key in kdBuckets.Keys.Order().ToList())
+            {
+                var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
+                var list = kdBuckets[key];
+                // K/D team ratio
+                list.SortBy(x => x.winTK == x.winTD ? 1 : x.winTD == 0 ? 999 : x.winTK / (double) x.winTD);
+                double prc1(double p) { var x = list[(int) (list.Count * p)]; return x.winTK == x.winTD ? 1 : x.winTD == 0 ? 999 : x.winTK / (double) x.winTD; };
+                File.AppendAllLines("winnerTeamKdRatioOverTime.csv", new[] { $"{key},,{prc1(0.01)},{prc1(0.10)},{prc1(0.25)},{prc1(0.50)},{prc1(0.75)},{prc1(0.90)},{prc1(0.99)},,{list.Count},{date:yyyy-MM-dd}" });
+                // K - D winner team difference
+                list.SortBy(x => x.winTK - x.winTD);
+                int prc2(double p) { var x = list[(int) (list.Count * p)]; return x.winTK - x.winTD; };
+                File.AppendAllLines("winnerTeamKdDifferenceOverTime.csv", new[] { $"{key},,{prc2(0.01)},{prc2(0.10)},{prc2(0.25)},{prc2(0.50)},{prc2(0.75)},{prc2(0.90)},{prc2(0.99)},,{list.Count},{date:yyyy-MM-dd}" });
+                // highest K - D player on winning team
+                list.SortBy(x => x.winPK - x.winPD);
+                int prc3(double p) { var x = list[(int) (list.Count * p)]; return x.winPK - x.winPD; };
+                File.AppendAllLines("bestWinningPlayerKdDifferenceOverTime.csv", new[] { $"{key},,{prc3(0.01)},{prc3(0.10)},{prc3(0.25)},{prc3(0.50)},{prc3(0.75)},{prc3(0.90)},{prc3(0.99)},,{list.Count},{date:yyyy-MM-dd}" });
+                // highest K - D player on losing team
+                list.SortBy(x => x.losePK - x.losePD);
+                int prc4(double p) { var x = list[(int) (list.Count * p)]; return x.losePK - x.losePD; };
+                File.AppendAllLines("bestLosingPlayerKdDifferenceOverTime.csv", new[] { $"{key},,{prc4(0.01)},{prc4(0.10)},{prc4(0.25)},{prc4(0.50)},{prc4(0.75)},{prc4(0.90)},{prc4(0.99)},,{list.Count},{date:yyyy-MM-dd}" });
+                // % of games by score and with player by score
+                double prcTeam(int k, int d) => list.Count(x => x.winTK >= k && x.winTD <= d) / (double) list.Count;
+                double prcPlrW(int k, int d) => list.Count(x => x.winPK >= k && x.winPD <= d) / (double) list.Count;
+                double prcPlrL(int k, int d) => list.Count(x => x.losePK >= k && x.losePD <= d) / (double) list.Count;
+                File.AppendAllLines("gamesByScore.csv", new[] { $"{key},,{prcTeam(20, 10)},{prcTeam(20, 5)},{prcTeam(30, 10)},{prcTeam(40, 15)},,{prcPlrW(20, 3)},{prcPlrL(20, 3)},{prcPlrW(25, 5)},{prcPlrL(25, 5)},{prcPlrW(15, 2)},{prcPlrL(15, 2)},,{list.Count},{date:yyyy-MM-dd}" });
+            }
+
+            File.WriteAllText("winrateByFirstblood.csv", "");
+            foreach (var key in firstbloodBuckets.Keys.Order().ToList())
+            {
+                var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
+                string s(string lane) => $"{firstbloodBuckets[key][lane].wins / (double) firstbloodBuckets[key][lane].total},{firstbloodBuckets[key][lane].total},";
+                File.AppendAllLines("winrateByFirstblood.csv", new[] { $"{key},,{s("jungle")},{s("top")},{s("mid")},{s("adc")},{s("sup")},{s("bottom")},,{date:yyyy-MM-dd}" });
+            }
+        }
+
+        private static bool IsSR5v5(int queueId, bool rankedOnly)
+        {
+            var q = Queues.GetInfo(queueId);
+            if (q.Map != MapId.SummonersRift)
+                return false;
+            if (q.ModeName != "5v5")
+                return false;
+            if (rankedOnly && !q.Variant.StartsWith("Ranked"))
+                return false;
+            return true;
         }
     }
 }
