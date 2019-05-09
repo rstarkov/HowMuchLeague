@@ -48,7 +48,7 @@ namespace LeagueOfStats.StaticData
 
     public static class Queues
     {
-        private static QueueInfo[] _queues = Ut.NewArray(
+        public static IList<QueueInfo> AllQueues { get; } = new List<QueueInfo>(Ut.NewArray(
             new QueueInfo(0, 0, "Custom", ""),
 
             new QueueInfo(2, MapId.SummonersRift, "5v5", "Blind Pick", replacedBy: 430),
@@ -137,13 +137,13 @@ namespace LeagueOfStats.StaticData
             new QueueInfo(2000, 0, "Unknown", "Unknown"),
             new QueueInfo(2010, 0, "Unknown", "Unknown"),
             new QueueInfo(2020, 0, "Unknown", "Unknown")
-        );
+        )).AsReadOnly();
 
         private static Dictionary<int, QueueInfo> _byId;
 
         static Queues()
         {
-            _byId = _queues.ToDictionary(q => q.Id);
+            _byId = AllQueues.ToDictionary(q => q.Id);
         }
 
         public static QueueInfo GetInfo(int queueId)
