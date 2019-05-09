@@ -75,8 +75,10 @@ namespace LeagueOfStats.CmdGen
             }
 
             var toprow = settings.TopRowItems.Select(name => byName[name]).ToArray();
-            var boots = new[] { byName["Boots of Swiftness"], byName["Boots of Mobility"], byName["Ionian Boots of Lucidity"], byName["Berserker's Greaves"], byName["Sorcerer's Shoes"], byName["Ninja Tabi"], byName["Mercury's Treads"] };
-            var starting = new[] { byName["Refillable Potion"], byName["Corrupting Potion"], byName["The Dark Seal"], byName["Doran's Ring"], byName["Ancient Coin"], byName["Relic Shield"], byName["Spellthief's Edge"], byName["Doran's Shield"], byName["Doran's Blade"], byName["Cull"], byName["Hunter's Potion"], byName["Hunter's Talisman"], byName["Hunter's Machete"] };
+            var boots = new[] { "Boots of Swiftness", "Boots of Mobility", "Ionian Boots of Lucidity", "Berserker's Greaves", "Sorcerer's Shoes", "Ninja Tabi", "Mercury's Treads" }
+                .Select(n => byName.TryGetValue(n, out var item) ? item : null).Where(i => i != null).ToArray();
+            var starting = new[] { "Refillable Potion", "Corrupting Potion", "The Dark Seal", "Doran's Ring", "Ancient Coin", "Relic Shield", "Spellthief's Edge", "Doran's Shield", "Doran's Blade", "Cull", "Hunter's Talisman", "Hunter's Machete" }
+                .Select(n => byName.TryGetValue(n, out var item) ? item : null).Where(i => i != null).ToArray();
 
             var itemsSR = LeagueStaticData.Items.Values
                 .Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && (i.NoUnconditionalChildren || boots.Contains(i) || starting.Contains(i)))
