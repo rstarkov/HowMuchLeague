@@ -42,16 +42,16 @@ namespace LeagueOfStats.CmdGen
             public bool Has(string champ) => Mid.Has(champ) || Top.Has(champ) || Jun.Has(champ) || Adc.Has(champ) || Sup.Has(champ);
         }
 
-        private static IEnumerable<T> percentile<T>(IEnumerable<T> coll, double perc, Func<T, double> by)
+        private static IEnumerable<(T val, double percentile)> percentile<T>(IEnumerable<T> coll, double perc, Func<T, double> by)
         {
             double max = coll.Sum(by);
             double sum = 0;
-            foreach (var el in coll)
+            foreach (var el in coll) // this input must be sorted by "by", either ascending or descending, for the results to make sense
             {
                 sum += by(el);
                 if (sum > perc * max)
                     yield break;
-                yield return el;
+                yield return (el, sum / max);
             }
         }
 
@@ -104,6 +104,7 @@ namespace LeagueOfStats.CmdGen
             var indexHtml = new List<object>();
             indexHtml.Add(new H1("Champion winrates and matchups"));
             indexHtml.Add(new P($"Analysed {matches.Count:#,0} matches " + (filterDesc ?? "using a custom filter")));
+            indexHtml.Add(new P("Match count colors: ", new SPAN("most popular") { class_ = "pop-1" }, " (50% of games); ", new SPAN("less popular") { class_ = "pop-2" }, " (next 40% of games); ", new SPAN("remaining 5%") { class_ = "pop-3" }, " (least popular 5% completely hidden)"));
             indexHtml.Add(new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")));
 
             genSRLaneMatchups("mid", matches.Select(m => m.Mid).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
@@ -209,10 +210,10 @@ namespace LeagueOfStats.CmdGen
             var overallPopularity = byChamp.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count / (double) matches.Count / 2);
 
             var overallTable = new List<TR>();
-            foreach (var kvp in percentile(byChamp, 0.95, kvp => kvp.Value.Count))
+            foreach (var prc in percentile(byChamp.OrderByDescending(kvp => kvp.Value.Count), 0.95, kvp => kvp.Value.Count))
             {
-                Console.WriteLine($"Generating lane stats for {lane} - {kvp.Key}...");
-                genSRLaneMatchup(kvp.Value, kvp.Key, lane, overallPopularity, overallTable);
+                Console.WriteLine($"Generating lane stats for {lane} - {prc.val.Key}...");
+                genSRLaneMatchup(prc.val.Value, prc.val.Key, lane, overallPopularity, overallTable, prc.percentile);
             }
 
             indexHtml.Add(new H3($"{lane.Capitalise()}"));
@@ -239,8 +240,8 @@ namespace LeagueOfStats.CmdGen
         private static TD cellPrcDelta(double value, int decimalPlaces)
             => (TD) new TD { class_ = "ra" }._(value < 0 ? "−" : value > 0 ? "+" : " ", ("{0:0." + new string('0', decimalPlaces) + "}%").Fmt(value * 100).Replace("-", "")).Data("sortkey", value);
 
-        private static TD cellInt(int value)
-            => (TD) new TD { class_ = "ra" }._("{0:#,0}".Fmt(value)).Data("sortkey", value);
+        private static TD cellInt(int value, string class__ = null)
+            => (TD) new TD { class_ = "ra " + class__ }._("{0:#,0}".Fmt(value)).Data("sortkey", value);
 
         private static object makeTable(TR header, IEnumerable<TR> rows)
         {
@@ -250,7 +251,7 @@ namespace LeagueOfStats.CmdGen
             );
         }
 
-        private void genSRLaneMatchup(List<LaneSR> matches, string champ, string lane, Dictionary<string, double> overallPopularity, List<TR> overallTable)
+        private void genSRLaneMatchup(List<LaneSR> matches, string champ, string lane, Dictionary<string, double> overallPopularity, List<TR> overallTable, double prc)
         {
             var championHtml = new List<object>();
             var champInfo = LeagueStaticData.Champions.Values.Single(ch => ch.Name == champ);
@@ -260,9 +261,10 @@ namespace LeagueOfStats.CmdGen
             championHtml.Add(new P($"Usable matches for {lane} {champ}: {matches.Count:#,0}"));
             var overallWinrate = matches.Count(m => m.ChampW == champ) / (double) matches.Count;
             {
+                var popClass = prc < 0.50 ? "pop-1" : prc < 0.90 ? "pop-2" : "pop-3";
                 var conf95 = Utils.WilsonConfidenceInterval(overallWinrate, matches.Count, 1.96);
                 championHtml.Add(new P($"Overall win rate: {overallWinrate * 100:0.0}% ({conf95.lower * 100:0}% - {conf95.upper * 100:0}%)"));
-                overallTable.Add(new TR(cell(new A($"{lane.Capitalise()} {champ}") { href = filename }, champ, true), cellPrc(overallWinrate, 1), cellInt(matches.Count), cellPrc(conf95.lower, 1), cellPrc(conf95.upper, 1)));
+                overallTable.Add(new TR(cell(new A($"{lane.Capitalise()} {champ}") { href = filename }, champ, true), cellPrc(overallWinrate, 1), cellInt(matches.Count, popClass), cellPrc(conf95.lower, 1), cellPrc(conf95.upper, 1)));
             }
 
             var matchups = matches.GroupBy(m => m.Other(champ)).ToDictionary(grp => grp.Key, grp => grp.ToList()).Select(kvp =>
@@ -274,6 +276,7 @@ namespace LeagueOfStats.CmdGen
             }).ToDictionary(m => m.enemy);
 
             var excessivelyPopularEnemies = percentile(matchups.Values.OrderByDescending(m => m.count), 0.95, m => m.count)
+                .Select(m => m.val)
                 .Select(m => new { m.enemy, excessPopularity = m.popularity - overallPopularity[m.enemy] })
                 .Where(m => m.excessPopularity > 0.001)
                 .OrderByDescending(m => m.excessPopularity)
@@ -318,7 +321,7 @@ namespace LeagueOfStats.CmdGen
             championHtml.Add(new H3("Most frequent matchups (50%)"));
             championHtml.Add(makeTable(
                 new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
-                percentile(matchups.Values.OrderByDescending(m => m.count), 0.50, m => m.count).OrderByDescending(m => m.winrate).Select(mu => new TR(
+                percentile(matchups.Values.OrderByDescending(m => m.count), 0.50, m => m.count).Select(m => m.val).OrderByDescending(m => m.winrate).Select(mu => new TR(
                     cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
                 ))
             ));
@@ -326,7 +329,7 @@ namespace LeagueOfStats.CmdGen
             championHtml.Add(new H3("Almost all matchups (95%)"));
             championHtml.Add(makeTable(
                 new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
-                percentile(matchups.Values.OrderByDescending(m => m.count), 0.95, m => m.count).OrderByDescending(m => m.winrate).Select(mu => new TR(
+                percentile(matchups.Values.OrderByDescending(m => m.count), 0.95, m => m.count).Select(m => m.val).OrderByDescending(m => m.winrate).Select(mu => new TR(
                     cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
                 ))
             ));
@@ -334,7 +337,7 @@ namespace LeagueOfStats.CmdGen
             championHtml.Add(new H3("Remaining matchups (...5%)"));
             championHtml.Add(makeTable(
                 new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
-                percentile(matchups.Values.OrderBy(m => m.count), 0.05, m => m.count).OrderByDescending(m => m.winrate).Select(mu => new TR(
+                percentile(matchups.Values.OrderBy(m => m.count), 0.05, m => m.count).Select(m => m.val).OrderByDescending(m => m.winrate).Select(mu => new TR(
                     cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
                 ))
             ));

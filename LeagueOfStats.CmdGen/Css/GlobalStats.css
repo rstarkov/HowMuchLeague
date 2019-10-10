@@ -83,3 +83,15 @@ tbody tr:nth-child(odd) {
 tbody tr:hover {
     background-color: #333;
 }
+
+.pop-1 {
+    color: #46d00e;
+}
+
+.pop-2 {
+    color: #cccc03;
+}
+
+.pop-3 {
+    color: #e64040;
+}
