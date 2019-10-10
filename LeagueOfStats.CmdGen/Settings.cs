@@ -39,7 +39,7 @@ namespace LeagueOfStats.CmdGen
     {
         public string Name = null;
         public string TimeZone = null;
-        public List<SummonerId> SummonerIds = new List<SummonerId>();
+        public List<SummonerId> SummonerIds = new List<SummonerId>(); // ordered by which is most likely to be this human if multiple summoners are in same game
         [ClassifyIgnore]
         public List<SummonerInfo> Summoners;
 

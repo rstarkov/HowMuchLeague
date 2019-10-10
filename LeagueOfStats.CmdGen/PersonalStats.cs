@@ -38,7 +38,7 @@ namespace LeagueOfStats.CmdGen
             {
                 generator.TimeZone = human.TimeZone;
                 generator.Games = human.Summoners.SelectMany(s => s.Games).ToList();
-                generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToHashSet();
+                generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToList();
                 generator.GamesTableFilename = outputPathTemplate.Fmt("Games-All", human.Name, "");
                 generator.ProduceGamesTable();
                 generator.ProduceLaneTable(outputPathTemplate.Fmt("LaneCompare", human.Name, ""));
@@ -47,7 +47,7 @@ namespace LeagueOfStats.CmdGen
                 foreach (var summoner in human.Summoners)
                 {
                     generator.Games = summoner.Games.ToList();
-                    generator.ThisPlayerAccountIds = new[] { summoner.AccountId }.ToHashSet();
+                    generator.ThisPlayerAccountIds = new[] { summoner.AccountId }.ToList();
                     generator.GamesTableFilename = outputPathTemplate.Fmt("Games-" + summoner.Region, summoner.Name, "");
                     generator.ProduceGamesTable();
                     generator.ProduceStats(outputPathTemplate.Fmt(summoner.Region, summoner.Name, ""));
@@ -59,7 +59,7 @@ namespace LeagueOfStats.CmdGen
 
     class PersonalStatsGenerator
     {
-        public HashSet<long> ThisPlayerAccountIds;
+        public List<long> ThisPlayerAccountIds; // ordered by which account is this player if multiple are in the game
         public HashSet<long> KnownPlayersAccountIds;
         public string TimeZone;
         public string GamesTableFilename;
@@ -81,7 +81,7 @@ namespace LeagueOfStats.CmdGen
 
         private Player thisPlayer(Game game)
         {
-            return game.AllPlayers().SingleOrDefault(p => ThisPlayerAccountIds.Contains(p.AccountId));
+            return ThisPlayerAccountIds.Select(accId => game.AllPlayers().FirstOrDefault(p => p.AccountId == accId)).FirstOrDefault(p => p != null);
         }
 
         public void ProduceGamesTable()
