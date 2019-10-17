@@ -222,8 +222,9 @@ namespace LeagueOfStats.PersonalData
                 case 4:
                 case 410: // 410: was temporarily the only ranked 5v5 option for solo players
                 case 420: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break; // 420: new dynamic queue draft
+                case 440: Type = "5v5 Ranked Flex"; queueMap = "Summoner's Rift"; break; // 420: new dynamic queue draft
                 case 6: Type = "5v5 Ranked Premade"; queueMap = "Summoner's Rift"; break;
-                case 9: case 470: Type = "3v3 Ranked Premade"; queueMap = "Summoner's Rift"; break;
+                case 9: case 470: Type = "3v3 Ranked Premade"; queueMap = "Twisted Treeline"; break;
                 case 41: Type = "3v3 Ranked Team"; queueMap = "Twisted Treeline"; break;
                 case 42: Type = "5v5 Ranked Team"; queueMap = "Summoner's Rift"; break;
                 case 16: Type = "5v5 Blind Pick"; queueMap = "Crystal Scar"; break;
