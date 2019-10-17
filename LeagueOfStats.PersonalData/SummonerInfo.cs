@@ -223,7 +223,7 @@ namespace LeagueOfStats.PersonalData
                 var json = retryOnAuthHeaderFail(url, hClient, getAuthHeader).Expect(HttpStatusCode.OK).DataJson;
 
                 Ut.Assert(json["accountId"].GetLongLenient() == AccountId);
-                Ut.Assert(json["platformId"].GetString().EqualsNoCase(Region) || json["platformId"].GetString().EqualsNoCase(RegionServer));
+                // json["platformId"] may be different to Region for accounts that have been transferred to another region
 
                 index += step;
                 count = json["games"]["gameCount"].GetInt();
