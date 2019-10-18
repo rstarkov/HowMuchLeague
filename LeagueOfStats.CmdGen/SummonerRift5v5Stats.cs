@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -454,13 +454,14 @@ namespace LeagueOfStats.CmdGen
             }
         }
 
-        public static void FullDbScanStats()
+        public static void FullDbScanStats(bool rankedOnly)
         {
             var durationBuckets = new AutoDictionary<int, List<short>>(_ => new List<short>());
             var kdBuckets = new AutoDictionary<int, List<(byte winTK, byte winTD, byte winPK, byte winPD, byte losePK, byte losePD)>>(_ => new List<(byte winTK, byte winTD, byte winPK, byte winPD, byte lossPK, byte lossPD)>());
             var firstbloodBuckets = new AutoDictionary<int, string, (int total, int wins)>((_, __) => (0, 0));
+            var championKDA = new Dictionary<string, (int k, int d, int a, int games)>();
 
-            foreach (var mi in DataStore.ReadMatchesByRegVerQue(x => Queues.GetInfo(x.queueId).IsSR5v5(rankedOnly: true)))
+            foreach (var mi in DataStore.ReadMatchesByRegVerQue(x => Queues.GetInfo(x.queueId).IsSR5v5(rankedOnly)))
             {
                 if (mi.json["gameDuration"].GetInt() < 12 * 60)
                     continue;
@@ -507,6 +508,21 @@ namespace LeagueOfStats.CmdGen
                     if (firstbloodPlr["teamId"].GetInt() == winTeam)
                         r.wins++;
                     firstbloodBuckets[bkt][firstbloodLane] = r;
+                }
+
+                // Total champion KDA
+                foreach (var p in mi.json["participants"].GetList())
+                {
+                    var champ = LeagueStaticData.Champions[p["championId"].GetInt()].Name;
+                    var stats = p["stats"];
+                    if (!championKDA.ContainsKey(champ))
+                        championKDA[champ] = (0, 0, 0, 0);
+                    var val = championKDA[champ];
+                    val.games += 1;
+                    val.k += stats["kills"].GetInt();
+                    val.d += stats["deaths"].GetInt();
+                    val.a += stats["assists"].GetInt();
+                    championKDA[champ] = val;
                 }
             }
 
@@ -560,6 +576,10 @@ namespace LeagueOfStats.CmdGen
                 string s(string lane) => $"{firstbloodBuckets[key][lane].wins / (double) firstbloodBuckets[key][lane].total},{firstbloodBuckets[key][lane].total},";
                 File.AppendAllLines("winrateByFirstblood.csv", new[] { $"{key},,{s("jungle")},{s("top")},{s("mid")},{s("adc")},{s("sup")},{s("bottom")},,{date:yyyy-MM-dd}" });
             }
+
+            File.WriteAllText("totalChampionKDA.csv", "Champion,Games,Kills,Deaths,Assists\r\n");
+            foreach (var c in LeagueStaticData.Champions.Values.Select(c => c.Name).Order())
+                File.AppendAllLines("totalChampionKDA.csv", new[] { $"{c},{championKDA[c].games},{championKDA[c].k},{championKDA[c].d},{championKDA[c].a}" });
         }
     }
 }
