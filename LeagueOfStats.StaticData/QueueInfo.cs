@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using RT.Util;
 
@@ -44,6 +44,31 @@ namespace LeagueOfStats.StaticData
         Substructure43 = 19,
         CrashSite = 20,
         NexusBlitz = 21,
+    }
+
+    public static class Maps
+    {
+        public static string GetName(MapId id)
+        {
+            switch (id)
+            {
+                case MapId.SummonersRiftOldSummer: return "Summoner's Rift (v1 summer)";
+                case MapId.SummonersRiftOldAutumn: return "Summoner's Rift (v1 autumn)";
+                case MapId.ProvingGrounds: return "Proving Grounds";
+                case MapId.TwistedTreelineOld: return "Twisted Treeline (v1)";
+                case MapId.CrystalScar: return "Crystal Scar";
+                case MapId.TwistedTreeline: return "Twisted Treeline";
+                case MapId.SummonersRift: return "Summoner's Rift";
+                case MapId.HowlingAbyss: return "Howling Abyss";
+                case MapId.ButchersBridge: return "Butcher's Bridge";
+                case MapId.CosmicRuins: return "Cosmic Ruins";
+                case MapId.ValoranCityPark: return "Valoran City Park";
+                case MapId.Substructure43: return "Substructure 43";
+                case MapId.CrashSite: return "Crash Site";
+                case MapId.NexusBlitz: return "Nexus Blitz";
+                default: throw new Exception("Unknown map: " + id);
+            }
+        }
     }
 
     public static class Queues
