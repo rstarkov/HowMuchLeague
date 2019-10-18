@@ -198,7 +198,8 @@ namespace LeagueOfStats.CmdGen
                         g.details?.deaths.td,
                         g.details?.damage.td,
                         g.details?.wards.td,
-                        g.details == null || g.thisPlr.Role == Role.DuoSupport ? null : new TD(
+                        g.details == null ? null : new TD(
+                            g.thisPlr.Role == Role.DuoSupport ? "(support)" :
                             g.details.damage.kind == "hardwin" && g.details.kills.kind == "hardwin" && g.game.Victory == false ? "Boosted teammates" :
                             g.details.damage.kind == "hardloss" && g.details.kills.kind == "hardloss" && g.game.Victory == true ? "Got carried hard" : ""
                         )
