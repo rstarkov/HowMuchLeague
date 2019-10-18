@@ -74,7 +74,7 @@ namespace LeagueOfStats.CmdGen
         {
             return _games
                 .Take(limit)
-                .GroupBy(g => g.Map + ", " + g.Type)
+                .GroupBy(g => g.Queue.MapName + ", " + g.Queue.QueueName)
                 .OrderByDescending(g => g.Count())
                 .ToList();
         }
@@ -144,9 +144,9 @@ namespace LeagueOfStats.CmdGen
                 return (kind, new TD { class_ = $"nplr {kind}" }._($"{thisPlr} vs {oppPlr}"));
             }
 
-            var groups = new[] { "Summoner's Rift, 5v5 Ranked Solo", "Summoner's Rift, 5v5 Draft Pick", "Summoner's Rift, 5v5 Blind Pick" };
-            var stats = from mapAndQueue in groups
-                        let games = _games.Where(g => g.Map + ", " + g.Type == mapAndQueue).Select(game =>
+            var queues = Queues.AllQueues.Where(q => q.IsSR5v5(rankedOnly: false)).ToList();
+            var stats = from queue in queues
+                        let games = _games.Where(g => g.Queue.Id == queue.Id).Select(game =>
                         {
                             var thisPlr = thisPlayer(game);
                             var laneOpponents = game.Enemy.Players.Where(g => g.Lane == thisPlr.Lane && g.Role == thisPlr.Role);
@@ -164,10 +164,10 @@ namespace LeagueOfStats.CmdGen
                                 wards = wonOrLost(thisPlr.WardsPlaced, oppPlr.WardsPlaced, 0.12, 3, percentageThresholdHard: 2.00),
                             });
                         }).ToList()
-                        select new { mapAndQueue, games };
+                        select new { queue, games };
 
             var result = stats.Select(s => Ut.NewArray<object>(
-                new H1(s.mapAndQueue),
+                new H1(s.queue.MapName + ", " + s.queue.QueueName),
                 new TABLE { class_ = "lane-compare" }._(
                     new TR(
                         new TH("Date"),
@@ -212,8 +212,8 @@ namespace LeagueOfStats.CmdGen
         public void ProduceStats(string outputFile, int limit = 999999)
         {
             Console.Write("Producing output file: " + outputFile + " ... ");
-            var standardPvP = Games.Where(g => g.Map == "Summoner's Rift" && g.Type.StartsWith("5v5"));
-            var gameTypeSections = standardPvP.GroupBy(_ => "Summoner Rift Standard PvP").ToList().Concat(getGameTypeSections(limit)).ToList();
+            var standardPvP = Games.Where(g => g.Queue.IsSR5v5(rankedOnly: false));
+            var gameTypeSections = standardPvP.GroupBy(_ => "Summoner's Rift, ALL 5v5 PvP MODES").ToList().Concat(getGameTypeSections(limit)).ToList();
             var result = Ut.NewArray(
                 new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")),
                 genAllGameStats(_games.Take(limit)),
@@ -528,8 +528,8 @@ namespace LeagueOfStats.CmdGen
                 new B("Avg per day: "), (games.Sum(g => g.Duration.TotalHours) / (games.Max(g => g.DateUtc) - games.Min(g => g.DateUtc)).TotalDays).ToString("0.0 hours")
             ));
             result.Add(new P(new B("Longest and shortest:"),
-                games.OrderByDescending(g => g.Duration).Take(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.MicroType)).AddClass("linelist")), new SPAN("...") { class_ = "linelist" },
-                games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.MicroType)).AddClass("linelist"))));
+                games.OrderByDescending(g => g.Duration).Take(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.Queue.MicroName)).AddClass("linelist")), new SPAN("...") { class_ = "linelist" },
+                games.OrderByDescending(g => g.Duration).TakeLast(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.Queue.MicroName)).AddClass("linelist"))));
             var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).ToList();
             result.Add(new P(new B("Played 10+ times: "),
                 (from champ in champions let c = games.Count(g => thisPlayer(g).Champion == champ) where c >= 10 orderby c descending select "{0}: {1:#,0}".Fmt(champ, c)).JoinString(", ")));

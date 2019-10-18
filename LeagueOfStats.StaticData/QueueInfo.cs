@@ -1,6 +1,9 @@
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using RT.Util;
+using RT.Util.ExtensionMethods;
 
 namespace LeagueOfStats.StaticData
 {
@@ -8,23 +11,37 @@ namespace LeagueOfStats.StaticData
     {
         public int Id { get; private set; }
         public MapId Map { get; private set; }
-        public string ModeName { get; private set; }
+        public string MapName => Maps.GetName(Map);
+        public string Mode { get; private set; }
         public string Variant { get; private set; }
+        public string QueueName => Variant == "" ? Mode : (Mode + ": " + Variant);
+        public string MicroName => Regex.Matches((Map == MapId.SummonersRift ? "" : " " + Map) + " " + QueueName, @"\s\(?(.)").Cast<Match>().Select(m => m.Groups[1].Value).JoinString();
         public int? ReplacedBy { get; private set; }
         public bool Deprecated { get; private set; }
         public bool IsPvp { get; private set; }
         public bool IsEvent { get; private set; }
 
-        public QueueInfo(int id, MapId map, string modeName, string variant, int? replacedBy = null, bool deprecated = false, bool pvp = true, bool isEvent = false)
+        public QueueInfo(int id, MapId map, string mode, string variant, int? replacedBy = null, bool deprecated = false, bool pvp = true, bool isEvent = false)
         {
             Id = id;
             Map = map;
-            ModeName = modeName;
+            Mode = mode;
             Variant = variant;
             ReplacedBy = replacedBy;
             Deprecated = deprecated;
             IsPvp = pvp;
             IsEvent = isEvent;
+        }
+
+        public bool IsSR5v5(bool rankedOnly)
+        {
+            if (Map != MapId.SummonersRift)
+                return false;
+            if (Mode != "5v5")
+                return false;
+            if (rankedOnly && !Variant.StartsWith("Ranked"))
+                return false;
+            return true;
         }
     }
 
@@ -52,6 +69,7 @@ namespace LeagueOfStats.StaticData
         {
             switch (id)
             {
+                case 0: return "(variable)"; // Custom queue is the only queue that supports multiple map types, meaning map type can't be derived entirely from the QueueInfo instance; don't throw for QueueInfo[0].MapName
                 case MapId.SummonersRiftOldSummer: return "Summoner's Rift (v1 summer)";
                 case MapId.SummonersRiftOldAutumn: return "Summoner's Rift (v1 autumn)";
                 case MapId.ProvingGrounds: return "Proving Grounds";

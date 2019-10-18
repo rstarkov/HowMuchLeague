@@ -22,7 +22,7 @@ namespace LeagueOfStats.PersonalData
         internal Team(JsonValue json, Dictionary<int, JsonValue> participants, Dictionary<int, JsonValue> identities, Game game)
         {
             Game = game;
-            if ((Game.Map == "Valoran City Park" || Game.Map == "Crash Site") && !json.ContainsKey("win"))
+            if ((Game.Queue.Map == MapId.ValoranCityPark || Game.Queue.Map == MapId.CrashSite) && !json.ContainsKey("win"))
                 Victory = true;
             else
                 Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
@@ -130,17 +130,17 @@ namespace LeagueOfStats.PersonalData
             Afk = stats.ContainsKey("wasAfk") ? stats["wasAfk"].GetBool() : (bool?) null;
             Leaver = stats.ContainsKey("leaver") ? stats["leaver"].GetBool() : (bool?) null;
             var timeline = participant["timeline"].GetDict();
-            if (game.Duration > TimeSpan.FromMinutes(10) && game.Type != "Dark Star")
+            if (game.Duration > TimeSpan.FromMinutes(10) && game.Queue.Id != 610 /*Dark Star*/)
             {
                 CreepsAt10 = (int) (timeline["creepsPerMinDeltas"]["0-10"].GetDouble() * 10);
                 GoldAt10 = (int) (timeline["goldPerMinDeltas"]["0-10"].GetDouble() * 10);
             }
-            if (game.Duration > TimeSpan.FromMinutes(20) && game.Type != "Dark Star")
+            if (game.Duration > TimeSpan.FromMinutes(20) && game.Queue.Id != 610 /*Dark Star*/)
             {
                 CreepsAt20 = CreepsAt10 + (int) (timeline["creepsPerMinDeltas"]["10-20"].GetDouble() * 10);
                 GoldAt20 = GoldAt10 + (int) (timeline["goldPerMinDeltas"]["10-20"].GetDouble() * 10);
             }
-            if (game.Duration > TimeSpan.FromMinutes(30) && game.Type != "Dark Star")
+            if (game.Duration > TimeSpan.FromMinutes(30) && game.Queue.Id != 610 /*Dark Star*/)
             {
                 CreepsAt30 = CreepsAt20 + (int) (timeline["creepsPerMinDeltas"]["20-30"].GetDouble() * 10);
                 GoldAt30 = GoldAt20 + (int) (timeline["goldPerMinDeltas"]["20-30"].GetDouble() * 10);
@@ -157,24 +157,20 @@ namespace LeagueOfStats.PersonalData
         public DateTime Date(string timeZoneId) { return TimeZoneInfo.ConvertTimeFromUtc(DateUtc, TimeZoneInfo.FindSystemTimeZoneById(timeZoneId)); }
         public DateTime DateDayOnly(string timeZoneId) { var d = Date(timeZoneId); return d.TimeOfDay.TotalHours < 5 ? d.Date.AddDays(-1) : d.Date; }
         public string DetailsUrl { get; private set; }
-        public int MapId { get; private set; }
-        public int QueueId { get; private set; }
-        public string Map { get; private set; }
-        public string Type { get; private set; }
+        public QueueInfo Queue { get; private set; }
         public bool? Victory { get { return Ally.Victory ? true : Enemy.Victory ? false : (bool?) null; } }
         public Team Ally { get; private set; }
         public Team Enemy { get; private set; }
         public Player Plr(long id) { return Ally.Players.Single(p => p.SummonerId == id || p.AccountId == id); }
-        public string MicroType { get { return Regex.Matches((Map == "Summoner's Rift" ? "" : " " + Map) + " " + Type, @"\s\(?(.)").Cast<Match>().Select(m => m.Groups[1].Value).JoinString(); } }
         public IEnumerable<Player> AllPlayers() { return Enemy.Players.Concat(Ally.Players); }
 
         internal Game(JsonDict json, SummonerInfo summoner)
         {
             Summoner = summoner;
             Id = json["gameId"].GetLong().ToString();
-            MapId = json["mapId"].GetInt();
-            QueueId = json["queueId"].GetInt();
-            setMapAndType();
+            Queue = Queues.GetInfo(json["queueId"].GetInt());
+            if (Queue.Id != 0 /* Custom */) // this is the only queue type for which the map can't be inferred from the queue, but we don't care about those games when computing personal stats
+                Ut.Assert((int) Queue.Map == json["mapId"].GetInt());
             DetailsUrl = "http://matchhistory.{0}.leagueoflegends.com/en/#match-details/{1}/{2}/{3}".Fmt(summoner.Region.ToLower(), summoner.RegionServer, Id, summoner.AccountId);
             DateUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) + TimeSpan.FromSeconds(json["gameCreation"].GetLong() / 1000.0);
             Duration = TimeSpan.FromSeconds(json["gameDuration"].GetInt());
@@ -189,88 +185,6 @@ namespace LeagueOfStats.PersonalData
 
             Ally = teams.Single(t => t.Players.Any(p => p.SummonerId == summoner.SummonerId));
             Enemy = teams.Single(t => t != Ally);
-        }
-
-        private void setMapAndType()
-        {
-            switch (MapId)
-            {
-                case 1: Map = "Summoner's Rift (v1 summer)"; break;
-                case 2: Map = "Summoner's Rift (v1 autumn)"; break;
-                case 3: Map = "Proving Grounds"; break;
-                case 4: Map = "Twisted Treeline (v1)"; break;
-                case 8: Map = "Crystal Scar"; break;
-                case 10: Map = "Twisted Treeline"; break;
-                case 11: Map = "Summoner's Rift"; break;
-                case 12: Map = "Howling Abyss"; break;
-                case 14: Map = "Butcher's Bridge"; break;
-                case 16: Map = "Cosmic Ruins"; break;
-                case 18: Map = "Valoran City Park"; break;
-                case 19: Map = "Substructure 43"; break;
-                case 20: Map = "Crash Site"; break;
-                case 21: Map = "Nexus Blitz"; break;
-                default: throw new Exception("Unknown map: " + MapId);
-            }
-            string queueMap = null;
-            switch (QueueId)
-            {
-                case 0: Type = "Custom"; break;
-                case 8: case 460: Type = "3v3"; queueMap = "Twisted Treeline"; break;
-                case 2: case 430: Type = "5v5 Blind Pick"; queueMap = "Summoner's Rift"; break;
-                case 14:
-                case 400: Type = "5v5 Draft Pick"; queueMap = "Summoner's Rift"; break; // 400: new dynamic queue draft
-                case 4:
-                case 410: // 410: was temporarily the only ranked 5v5 option for solo players
-                case 420: Type = "5v5 Ranked Solo"; queueMap = "Summoner's Rift"; break; // 420: new dynamic queue draft
-                case 440: Type = "5v5 Ranked Flex"; queueMap = "Summoner's Rift"; break; // 420: new dynamic queue draft
-                case 6: Type = "5v5 Ranked Premade"; queueMap = "Summoner's Rift"; break;
-                case 9: case 470: Type = "3v3 Ranked Premade"; queueMap = "Twisted Treeline"; break;
-                case 41: Type = "3v3 Ranked Team"; queueMap = "Twisted Treeline"; break;
-                case 42: Type = "5v5 Ranked Team"; queueMap = "Summoner's Rift"; break;
-                case 16: Type = "5v5 Blind Pick"; queueMap = "Crystal Scar"; break;
-                case 17: Type = "5v5 Draft Pick"; queueMap = "Crystal Scar"; break;
-                case 7: Type = "Coop vs AI (old)"; queueMap = "Summoner's Rift"; break;
-                case 25: Type = "Dominion Coop vs AI"; queueMap = "Crystal Scar"; break;
-                case 31: case 830: Type = "Coop vs AI (Intro)"; queueMap = "Summoner's Rift"; break;
-                case 32: case 840: Type = "Coop vs AI (Beginner)"; queueMap = "Summoner's Rift"; break;
-                case 33: case 850: Type = "Coop vs AI (Intermediate)"; queueMap = "Summoner's Rift"; break;
-                case 52: case 800: Type = "Coop vs AI"; queueMap = "Twisted Treeline"; break;
-                case 61: Type = "Team Builder"; queueMap = "Summoner's Rift"; break;
-                case 65: case 450: Type = "ARAM"; queueMap = "Howling Abyss"; break;
-                case 70: case 1020: Type = "One for All"; queueMap = "Summoner's Rift"; break;
-                case 72: Type = "1v1 Snowdown Showdown"; queueMap = "Howling Abyss"; break;
-                case 73: Type = "2v2 Snowdown Showdown"; queueMap = "Howling Abyss"; break;
-                case 75: Type = "6v6 Hexakill"; queueMap = "Summoner's Rift"; break;
-                case 76: Type = "Ultra Rapid Fire"; queueMap = "Summoner's Rift"; break;
-                case 83: Type = "Ultra Rapid Fire vs AI"; queueMap = "Summoner's Rift"; break;
-                case 91: Type = "Doom Bots Rank 1"; queueMap = "Summoner's Rift"; break;
-                case 92: Type = "Doom Bots Rank 2"; queueMap = "Summoner's Rift"; break;
-                case 93: Type = "Doom Bots Rank 5"; queueMap = "Summoner's Rift"; break;
-                case 950: Type = "Doom Bots w/ voting"; queueMap = "Summoner's Rift"; break;
-                case 960: Type = "Doom Bots"; queueMap = "Summoner's Rift"; break;
-                case 96: Type = "Ascension"; queueMap = "Crystal Scar"; break;
-                case 98: Type = "6v6 Hexakill"; queueMap = "Twisted Treeline"; break;
-                case 100: Type = "ARAM"; queueMap = "Butcher's Bridge"; break;
-                case 300: Type = "King Poro"; queueMap = "Howling Abyss"; break;
-                case 310: Type = "Nemesis"; queueMap = "Summoner's Rift"; break;
-                case 313: Type = "Black Market Brawlers"; queueMap = "Summoner's Rift"; break;
-                case 315: case 940: Type = "Nexus Siege"; queueMap = "Summoner's Rift"; break;
-                case 318: case 900:  Type = "All Random URF"; queueMap = "Summoner's Rift"; break;
-                case 610: Type = "Dark Star"; queueMap = "Cosmic Ruins"; break;
-                case 980: Type = "Star Guardian Invasion: Normal"; queueMap = "Valoran City Park"; break;
-                case 990: Type = "Star Guardian Invasion: Onslaught"; queueMap = "Valoran City Park"; break;
-                case 1000: Type = "Overcharge"; queueMap = "Substructure 43"; break;
-                case 1010: Type = "Snow ARURF"; queueMap = "Summoner's Rift"; break;
-                case 1200: Type = "Nexus Blitz"; queueMap = "Nexus Blitz"; break;
-                case 1030: Type = "Odyssey Extraction: Intro"; queueMap = "Crash Site"; break;
-                case 1040: Type = "Odyssey Extraction: Cadet"; queueMap = "Crash Site"; break;
-                case 1050: Type = "Odyssey Extraction: Crewmember"; queueMap = "Crash Site"; break;
-                case 1060: Type = "Odyssey Extraction: Captain"; queueMap = "Crash Site"; break;
-                case 1070: Type = "Odyssey Extraction: Onslaught"; queueMap = "Crash Site"; break;
-                default: throw new Exception("Unknown queue: " + QueueId);
-            }
-            if (queueMap != null)
-                Ut.Assert(Map == queueMap);
         }
     }
 }

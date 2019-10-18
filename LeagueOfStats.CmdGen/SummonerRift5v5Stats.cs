@@ -440,7 +440,7 @@ namespace LeagueOfStats.CmdGen
         {
             var buckets = new AutoDictionary<int, List<int>>(_ => new List<int>());
             foreach (var bi in DataStore.LosMatchInfos.Values.SelectMany(c => c.ReadItems()))
-                if (IsSR5v5(bi.QueueId, rankedOnly: false))
+                if (Queues.GetInfo(bi.QueueId).IsSR5v5(rankedOnly: false))
                     buckets[(int) ((double) bi.GameCreation / 1000 / 86400 / 30.4375)].Add(bi.GameDuration);
             var keys = buckets.Keys.Order().ToList();
             File.WriteAllText("gameDurations.csv", "");
@@ -460,7 +460,7 @@ namespace LeagueOfStats.CmdGen
             var kdBuckets = new AutoDictionary<int, List<(byte winTK, byte winTD, byte winPK, byte winPD, byte losePK, byte losePD)>>(_ => new List<(byte winTK, byte winTD, byte winPK, byte winPD, byte lossPK, byte lossPD)>());
             var firstbloodBuckets = new AutoDictionary<int, string, (int total, int wins)>((_, __) => (0, 0));
 
-            foreach (var mi in DataStore.ReadMatchesByRegVerQue(x => IsSR5v5(x.queueId, rankedOnly: true)))
+            foreach (var mi in DataStore.ReadMatchesByRegVerQue(x => Queues.GetInfo(x.queueId).IsSR5v5(rankedOnly: true)))
             {
                 if (mi.json["gameDuration"].GetInt() < 12 * 60)
                     continue;
@@ -560,18 +560,6 @@ namespace LeagueOfStats.CmdGen
                 string s(string lane) => $"{firstbloodBuckets[key][lane].wins / (double) firstbloodBuckets[key][lane].total},{firstbloodBuckets[key][lane].total},";
                 File.AppendAllLines("winrateByFirstblood.csv", new[] { $"{key},,{s("jungle")},{s("top")},{s("mid")},{s("adc")},{s("sup")},{s("bottom")},,{date:yyyy-MM-dd}" });
             }
-        }
-
-        private static bool IsSR5v5(int queueId, bool rankedOnly)
-        {
-            var q = Queues.GetInfo(queueId);
-            if (q.Map != MapId.SummonersRift)
-                return false;
-            if (q.ModeName != "5v5")
-                return false;
-            if (rankedOnly && !q.Variant.StartsWith("Ranked"))
-                return false;
-            return true;
         }
     }
 }
