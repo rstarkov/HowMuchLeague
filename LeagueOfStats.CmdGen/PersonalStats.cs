@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -44,6 +44,7 @@ namespace LeagueOfStats.CmdGen
                 generator.ProduceLaneTable(outputPathTemplate.Fmt("LaneCompare", human.Name, ""));
                 generator.ProduceStats(outputPathTemplate.Fmt("All", human.Name, ""));
                 generator.ProduceStats(outputPathTemplate.Fmt("All", human.Name, "-200"), 200);
+                generator.ProduceStats(outputPathTemplate.Fmt("All", human.Name, "-1000"), 1000);
                 foreach (var summoner in human.Summoners)
                 {
                     generator.Games = summoner.Games.ToList();
@@ -52,6 +53,7 @@ namespace LeagueOfStats.CmdGen
                     generator.ProduceGamesTable();
                     generator.ProduceStats(outputPathTemplate.Fmt(summoner.Region, summoner.Name, ""));
                     generator.ProduceStats(outputPathTemplate.Fmt(summoner.Region, summoner.Name, "-200"), 200);
+                    generator.ProduceStats(outputPathTemplate.Fmt(summoner.Region, summoner.Name, "-1000"), 1000);
                 }
             }
         }
