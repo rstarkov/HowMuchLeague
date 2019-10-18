@@ -144,9 +144,11 @@ namespace LeagueOfStats.CmdGen
                 return (kind, new TD { class_ = $"nplr {kind}" }._($"{thisPlr} vs {oppPlr}"));
             }
 
-            var queues = Queues.AllQueues.Where(q => q.IsSR5v5(rankedOnly: false)).ToList();
-            var stats = from queue in queues
-                        let games = _games.Where(g => g.Queue.Id == queue.Id).Select(game =>
+            var variants = Queues.AllQueues.Where(q => q.IsSR5v5(rankedOnly: false)).Select(q => q.Variant).Distinct() // some of the queues are more or less duplicates of each other
+                .OrderBy(v => v == "Ranked Solo" ? 1 : v == "Draft Pick" ? 2 : v == "Blind Pick" ? 3 : 4).ThenBy(v => v)
+                .ToList();
+            var stats = from variant in variants
+                        let games = _games.Where(g => g.Queue.IsSR5v5(rankedOnly: false) && g.Queue.Variant == variant).Select(game =>
                         {
                             var thisPlr = thisPlayer(game);
                             var laneOpponents = game.Enemy.Players.Where(g => g.Lane == thisPlr.Lane && g.Role == thisPlr.Role);
@@ -164,10 +166,10 @@ namespace LeagueOfStats.CmdGen
                                 wards = wonOrLost(thisPlr.WardsPlaced, oppPlr.WardsPlaced, 0.12, 3, percentageThresholdHard: 2.00),
                             });
                         }).ToList()
-                        select new { queue, games };
+                        select new { variant, games };
 
-            var result = stats.Select(s => Ut.NewArray<object>(
-                new H1(s.queue.MapName + ", " + s.queue.QueueName),
+            var result = stats.Where(s => s.games.Count > 0).Select(s => Ut.NewArray<object>(
+                new H1(Maps.GetName(MapId.SummonersRift) + ", 5v5: " + s.variant),
                 new TABLE { class_ = "lane-compare" }._(
                     new TR(
                         new TH("Date"),
