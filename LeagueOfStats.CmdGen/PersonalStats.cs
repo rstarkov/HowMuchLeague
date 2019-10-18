@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -66,7 +66,6 @@ namespace LeagueOfStats.CmdGen
         private List<Game> _games;
         public IEnumerable<Game> Games
         {
-            get { return _games; }
             set { _games = value.Where(g => g.Duration > TimeSpan.FromMinutes(4) /* remakes */).OrderByDescending(g => g.DateUtc).ToList(); }
         }
 
@@ -214,7 +213,7 @@ namespace LeagueOfStats.CmdGen
         public void ProduceStats(string outputFile, int limit = 999999)
         {
             Console.Write("Producing output file: " + outputFile + " ... ");
-            var standardPvP = Games.Where(g => g.Queue.IsSR5v5(rankedOnly: false));
+            var standardPvP = _games.Take(limit).Where(g => g.Queue.IsSR5v5(rankedOnly: false));
             var gameTypeSections = standardPvP.GroupBy(_ => "Summoner's Rift, ALL 5v5 PvP MODES").ToList().Concat(getGameTypeSections(limit)).ToList();
             var result = Ut.NewArray(
                 new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")),
