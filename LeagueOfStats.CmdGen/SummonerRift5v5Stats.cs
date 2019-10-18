@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -166,7 +166,7 @@ namespace LeagueOfStats.CmdGen
                 let count = kvp.Value.totalCount
                 let conf = Utils.WilsonConfidenceInterval(wr, count, 1.96)
                 select new { duo = kvp.Key, count, wr, lower95 = conf.lower, upper95 = conf.upper };
-            File.WriteAllLines(Path.Combine(_settings.OutputPath, $"duos.csv"), duoStats.Select(d => $"{d.duo},{d.wr * 100:0.000}%,{d.count},{d.lower95 * 100:0.000}%,{d.upper95 * 100:0.000}%"));
+            File.WriteAllLines(Path.Combine(_settings.OutputPath, $"duos.csv"), new[] { "Duo,Winrate,Games,p95 lower,p95 upper" }.Concat(duoStats.Select(d => $"{d.duo},{d.wr * 100:0.000}%,{d.count},{d.lower95 * 100:0.000}%,{d.upper95 * 100:0.000}%")));
         }
 
         private MatchSR matchSRFromJson(JsonValue json, Region region)
@@ -526,7 +526,7 @@ namespace LeagueOfStats.CmdGen
                 }
             }
 
-            File.WriteAllText("gameDurations.csv", "");
+            File.WriteAllText("gameDurations.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,60min+,55min+,50min+,45min+,40min+,35min+,30min+,,Games,Date\r\n");
             foreach (var key in durationBuckets.Keys.Order().ToList())
             {
                 var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
@@ -537,11 +537,11 @@ namespace LeagueOfStats.CmdGen
                 File.AppendAllLines("gameDurations.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count},{date:yyyy-MM-dd}" });
             }
 
-            File.WriteAllText("winnerTeamKdRatioOverTime.csv", "");
-            File.WriteAllText("winnerTeamKdDifferenceOverTime.csv", "");
-            File.WriteAllText("bestWinningPlayerKdDifferenceOverTime.csv", "");
-            File.WriteAllText("bestLosingPlayerKdDifferenceOverTime.csv", "");
-            File.WriteAllText("gamesByScore.csv", "");
+            File.WriteAllText("winnerTeamKdRatioOverTime.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
+            File.WriteAllText("winnerTeamKdDifferenceOverTime.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
+            File.WriteAllText("bestWinningPlayerKdDifferenceOverTime.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
+            File.WriteAllText("bestLosingPlayerKdDifferenceOverTime.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
+            File.WriteAllText("gamesByScore.csv", "Date,,TeamWin 20:10,TeamWin 20:5,TeamWin 30:10,TeamWin 40:15,,BestPlrWin 20:3,BestPlrLose 20:3,BestPlrWin 25:5,BestPlrLose 25:5,BestPlrWin 15:2,BestPlrLose 15:2,,Games,Date\r\n");
             foreach (var key in kdBuckets.Keys.Order().ToList())
             {
                 var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
@@ -569,7 +569,7 @@ namespace LeagueOfStats.CmdGen
                 File.AppendAllLines("gamesByScore.csv", new[] { $"{key},,{prcTeam(20, 10)},{prcTeam(20, 5)},{prcTeam(30, 10)},{prcTeam(40, 15)},,{prcPlrW(20, 3)},{prcPlrL(20, 3)},{prcPlrW(25, 5)},{prcPlrL(25, 5)},{prcPlrW(15, 2)},{prcPlrL(15, 2)},,{list.Count},{date:yyyy-MM-dd}" });
             }
 
-            File.WriteAllText("winrateByFirstblood.csv", "");
+            File.WriteAllText("winrateByFirstblood.csv", "Date,,Jun winrate,Jun games,,Top winrate,Top games,,Mid winrate,Mid games,,Adc winrate,Adc games,,Sup winrate,Sup games,,Bot winrate,Bot games,,,Date\r\n");
             foreach (var key in firstbloodBuckets.Keys.Order().ToList())
             {
                 var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
