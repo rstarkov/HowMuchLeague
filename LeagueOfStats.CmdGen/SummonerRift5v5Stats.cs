@@ -14,7 +14,7 @@ using RT.Util.Json;
 
 namespace LeagueOfStats.CmdGen
 {
-    class SummonerRift5v5Stats
+    class SummonerRift5v5Stats : StatsBase
     {
         private SummonerRift5v5StatsSettings _settings;
 
@@ -113,20 +113,7 @@ namespace LeagueOfStats.CmdGen
             genSRLaneMatchups("jun", matches.Select(m => m.Jun).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
             genSRLaneMatchups("sup", matches.Select(m => m.Sup).Where(m => m.ChampW != null && m.ChampL != null && m.ChampW != m.ChampL).ToList(), indexHtml);
 
-            string css, sorttable;
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.GlobalStats.css"))
-                css = stream.ReadAllText();
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.sorttable.js"))
-                sorttable = stream.ReadAllText();
-            var html = new HTML(
-                new HEAD(
-                    new META { charset = "utf-8" },
-                    new STYLELiteral(css),
-                    new SCRIPTLiteral(sorttable)
-                ),
-                new BODY(indexHtml)
-            );
-            File.WriteAllText(Path.Combine(_settings.OutputPath, "Index.html"), html.ToString());
+            GenerateHtmlToFile(Path.Combine(_settings.OutputPath, "Index.html"), indexHtml, true);
         }
 
         private void genDuos(List<MatchSR> matches)
@@ -217,38 +204,9 @@ namespace LeagueOfStats.CmdGen
             }
 
             indexHtml.Add(new H3($"{lane.Capitalise()}"));
-            indexHtml.Add(makeTable(
+            indexHtml.Add(makeSortableTable(
                 new TR(colAsc("Champion"), colDesc("Winrate"), colDesc("Matches"), colDesc("p95 lower", true), colAsc("p95 upper")),
                 overallTable));
-        }
-
-        private static TH colAsc(object caption, bool initial = false)
-            => new TH(caption) { class_ = initial ? "sorttable_initial" : "" };
-
-        private static TH colDesc(object caption, bool initial = false)
-            => new TH(caption) { class_ = (initial ? "sorttable_initial " : "") + "sorttable_startreversed" };
-
-        private static TD cell(object content, object sortkey, bool leftAlign)
-            => (TD) new TD { class_ = leftAlign ? "la" : "ra" }._(content).Data("sortkey", sortkey);
-
-        private static TD cellStr(string value)
-            => (TD) new TD { class_ = "la" }._(value);
-
-        private static TD cellPrc(double value, int decimalPlaces)
-            => (TD) new TD { class_ = "ra" }._(("{0:0." + new string('0', decimalPlaces) + "}%").Fmt(value * 100)).Data("sortkey", value);
-
-        private static TD cellPrcDelta(double value, int decimalPlaces)
-            => (TD) new TD { class_ = "ra" }._(value < 0 ? "−" : value > 0 ? "+" : " ", ("{0:0." + new string('0', decimalPlaces) + "}%").Fmt(value * 100).Replace("-", "")).Data("sortkey", value);
-
-        private static TD cellInt(int value, string class__ = null)
-            => (TD) new TD { class_ = "ra " + class__ }._("{0:#,0}".Fmt(value)).Data("sortkey", value);
-
-        private static object makeTable(TR header, IEnumerable<TR> rows)
-        {
-            return new TABLE { class_ = "sortable" }._(
-                new THEAD(header),
-                new TBODY(rows)
-            );
         }
 
         private void genSRLaneMatchup(List<LaneSR> matches, string champ, string lane, Dictionary<string, double> overallPopularity, List<TR> overallTable, double prc)
@@ -283,7 +241,7 @@ namespace LeagueOfStats.CmdGen
                 .Take(10)
                 .ToList();
             championHtml.Add(new H3("Excessively popular enemies"));
-            championHtml.Add(makeTable(
+            championHtml.Add(makeSortableTable(
                 new TR(colAsc("Matchup"), colDesc("Popularity", true), colAsc("Δ winrate"), colDesc("Matches")),
                 excessivelyPopularEnemies.Select(epe => new TR(
                     cellStr($"{champ} vs {epe.enemy}"),
@@ -303,7 +261,7 @@ namespace LeagueOfStats.CmdGen
             }).ToList();
 
             championHtml.Add(new H3($"Own lane bans for {champ}"));
-            championHtml.Add(makeTable(
+            championHtml.Add(makeSortableTable(
                 new TR(colAsc("Champion"), colDesc("Δ winrate", true), colDesc("Matches"), colDesc("Banned")),
                 bans.OrderByDescending(b => b.winrate).Take(5).Select(b => new TR(
                     cellStr(b.ban), cellPrcDelta(b.winrate - overallWinrate, 1), cellInt(b.count), cellInt(matches.Count - b.count)
@@ -311,7 +269,7 @@ namespace LeagueOfStats.CmdGen
             ));
 
             championHtml.Add(new H3($"All lane bans for {champ}"));
-            championHtml.Add(makeTable(
+            championHtml.Add(makeSortableTable(
                 new TR(colAsc("Champion"), colDesc("Δ winrate", true), colDesc("Matches"), colDesc("Banned")),
                 bans.OrderByDescending(b => b.winrateAll).Take(5).Select(b => new TR(
                     cellStr(b.ban), cellPrcDelta(b.winrateAll - overallWinrate, 1), cellInt(b.countAll), cellInt(matches.Count - b.countAll)
@@ -319,7 +277,7 @@ namespace LeagueOfStats.CmdGen
             ));
 
             championHtml.Add(new H3("Most frequent matchups (50%)"));
-            championHtml.Add(makeTable(
+            championHtml.Add(makeSortableTable(
                 new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
                 percentile(matchups.Values.OrderByDescending(m => m.count), 0.50, m => m.count).Select(m => m.val).OrderByDescending(m => m.winrate).Select(mu => new TR(
                     cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
@@ -327,7 +285,7 @@ namespace LeagueOfStats.CmdGen
             ));
 
             championHtml.Add(new H3("Almost all matchups (95%)"));
-            championHtml.Add(makeTable(
+            championHtml.Add(makeSortableTable(
                 new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
                 percentile(matchups.Values.OrderByDescending(m => m.count), 0.95, m => m.count).Select(m => m.val).OrderByDescending(m => m.winrate).Select(mu => new TR(
                     cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
@@ -335,7 +293,7 @@ namespace LeagueOfStats.CmdGen
             ));
 
             championHtml.Add(new H3("Remaining matchups (...5%)"));
-            championHtml.Add(makeTable(
+            championHtml.Add(makeSortableTable(
                 new TR(colAsc("Matchup"), colDesc("Winrate"), colDesc("Matches", true), colDesc("p95 lower"), colAsc("p95 upper")),
                 percentile(matchups.Values.OrderBy(m => m.count), 0.05, m => m.count).Select(m => m.val).OrderByDescending(m => m.winrate).Select(mu => new TR(
                     cellStr($"{champ} vs {mu.enemy}"), cellPrc(mu.winrate, 1), cellInt(mu.count), cellPrc(mu.conf95.lower, 1), cellPrc(mu.conf95.upper, 1)
