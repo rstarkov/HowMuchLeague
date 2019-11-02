@@ -24,6 +24,7 @@ namespace LeagueOfStats.CmdGen
                 ),
                 new BODY(bodyContent)
             );
+            Directory.CreateDirectory(Path.GetDirectoryName(filename));
             File.WriteAllText(filename, html.ToString());
         }
 

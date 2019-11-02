@@ -12,6 +12,7 @@ namespace LeagueOfStats.CmdGen
         public string ItemsOutputPath = @"C:\Temp\League";
         public ItemSetsSettings ItemSetsSettings = new ItemSetsSettings();
         public SummonerRift5v5StatsSettings SummonerRift5v5StatsSettings = new SummonerRift5v5StatsSettings();
+        public EventStatsSettings EventStatsSettings = new EventStatsSettings();
         public List<HumanInfo> Humans = new List<HumanInfo>();
     }
 

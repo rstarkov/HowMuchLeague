@@ -31,9 +31,11 @@ namespace LeagueOfStats.CmdGen
             if (settings.PersonalOutputPathTemplate != null)
                 PersonalStats.Generate(settings.DataPath, settings.PersonalOutputPathTemplate, settings.Humans);
 
+            if (settings.EventStatsSettings != null)
+                new EventStats(settings.EventStatsSettings).Generate();
+
             if (settings.SummonerRift5v5StatsSettings != null)
                 new SummonerRift5v5Stats(settings.SummonerRift5v5StatsSettings).Generate();
-
         }
     }
 }

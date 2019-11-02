@@ -134,7 +134,7 @@ namespace LeagueOfStats.StaticData
             new QueueInfo(78, MapId.HowlingAbyss, "One For All", "Mirror Mode", isEvent: true),
             new QueueInfo(1020, MapId.SummonersRift, "One for All", "", isEvent: true),
 
-            new QueueInfo(76, MapId.SummonersRift, "Ultra Rapid Fire", "PvP", isEvent: true),
+            new QueueInfo(76, MapId.SummonersRift, "Ultra Rapid Fire", "PvP", replacedBy: 900, isEvent: true),
             new QueueInfo(83, MapId.SummonersRift, "Ultra Rapid Fire", "Bots", pvp: false, isEvent: true),
 
             new QueueInfo(318, MapId.SummonersRift, "ARURF", "", replacedBy: 900, isEvent: true),
