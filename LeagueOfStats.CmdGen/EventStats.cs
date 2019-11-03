@@ -70,9 +70,10 @@ namespace LeagueOfStats.CmdGen
             {
                 html.Add(new H3(Queues.GetInfo(kvp.Key).QueueName));
                 html.Add(makeSortableTable(
-                    new TR(colAsc("Date", true), colAsc("Winrates"), colAsc("Bans"), colDesc("Games"), colAsc("Best champ"), colDesc("Winrate"), colAsc("Worst champ"), colAsc("Winrate")),
+                    new TR(colAsc("Date", true), colAsc("Version(s)"), colAsc("Winrates"), colAsc("Bans"), colDesc("Games"), colAsc("Best champ"), colDesc("Winrate"), colAsc("Worst champ"), colAsc("Winrate")),
                     kvp.Value.Select(result => new TR(
                         cell($"{result.FirstDate:MMMM yyyy}", $"{result.FirstDate:yyyy-MM}", false),
+                        cell(result.Versions.JoinString(", "), $"{result.FirstDate:yyyy-MM}", true),
                         cell(new A("Winrates") { href = result.LinkWinrates }, "", true),
                         cell(new A("Bans") { href = result.LinkBans }, "", true),
                         cellInt(result.MatchCount),
@@ -95,12 +96,14 @@ namespace LeagueOfStats.CmdGen
             public int WorstChamp = -1;
             public double WorstChampWinrate;
             public int MatchCount;
+            public List<string> Versions;
         }
 
         private eventResult GenerateEvent(int queueId, List<string> versions, string title, string filename)
         {
             Console.WriteLine($"Generating stats at {DateTime.Now}...");
             var result = new eventResult();
+            result.Versions = versions;
 
             var matches = DataStore.ReadMatchesByRegVerQue(f => f.queueId == queueId && versions.Contains(f.version))
                 .Select(m => matchFromJson(m.json, m.region))
