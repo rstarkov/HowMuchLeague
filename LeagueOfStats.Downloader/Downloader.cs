@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace LeagueOfStats.Downloader
     {
         public ApiKeyWrapper[] ApiKeys;
         public Region Region;
-        public string Version;
+        public HashSet<string> Versions;
         public int? QueueId;
         public long InitialMatchId, MatchIdRange;
 
@@ -30,11 +30,11 @@ namespace LeagueOfStats.Downloader
         private MatchDownloader[] _downloaders;
         private int _nextDownloader = 0;
 
-        public Downloader(ApiKeyWrapper[] apiKeys, Region region, string version, int? queueId, long initialMatchId, long matchIdRange)
+        public Downloader(ApiKeyWrapper[] apiKeys, Region region, IEnumerable<string> versions, int? queueId, long initialMatchId, long matchIdRange)
         {
             ApiKeys = apiKeys;
             Region = region;
-            Version = version;
+            Versions = versions?.ToHashSet();
             QueueId = queueId;
             MatchIdRange = matchIdRange;
 
@@ -45,7 +45,7 @@ namespace LeagueOfStats.Downloader
             Console.Write($"Loading {DataStore.LosMatchInfos[Region].FileName}... ");
             var thread = new CountThread(10000);
             foreach (var info in rebuildSlope(DataStore.LosMatchInfos[Region].ReadItems().PassthroughCount(thread.Count).OrderBy(x => x.GameCreation), 2 * 86_400_000))
-                if ((info.GameVersion == Version || Version == null) && (info.QueueId == QueueId || QueueId == null))
+                if ((Versions == null || Versions.Contains(info.GameVersion)) && (QueueId == null || info.QueueId == QueueId))
                     countMatch(info);
             thread.Stop();
             Console.WriteLine();
@@ -173,7 +173,7 @@ namespace LeagueOfStats.Downloader
             bool rangeExpanded = info.MatchId < EarliestMatchId || info.MatchId > LatestMatchId;
             bool added = false;
 
-            if ((info.GameVersion == Version || Version == null) && (info.QueueId == QueueId || QueueId == null))
+            if ((Versions == null || Versions.Contains(info.GameVersion)) && (QueueId == null || info.QueueId == QueueId))
             {
                 MatchCount++;
                 EarliestMatchDate = Math.Min(EarliestMatchDate, info.GameCreation);

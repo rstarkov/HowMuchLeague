@@ -75,7 +75,7 @@ namespace LeagueOfStats.Downloader
             var txts = new[] { txtApiKey1, txtApiKey2, txtApiKey3 }; // hardcoded to 3 because well... the rest of this code is also throwaway-quality
             var apiKeys = Ut.Lambda(() => App.Settings.LastApiKeys.Zip(txts, (initialKey, txt) => new ApiKeyWithPrompt(initialKey, txt, this)).ToArray());
             if (args[0] == "download")
-                DownloadMatches(dataPath: args[1], version: args[2], queueId: args[3], apiKeys: apiKeys());
+                DownloadMatches(dataPath: args[1], versions: args[2], queueId: args[3], apiKeys: apiKeys());
             else if (args[0] == "recheck-nonexistent")
                 RecheckNonexistent(dataPath: args[1], apiKeys: apiKeys());
             else if (args[0] == "download-ids")
@@ -131,7 +131,7 @@ namespace LeagueOfStats.Downloader
             output.Rewrite();
         }
 
-        private void DownloadMatches(string dataPath, string version, string queueId, ApiKeyWrapper[] apiKeys)
+        private void DownloadMatches(string dataPath, string versions, string queueId, ApiKeyWrapper[] apiKeys)
         {
             initProcessIdle();
             initDataStore(dataPath);
@@ -147,7 +147,7 @@ namespace LeagueOfStats.Downloader
 
             var downloaders = new List<Downloader>();
             foreach (var region in regionLimits.Keys)
-                downloaders.Add(new Downloader(apiKeys, region, version == "" ? null : version, queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
+                downloaders.Add(new Downloader(apiKeys, region, versions == "" ? null : versions.Split(','), queueId == "" ? (int?) null : int.Parse(queueId), regionLimits[region].initial, regionLimits[region].range));
             Console.WriteLine();
             foreach (var dl in downloaders) // separate step because the constructor prints some stats when it finishes
                 dl.DownloadForever(background: true);
