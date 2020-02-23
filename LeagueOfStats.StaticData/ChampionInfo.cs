@@ -17,6 +17,7 @@ namespace LeagueOfStats.StaticData
         Courage,
         Shield,
         CrimsonRush,
+        Grit,
     }
 
     public class ChampionInfo
@@ -71,6 +72,7 @@ namespace LeagueOfStats.StaticData
                 case "Courage": Resource = ChampionResource.Courage; break;
                 case "Shield": Resource = ChampionResource.Shield; break;
                 case "Crimson Rush": Resource = ChampionResource.CrimsonRush; break;
+                case "Grit": Resource = ChampionResource.Grit; break;
                 default: throw new Exception($"Unrecognized champion resource type: '{json["partype"].GetString()}'.");
             }
             ImageUrl = $"https://ddragon.leagueoflegends.com/cdn/{json["version"].GetString()}/img/champion/{json["image"]["full"].GetString()}";
