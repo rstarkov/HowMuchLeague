@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -68,7 +68,13 @@ namespace LeagueOfStats.CmdGen
         private List<Game> _games;
         public IEnumerable<Game> Games
         {
-            set { _games = value.Where(g => g.Duration > TimeSpan.FromMinutes(4) /* remakes */).OrderByDescending(g => g.DateUtc).ToList(); }
+            set
+            {
+                _games = new List<Game>();
+                foreach (var game in value.Where(g => g.Duration > TimeSpan.FromMinutes(4) /* remakes */).OrderByDescending(g => g.DateUtc))
+                    if (_games.Count == 0 || _games[_games.Count - 1].Id != game.Id)
+                        _games.Add(game);
+            }
         }
 
         private List<IGrouping<string, Game>> getGameTypeSections(int limit)
