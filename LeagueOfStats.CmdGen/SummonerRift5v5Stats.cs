@@ -415,6 +415,8 @@ namespace LeagueOfStats.CmdGen
         public static void FullDbScanStats(bool rankedOnly)
         {
             var durationBuckets = new AutoDictionary<int, List<short>>(_ => new List<short>());
+            var winToLoseGold10Buckets = new AutoDictionary<int, List<double>>(_ => new List<double>());
+            var highToLowGold10Buckets = new AutoDictionary<int, List<double>>(_ => new List<double>());
             var kdBuckets = new AutoDictionary<int, List<(byte winTK, byte winTD, byte winPK, byte winPD, byte losePK, byte losePD)>>(_ => new List<(byte winTK, byte winTD, byte winPK, byte winPD, byte lossPK, byte lossPD)>());
             var firstbloodBuckets = new AutoDictionary<int, string, (int total, int wins)>((_, __) => (0, 0));
             var championKDA = new Dictionary<string, (int k, int d, int a, int games)>();
@@ -430,6 +432,14 @@ namespace LeagueOfStats.CmdGen
 
                 var winTeam = mi.json["teams"].GetList().Single(t => t["win"].GetString() == "Win")["teamId"].GetInt();
                 var loseTeam = mi.json["teams"].GetList().Single(t => t["win"].GetString() != "Win")["teamId"].GetInt();
+                if (mi.json["participants"].GetList().Any(j => j.ContainsKey("timeline") && j["timeline"].ContainsKey("goldPerMinDeltas")))
+                {
+                    var winGold10 = mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == winTeam).Sum(j => j["timeline"]["goldPerMinDeltas"]["0-10"].GetDouble() * 10);
+                    var loseGold10 = mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == loseTeam).Sum(j => j["timeline"]["goldPerMinDeltas"]["0-10"].GetDouble() * 10);
+                    winToLoseGold10Buckets[bkt].Add(winGold10 / loseGold10);
+                    highToLowGold10Buckets[bkt].Add(Math.Max(winGold10, loseGold10) / Math.Min(winGold10, loseGold10));
+                }
+                continue;
                 var winTK = (byte) mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == winTeam).Sum(j => j["stats"]["kills"].GetInt());
                 var winTD = (byte) mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == loseTeam).Sum(j => j["stats"]["kills"].GetInt());
                 var winHighestPlr = mi.json["participants"].GetList().Where(j => j["teamId"].GetInt() == winTeam).MaxElement(p => p["stats"]["kills"].GetInt() - p["stats"]["deaths"].GetInt());
@@ -494,6 +504,28 @@ namespace LeagueOfStats.CmdGen
                 double lng(int minutes) => list.Count(d => d >= minutes * 60) / (double) list.Count; // percent games longer than
                 File.AppendAllLines("gameDurations.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count},{date:yyyy-MM-dd}" });
             }
+
+            File.WriteAllText("gold10-win-to-lose.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
+            foreach (var key in winToLoseGold10Buckets.Keys.Order().ToList())
+            {
+                var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
+                var list = winToLoseGold10Buckets[key];
+                list.Sort();
+                double prc(double p) => list[(int) (list.Count * p)];
+                File.AppendAllLines("gold10-win-to-lose.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{list.Count},{date:yyyy-MM-dd}" });
+            }
+
+            File.WriteAllText("gold10-high-to-low.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
+            foreach (var key in highToLowGold10Buckets.Keys.Order().ToList())
+            {
+                var date = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375);
+                var list = highToLowGold10Buckets[key];
+                list.Sort();
+                double prc(double p) => list[(int) (list.Count * p)];
+                File.AppendAllLines("gold10-high-to-low.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{list.Count},{date:yyyy-MM-dd}" });
+            }
+
+            return;
 
             File.WriteAllText("winnerTeamKdRatioOverTime.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
             File.WriteAllText("winnerTeamKdDifferenceOverTime.csv", "Date,,1%,10%,25%,50%,75%,90%,99%,,Games,Date\r\n");
