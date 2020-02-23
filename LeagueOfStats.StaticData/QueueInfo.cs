@@ -177,6 +177,8 @@ namespace LeagueOfStats.StaticData
 
             new QueueInfo(67, 0, "Unknown", "Unknown"),
             new QueueInfo(860, 0, "Unknown", "Unknown"),
+            new QueueInfo(1090, 0, "Unknown", "Unknown"),
+            new QueueInfo(1100, 0, "Unknown", "Unknown"),
             new QueueInfo(2000, 0, "Unknown", "Unknown"),
             new QueueInfo(2010, 0, "Unknown", "Unknown"),
             new QueueInfo(2020, 0, "Unknown", "Unknown")
