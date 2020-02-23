@@ -38,6 +38,7 @@ namespace LeagueOfStats.CmdGen
             {
                 generator.TimeZone = human.TimeZone;
                 generator.Games = human.Summoners.SelectMany(s => s.Games).ToList();
+                generator.OtherHumans = humans.Where(h => h.Summoners.Count > 0 && h != human).ToList();
                 generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToList();
                 generator.GamesTableFilename = outputPathTemplate.Fmt("Games-All", human.Name, "");
                 generator.ProduceGamesTable();
@@ -76,6 +77,7 @@ namespace LeagueOfStats.CmdGen
                         _games.Add(game);
             }
         }
+        public List<HumanInfo> OtherHumans;
 
         private List<IGrouping<string, Game>> getGameTypeSections(int limit)
         {
@@ -548,6 +550,16 @@ namespace LeagueOfStats.CmdGen
                 var champs = champions.Where(champ => games.Count(g => thisPlayer(g).Champion == champ) == count).Order().JoinString(", ");
                 if (champs != "")
                     result.Add(new P(new B($"Played {count} times: "), champs));
+            }
+
+            // Other humans
+            foreach (var h in OtherHumans)
+            {
+                var otherIds = h.SummonerIds.Select(i => i.AccountId).ToHashSet();
+                var bothGames = games.Where(g => g.Ally.Players.Any(p => otherIds.Contains(p.AccountId)));
+                var longestDays = bothGames.GroupBy(g => g.DateDayOnly(TimeZone)).OrderByDescending(grp => grp.Sum(g => g.Duration.TotalSeconds)).Take(15);
+                result.Add(new P(new B($"Most games per day with {h.Name}: "),
+                    longestDays.Select(grp => GetGameLink(grp.MinElement(g => g.DateUtc), $"{grp.Key:yyyy-MM-dd}: {grp.Count()} games / {grp.Sum(g => g.Duration.TotalHours):0.0} hours").AddClass("linelist"))));
             }
 
             return result;
