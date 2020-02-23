@@ -48,7 +48,6 @@ namespace LeagueOfStats.StaticData
 
         public bool MapSummonersRift { get; private set; }
         public bool MapHowlingAbyss { get; private set; }
-        public bool MapTwistedTreeline { get; private set; }
         public bool MapCrystalScar { get; private set; }
 
         public override string ToString() => $"{Name} ({Id})";
@@ -137,7 +136,6 @@ namespace LeagueOfStats.StaticData
             var maps = json.GetDictAndRemove("maps");
             MapSummonersRift = maps["11"].GetBool();
             MapHowlingAbyss = maps["12"].GetBool();
-            MapTwistedTreeline = maps["10"].GetBool();
 
             json.GetIntAndRemoveOrNull("depth");
             json.GetDictAndRemoveOrNull("effect");
