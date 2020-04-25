@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -100,10 +100,13 @@ namespace LeagueOfStats.CmdGen
         {
             var outputFile = GamesTableFilename;
             Console.Write("Producing output file: " + outputFile + " ... ");
-            var gameTypeSections = getGameTypeSections(999999);
+            //var gameTypeSections = getGameTypeSections(999999);
+            var gameTypeSections = _games // flat list of games instead of by game type
+                .GroupBy(g => "ALL")
+                .ToList();
+
             var sections = gameTypeSections.Select(grp => Ut.NewArray<object>(
                     new H1(grp.Key) { id = new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
-                    new H4("All games"),
                     new TABLE(
                         grp.OrderByDescending(g => g.DateUtc).Select(g =>
                         {
