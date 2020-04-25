@@ -568,6 +568,21 @@ namespace LeagueOfStats.CmdGen
                     longestDays.Select(grp => GetGameLink(grp.MinElement(g => g.DateUtc), $"{grp.Key:yyyy-MM-dd}: {grp.Count()} games / {grp.Sum(g => g.Duration.TotalHours):0.0} hours").AddClass("linelist"))));
             }
 
+            // Strangers seen more than once
+            var strangers = games
+                .Where(g => g.Queue.Id != 0)
+                .SelectMany(g => g.Queue.IsPvp ? g.AllPlayers() : g.Ally.Players)
+                .Where(p => !KnownPlayersAccountIds.Contains(p.AccountId))
+                .GroupBy(p => p.AccountId)
+                .Select(g => (count: g.Count(), plr: g.First(), days: (g.Max(p => p.Game.DateUtc) - g.Min(p => p.Game.DateUtc)).TotalDays))
+                .Where(x => x.count > 1)
+                .OrderByDescending(x => x.count)
+                .ThenByDescending(x => x.days)
+                .ToList();
+            result.Add(new P(new B($"Strangers seen 3+ times: "), strangers.Where(s => s.count >= 3).Select(s => new object[] { new SPAN(s.plr.Name) { title = s.plr.AccountId.ToString() }, $" ({s.count} games over {s.days:0.0} days), " })));
+            result.Add(new P(new B($"Strangers seen twice 1+ days apart: "), strangers.Where(s => s.count == 2 && s.days >= 1).Select(s => new object[] { new SPAN(s.plr.Name) { title = s.plr.AccountId.ToString() }, $" ({s.days:0.0} days), " })));
+            result.Add(new P(new B($"Strangers only seen twice within 24 hours: "), strangers.Count(s => s.count == 2 && s.days < 1)));
+
             return result;
         }
 
