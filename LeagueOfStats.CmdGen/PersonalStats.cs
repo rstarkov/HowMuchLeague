@@ -34,6 +34,9 @@ namespace LeagueOfStats.CmdGen
 
             var generator = new PersonalStatsGenerator();
             generator.KnownPlayersAccountIds = humans.SelectMany(h => h.SummonerIds).Select(s => s.AccountId).ToHashSet();
+            foreach (var player in humans.SelectMany(h => h.Summoners).SelectMany(s => s.Games).SelectMany(g => g.Ally.Players))
+                if (generator.KnownPlayersAccountIds.Contains(player.AccountId))
+                    humans.Single(h => h.SummonerIds.Any(s => s.AccountId == player.AccountId)).SummonerNames.IncSafe(player.Name);
             foreach (var human in humans.Where(h => h.Summoners.Count > 0))
             {
                 generator.TimeZone = human.TimeZone;

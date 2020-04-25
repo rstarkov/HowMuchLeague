@@ -43,6 +43,8 @@ namespace LeagueOfStats.CmdGen
         public List<SummonerId> SummonerIds = new List<SummonerId>(); // ordered by which is most likely to be this human if multiple summoners are in same game
         [ClassifyIgnore]
         public List<SummonerInfo> Summoners;
+        [ClassifyIgnore]
+        public Dictionary<string, int> SummonerNames = new Dictionary<string, int>();
 
         public override string ToString()
         {
