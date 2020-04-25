@@ -234,7 +234,9 @@ namespace LeagueOfStats.CmdGen
             var gameTypeSections = standardPvP.GroupBy(_ => "Summoner's Rift, ALL 5v5 PvP MODES").ToList().Concat(getGameTypeSections(limit)).ToList();
             var result = Ut.NewArray(
                 new P("Generated on ", DateTime.Now.ToString("dddd', 'dd'.'MM'.'yyyy' at 'HH':'mm':'ss")),
+                new H1("All game modes"),
                 genAllGameStats(_games.Take(limit)),
+                new H1("Per game mode stats"),
                 getContents(gameTypeSections),
                 gameTypeSections.Select(grp => Ut.NewArray<object>(
                     new H1(grp.Key) { id = new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
@@ -266,6 +268,7 @@ namespace LeagueOfStats.CmdGen
                 body { font-family: 'Open Sans', sans-serif; }
                 body, td.sep { background: #eee; }
                 table { border-collapse: collapse; border-bottom: 1px solid black; margin: 0 auto; }
+                h1 { margin-top: 120px; }
                 h1, h4 { text-align: center; }
                 td.nplr { border-top: 1px solid black; }
                 td:last-child { border-right: 1px solid black; }
@@ -544,7 +547,8 @@ namespace LeagueOfStats.CmdGen
             result.Add(new P(
                 new B("Total games: "), games.Count().ToString("#,0"), new SPAN { class_ = "hspace" },
                 new B("Total duration: "), games.Sum(g => g.Duration.TotalHours).ToString("#,0 hours"), new SPAN { class_ = "hspace" },
-                new B("Avg per day: "), (games.Sum(g => g.Duration.TotalHours) / (games.Max(g => g.DateUtc) - games.Min(g => g.DateUtc)).TotalDays).ToString("0.0 hours")
+                new B("Avg per day: "), (games.Sum(g => g.Duration.TotalHours) / (games.Max(g => g.DateUtc) - games.Min(g => g.DateUtc)).TotalDays).ToString("0.0 hours"),
+                new B("Avg per day on game days: "), (games.Sum(g => g.Duration.TotalHours) / games.Select(g => g.DateDayOnly(TimeZone)).Distinct().Count()).ToString("0.0 hours")
             ));
             result.Add(new P(new B("Longest and shortest:"),
                 games.OrderByDescending(g => g.Duration).Take(7).Select(g => GetGameLink(g, minsec(g.Duration), new SUP(g.Queue.MicroName)).AddClass("linelist")), new SPAN("...") { class_ = "linelist" },
@@ -567,7 +571,7 @@ namespace LeagueOfStats.CmdGen
                 select (h, otherIds, bothGames);
             foreach (var (h, otherIds, bothGames) in otherHumanGames.OrderByDescending(x => x.bothGames.Count))
             {
-                var longestDays = bothGames.GroupBy(g => g.DateDayOnly(TimeZone)).OrderByDescending(grp => grp.Sum(g => g.Duration.TotalSeconds)).Take(15);
+                var longestDays = bothGames.GroupBy(g => g.DateDayOnly(TimeZone)).OrderByDescending(grp => grp.Sum(g => g.Duration.TotalSeconds)).Take(9);
                 result.Add(new P(new B($"Most games per day with {h.Name} ({h.SummonerNames.OrderByDescending(kvp => kvp.Value).Select(kvp => kvp.Key).JoinString(", ")}): "),
                     longestDays.Select(grp => GetGameLink(grp.MinElement(g => g.DateUtc), $"{grp.Key:yyyy-MM-dd}: {grp.Count()} games / {grp.Sum(g => g.Duration.TotalHours):0.0} hours").AddClass("linelist"))));
             }
