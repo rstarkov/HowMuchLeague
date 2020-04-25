@@ -556,12 +556,15 @@ namespace LeagueOfStats.CmdGen
             }
 
             // Other humans
-            foreach (var h in OtherHumans)
+            var otherHumanGames =
+                from h in OtherHumans
+                let otherIds = h.SummonerIds.Select(i => i.AccountId).ToHashSet()
+                let bothGames = games.Where(g => g.Ally.Players.Any(p => otherIds.Contains(p.AccountId))).ToList()
+                select (h, otherIds, bothGames);
+            foreach (var (h, otherIds, bothGames) in otherHumanGames.OrderByDescending(x => x.bothGames.Count))
             {
-                var otherIds = h.SummonerIds.Select(i => i.AccountId).ToHashSet();
-                var bothGames = games.Where(g => g.Ally.Players.Any(p => otherIds.Contains(p.AccountId)));
                 var longestDays = bothGames.GroupBy(g => g.DateDayOnly(TimeZone)).OrderByDescending(grp => grp.Sum(g => g.Duration.TotalSeconds)).Take(15);
-                result.Add(new P(new B($"Most games per day with {h.Name}: "),
+                result.Add(new P(new B($"Most games per day with {h.Name} ({h.SummonerNames.OrderByDescending(kvp => kvp.Value).Select(kvp => kvp.Key).JoinString(", ")}): "),
                     longestDays.Select(grp => GetGameLink(grp.MinElement(g => g.DateUtc), $"{grp.Key:yyyy-MM-dd}: {grp.Count()} games / {grp.Sum(g => g.Duration.TotalHours):0.0} hours").AddClass("linelist"))));
             }
 
