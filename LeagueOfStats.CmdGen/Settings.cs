@@ -38,11 +38,18 @@ namespace LeagueOfStats.CmdGen
 
     public class HumanInfo
     {
+        /// <summary>Display name for this human.</summary>
         public string Name = null;
+        /// <summary>Timezone for time of day stats and day cutoff. Currently no support for moving between timezones.</summary>
         public string TimeZone = null;
-        public List<SummonerId> SummonerIds = new List<SummonerId>(); // ordered by which is most likely to be this human if multiple summoners are in same game
+        /// <summary>
+        ///     All known summoners (accounts) of this human, ordered by which is most likely to be this human if multiple
+        ///     summoners are in same game.</summary>
+        public List<SummonerId> SummonerIds = new List<SummonerId>();
+        /// <summary>Listing only summoners (accounts) for which data loading is enabled, contains all known match infos etc.</summary>
         [ClassifyIgnore]
         public List<SummonerInfo> Summoners;
+        /// <summary>All summoner names this human has used, and the number of games we know of.</summary>
         [ClassifyIgnore]
         public Dictionary<string, int> SummonerNames = new Dictionary<string, int>();
 
