@@ -137,8 +137,18 @@ namespace LeagueOfStats.PersonalData
             }
             if (game.Duration > TimeSpan.FromMinutes(20) && game.Queue.Id != 610 /*Dark Star*/)
             {
-                CreepsAt20 = CreepsAt10 + (int) (timeline["creepsPerMinDeltas"]["10-20"].GetDouble() * 10);
-                GoldAt20 = GoldAt10 + (int) (timeline["goldPerMinDeltas"]["10-20"].GetDouble() * 10);
+                if (timeline["creepsPerMinDeltas"].ContainsKey("10-20"))
+                {
+                    CreepsAt20 = CreepsAt10 + (int) (timeline["creepsPerMinDeltas"]["10-20"].GetDouble() * 10);
+                    GoldAt20 = GoldAt10 + (int) (timeline["goldPerMinDeltas"]["10-20"].GetDouble() * 10);
+                }
+                else if (game.Duration < TimeSpan.FromMinutes(20.5))
+                {
+                    CreepsAt20 = CreepsAt10 + 0;
+                    GoldAt20 = GoldAt10 + 0;
+                }
+                else
+                    throw new Exception();
             }
             if (game.Duration > TimeSpan.FromMinutes(30) && game.Queue.Id != 610 /*Dark Star*/)
             {
