@@ -41,7 +41,7 @@ namespace LeagueOfStats.CmdGen
             {
                 generator.TimeZone = human.TimeZone;
                 generator.Games = human.Summoners.SelectMany(s => s.Games).ToList();
-                generator.OtherHumans = humans.Where(h => h.Summoners.Count > 0 && h != human).ToList();
+                generator.OtherHumans = humans.Where(h => /*h.Summoners.Count > 0 &&*/ h != human).ToList();
                 generator.ThisPlayerAccountIds = human.Summoners.Select(s => s.AccountId).ToList();
                 generator.GamesTableFilename = outputPathTemplate.Fmt("Games-All", human.Name, "");
                 generator.ProduceGamesTable();
