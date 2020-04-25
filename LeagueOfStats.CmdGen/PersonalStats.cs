@@ -290,13 +290,13 @@ namespace LeagueOfStats.CmdGen
                 table.lane-compare td { border: 1px solid black; text-align: center; padding: 2px 8px; }
                 table.lane-compare a { text-decoration: none; }
                 .hspace { margin-right: 25px; }
-                .linelist { margin-left: 8px; }
+                .linelist { margin-left: 10px; white-space: nowrap; }
                 .win, .win:visited { color: #1A9B1B; }
                 .loss, .loss:visited { color: #B02424; }
                 .hardwin, .hardwin:visited { color: #1A9B1B; font-weight: bold; }
                 .hardloss, .hardloss:visited { color: #B02424; font-weight: bold; }
                 .close, .close:visited { color: #1A68B1; }
-                .linelist:before { content: '\200B'; }";
+                .linelist:before { content: '\200B'; word-break: break-all; }";
             css += KnownPlayersAccountIds.Select(accId => $"\r\n                td.kp{accId}" + (ThisPlayerAccountIds.Contains(accId) ? " { background: #D1FECC; }" : " { background: #6EFFFF; }")).JoinString();
             css += "\r\n";
             return css;
@@ -409,13 +409,13 @@ namespace LeagueOfStats.CmdGen
             if (!allGames)
                 result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
 
-            result.Add(new P(new B("Perfect games:"), games.Select(g => thisPlayer(g)).Where(p => p.Deaths == 0).Select(p => GetGameLink(p.Game, $"{p.Champion} {p.Kills}/{p.Assists}").AddClass("linelist"))));
-            result.Add(new P(new B("Penta kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
-            result.Add(new P(new B("Quadra kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
-            result.Add(new P(new B("Triple kills:"), games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
+            result.Add(new P(new B("Perfect games:"), joinWithMore(20, games.Select(g => thisPlayer(g)).Where(p => p.Deaths == 0).Select(p => GetGameLink(p.Game, $"{p.Champion} {p.Kills}/{p.Assists}").AddClass("linelist")))));
+            result.Add(new P(new B("Penta kills:"), joinWithMore(100, games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 5).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist")))));
+            result.Add(new P(new B("Quadra kills:"), joinWithMore(50, games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 4).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist")))));
+            result.Add(new P(new B("Triple kills:"), joinWithMore(20, games.Select(g => thisPlayer(g)).Where(p => p.LargestMultiKill == 3).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist")))));
             result.Add(new P(new B("Outwarded entire enemy team:"), games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced > p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist"))));
-            result.Add(new P(new B("#1 by damage:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => GetGameLink(p.Game, p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k").AddClass("linelist"))));
-            result.Add(new P(new B("#1 by kills:"), games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => GetGameLink(p.Game, p.Champion, " ", p.Kills).AddClass("linelist"))));
+            result.Add(new P(new B("#1 by damage:"), joinWithMore(20, games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.DamageToChampions) == 1).Select(p => GetGameLink(p.Game, p.Champion, " ", (p.DamageToChampions / 1000.0).ToString("0"), "k").AddClass("linelist")))));
+            result.Add(new P(new B("#1 by kills:"), joinWithMore(20, games.Select(g => thisPlayer(g)).Where(p => p.RankOf(pp => pp.Kills) == 1).Select(p => GetGameLink(p.Game, p.Champion, " ", p.Kills).AddClass("linelist")))));
 
             if (!allGames)
             {
@@ -486,8 +486,8 @@ namespace LeagueOfStats.CmdGen
                     .OrderByDescending(x => x.count)
                     .ThenByDescending(x => x.days)
                     .ToList();
-                result.Add(new P(new B($"Strangers seen 3+ times: "), strangers.Where(s => s.count >= 3).Select(s => new object[] { new SPAN(s.plr.Name) { title = s.plr.AccountId.ToString() }, $" ({s.count} games over {s.days:0.0} days), " })));
-                result.Add(new P(new B($"Strangers seen twice 1+ days apart: "), strangers.Where(s => s.count == 2 && s.days >= 1).Select(s => new object[] { new SPAN(s.plr.Name) { title = s.plr.AccountId.ToString() }, $" ({s.days:0.0} days), " })));
+                result.Add(new P(new B($"Strangers seen 3+ times: "), joinWithMore(15, strangers.Where(s => s.count >= 3).Select(s => new SPAN(s.plr.Name, $" ({s.count} games over {s.days:0.0} days)") { title = s.plr.AccountId.ToString(), class_ = "linelist" }))));
+                result.Add(new P(new B($"Strangers seen twice 1+ days apart: "), joinWithMore(15, strangers.Where(s => s.count == 2 && s.days >= 1).Select(s => new SPAN(s.plr.Name, $" ({s.days:0.0} days)") { title = s.plr.AccountId.ToString(), class_ = "linelist" }))));
                 result.Add(new P(new B($"Strangers only seen twice within 24 hours: "), strangers.Count(s => s.count == 2 && s.days < 1)));
             }
 
@@ -528,6 +528,29 @@ namespace LeagueOfStats.CmdGen
                 }
             }
 
+            return result;
+        }
+
+        private object joinWithMore(int max, IEnumerable<object> elements)
+        {
+            var result = new List<object>();
+            List<object> moreContent = null;
+            int count = 0;
+            foreach (var el in elements)
+            {
+                count++;
+                if (count == max + 1)
+                    moreContent = new List<object>();
+                (moreContent ?? result).Add(el);
+            }
+            if (moreContent != null)
+            {
+                var id = Rnd.GenerateString(6);
+                result.Add(new A("more") { id = id + "more", href = "#", class_ = "linelist", onclick = $"document.getElementById('{id}').style.display = 'inline'; document.getElementById('{id}more').style.display = 'none'; return false;" });
+                moreContent.Add(new A("less") { id = id + "less", href = "#", class_ = "linelist", onclick = $"document.getElementById('{id}').style.display = 'none'; document.getElementById('{id}more').style.display = 'inline'; return false;" });
+                result.Add(new SPAN(moreContent) { id = id, style = "display: none" });
+            }
+            result.Add(new B($"{count} total") { class_ = "linelist" });
             return result;
         }
 
