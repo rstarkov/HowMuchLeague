@@ -394,21 +394,62 @@ namespace LeagueOfStats.CmdGen
             }
         }
 
+        private static int RankedSeason(DateTime date)
+        {
+            if (date > new DateTime(2010, 7, 13) && date <= new DateTime(2011, 8, 23))
+                return 1;
+            if (date > new DateTime(2011, 11, 29) && date <= new DateTime(2012, 11, 12))
+                return 2;
+            if (date > new DateTime(2013, 2, 1) && date <= new DateTime(2013, 11, 11))
+                return 3;
+            if (date > new DateTime(2014, 1, 10) && date <= new DateTime(2014, 11, 11))
+                return 4;
+            if (date > new DateTime(2015, 1, 21) && date <= new DateTime(2015, 11, 11))
+                return 5;
+            if (date > new DateTime(2016, 1, 20) && date <= new DateTime(2016, 11, 8))
+                return 6;
+            if (date > new DateTime(2016, 12, 8) && date <= new DateTime(2017, 11, 7))
+                return 7;
+            if (date > new DateTime(2018, 1, 16) && date <= new DateTime(2018, 11, 12))
+                return 8;
+            if (date > new DateTime(2019, 1, 23) && date <= new DateTime(2019, 11, 19))
+                return 9;
+            if (date > new DateTime(2020, 1, 23) && date <= new DateTime(2020, 11, 20))
+                return 10;
+            return -1;
+        }
+
         public static void GameDurations()
         {
             var buckets = new AutoDictionary<int, List<int>>(_ => new List<int>());
+            var bucketsSeason = new AutoDictionary<int, List<int>>(_ => new List<int>());
             foreach (var bi in DataStore.LosMatchInfos.Values.SelectMany(c => c.ReadItems()))
-                if (Queues.GetInfo(bi.QueueId).IsSR5v5(rankedOnly: false))
+                if (Queues.GetInfo(bi.QueueId).IsSR5v5(rankedOnly: true))
+                {
                     buckets[(int) ((double) bi.GameCreation / 1000 / 86400 / 30.4375)].Add(bi.GameDuration);
+                    var s = RankedSeason(bi.GameCreationDate);
+                    if (s > 0)
+                        bucketsSeason[s].Add(bi.GameDuration);
+                }
             var keys = buckets.Keys.Order().ToList();
-            File.WriteAllText("gameDurations.csv", "");
+            File.WriteAllText("gameDurationsByMonth.csv", "");
             foreach (var key in keys)
             {
                 var list = buckets[key];
                 list.Sort();
                 int prc(double p) => list[(int) (list.Count * p)]; // percentile duration
                 double lng(int minutes) => list.Count(d => d >= minutes * 60) / (double) list.Count; // percent games longer than
-                File.AppendAllLines("gameDurations.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count},{new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375):yyyy-MM-dd}" });
+                File.AppendAllLines("gameDurationsByMonth.csv", new[] { $"{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count},{new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(key * 86400 * 30.4375):yyyy-MM-dd}" });
+            }
+
+            File.WriteAllText("gameDurationsBySeason.csv", "");
+            foreach (var key in bucketsSeason.Keys.Order().ToList())
+            {
+                var list = bucketsSeason[key];
+                list.Sort();
+                int prc(double p) => list[(int) (list.Count * p)]; // percentile duration
+                double lng(int minutes) => list.Count(d => d >= minutes * 60) / (double) list.Count; // percent games longer than
+                File.AppendAllLines("gameDurationsBySeason.csv", new[] { $"S{key},,{prc(0.01)},{prc(0.10)},{prc(0.25)},{prc(0.50)},{prc(0.75)},{prc(0.90)},{prc(0.99)},,{lng(60)},{lng(55)},{lng(50)},{lng(45)},{lng(40)},{lng(35)},{lng(30)},,{list.Count}" });
             }
         }
 
