@@ -238,9 +238,9 @@ namespace LeagueOfStats.CmdGen
                 getContents(gameTypeSections),
                 gameTypeSections.Select(grp => Ut.NewArray<object>(
                     new H1(grp.Key) { id = new string(grp.Key.Where(c => char.IsLetterOrDigit(c)).ToArray()) },
-                    genPerModeSummary(grp),
                     genAllGameStats(grp),
-                    genPerModeDetail(grp)
+                    genPerModeDetail(grp),
+                    genPerModeSummary(grp)
                 ))
             );
             var css = getCss();
@@ -315,7 +315,8 @@ namespace LeagueOfStats.CmdGen
         {
             var result = new List<object>();
             var allOtherChamps = games.SelectMany(g => g.AllPlayers().Where(p => !KnownPlayersAccountIds.Contains(p.AccountId))).GroupBy(p => p.ChampionId);
-            result.Add(new P(new B("Champions by popularity: "), "(excluding ours) ", allOtherChamps.OrderByDescending(grp => grp.Count()).Select(g => g.First().Champion + ": " + g.Count()).JoinString(", ")));
+            result.Add(new P(new B("Champions by popularity: "), new SPAN("(excluding ours) ") { style = "color: #888;" }, new BR(),
+                allOtherChamps.OrderByDescending(grp => grp.Count()).Select(g => g.First().Champion + ": " + g.Count()).JoinString(", ")));
             int cutoff = Math.Min(30, games.Count() / 3);
             var otherChampStats =
                 (from grp in allOtherChamps
