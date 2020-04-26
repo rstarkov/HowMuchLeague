@@ -408,8 +408,8 @@ namespace LeagueOfStats.CmdGen
                 from h in OtherHumans
                 let otherIds = h.SummonerIds.Select(i => i.AccountId).ToHashSet()
                 let bothGames = games.Where(g => g.Ally.Players.Any(p => otherIds.Contains(p.AccountId))).ToList()
-                select (h, otherIds, bothGames);
-            foreach (var (h, otherIds, bothGames) in otherHumanGames.OrderByDescending(x => x.bothGames.Count))
+                select (h, bothGames);
+            foreach (var (h, bothGames) in otherHumanGames.OrderByDescending(x => x.bothGames.Count))
             {
                 var longestDays = bothGames.GroupBy(g => g.DateDayOnly(TimeZone)).OrderByDescending(grp => grp.Sum(g => g.Duration.TotalSeconds)).Take(9);
                 if (longestDays.Count() == 0)
@@ -417,6 +417,8 @@ namespace LeagueOfStats.CmdGen
                 result.Add(new P(new B($"Most games per day with {h.Name} ({h.SummonerNames.OrderByDescending(kvp => kvp.Value).Select(kvp => kvp.Key).JoinString(", ")}): "),
                     longestDays.Select(grp => GetGameLink(grp.MinElement(g => g.DateUtc), $"{grp.Key:yyyy-MM-dd}: {grp.Count()} games / {grp.Sum(g => g.Duration.TotalHours):0.0} hours").AddClass("linelist"))));
             }
+            // Games with other humans on enemy team
+            result.Add(new P(new B("Friends on enemy team:"), joinWithMore(20, games.Where(g => g.Enemy.Players.Any(p => KnownPlayersAccountIds.Contains(p.AccountId))).Select(g => GetGameLink(g, g.Enemy.Players.First(p => KnownPlayersAccountIds.Contains(p.AccountId)).Name).AddClass("linelist")))));
 
             if (!allGames)
             {
