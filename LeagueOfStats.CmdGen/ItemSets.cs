@@ -170,6 +170,8 @@ namespace LeagueOfStats.CmdGen
                     // Remaining items above a certain threshold of usage
                     var alreadyListed = sections.SelectMany(s => s.Select(si => si.item)).ToList();
                     var toList = items.Where(i => i.count >= minUsage && i.item.Purchasable && i.item.NoUnconditionalChildren && !alreadyListed.Contains(i.item) && !starting.Contains(i.item)).ToQueue();
+                    var components = toList.SelectMany(i => i.item.AllFromTransitive.Select(item => (i.count, item))).GroupBy(i => i.item).Select(grp => (count: grp.Sum(i => i.count), item: grp.Key))
+                        .OrderByDescending(i => i.count).ThenBy(i => i.item.TotalPrice).ToList();
                     var mostUsed = toList.Max(i => i.count);
                     sections.Add(new List<(int, ItemInfo)>());
                     while (toList.Count > 0)
@@ -184,6 +186,8 @@ namespace LeagueOfStats.CmdGen
                     }
                     for (int i = titles.Count; i < sections.Count; i++)
                         titles.Add("Items:  " + relCounts(sections[i], mostUsed));
+                    sections.Add(components.Take(15).ToList());
+                    titles.Add("Components:  " + relCounts(sections.Last()));
                     var blocks = sections.Zip(titles, (section, title) => (title: title, items: section.Select(s => s.item).ToList())).ToList();
                     var caption = $"LoS - {champ.InternalName.SubstringSafe(0, 4)} - {role} - {total:#,0} games";
 
