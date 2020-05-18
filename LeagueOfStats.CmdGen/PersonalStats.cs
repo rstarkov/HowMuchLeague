@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -402,6 +402,12 @@ namespace LeagueOfStats.CmdGen
             result.Add(new P(new B("Outwarded entire enemy team:"), joinWithMore(20, games.Select(g => thisPlayer(g)).Where(p => p.WardsPlaced > p.Game.Enemy.Players.Sum(ep => ep.WardsPlaced)).Select(p => GetGameLink(p.Game, p.Champion).AddClass("linelist")))));
             if (!allGames)
                 result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
+
+            var hlTotalKills = games.Where(g => g.Duration > TimeSpan.FromMinutes(5)).Select(g => (g, k: g.AllPlayers().Sum(p => p.Kills))).OrderByDescending(x => x.k).ToList();
+            result.Add(new P(new B("Highest/lowest total kills:"), hlTotalKills.Take(10).Select(x => GetGameLink(x.g, x.k).AddClass("linelist")), new SPAN("...") {class_="linelist" }, hlTotalKills.TakeLast(10).Select(x => GetGameLink(x.g, x.k).AddClass("linelist"))));
+            var hlKillsPM = games.Where(g => g.Duration > TimeSpan.FromMinutes(5)).Select(g => (g, kpm: g.AllPlayers().Sum(p => p.Kills) / g.Duration.TotalSeconds * 60)).OrderByDescending(x => x.kpm).ToList();
+            result.Add(new P(new B("Highest/lowest kills per minute:"), hlKillsPM.Take(10).Select(x => GetGameLink(x.g, $"{x.kpm:0.0}").AddClass("linelist")), new SPAN("...") { class_ = "linelist" }, hlKillsPM.TakeLast(10).Select(x => GetGameLink(x.g, $"{x.kpm:0.0}").AddClass("linelist"))));
+            result.Add(new P(new B("Highest kills difference:"), games.Select(g => (g, kdiff: Math.Abs(g.Ally.Players.Sum(p => p.Kills) - g.Enemy.Players.Sum(p => p.Kills)))).OrderByDescending(x => x.kdiff).Take(20).Select(x => GetGameLink(x.g, x.kdiff).AddClass("linelist"))));
 
             // Other humans
             var otherHumanGames =
