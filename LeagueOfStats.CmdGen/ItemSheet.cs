@@ -22,6 +22,12 @@ namespace LeagueOfStats.CmdGen
             var jungleEnchants = itemsSR.Where(i => i.Name.Contains("Enchantment")).ToList();
             itemsSR = itemsSR.Except(allySpecific.Concat(champSpecific).Concat(jungleEnchants)).ToList();
 
+            var srBuyableEnds = LeagueStaticData.Items.Values.Where(i => i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && i.Purchasable && i.NoPurchasableChildren).ToList();
+            var srBuyableStarts = LeagueStaticData.Items.Values.Where(i => i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && i.Purchasable && !i.AllFrom.Any(id => LeagueStaticData.Items[id].Purchasable)).ToList();
+            var srOrphans = srBuyableEnds.Intersect(srBuyableStarts).ToList();
+            srBuyableEnds = srBuyableEnds.Except(srOrphans).ToList();
+            srBuyableStarts = srBuyableStarts.Except(srOrphans).ToList();
+
             string css;
             using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("LeagueOfStats.CmdGen.Css.Items.css"))
                 css = stream.ReadAllText();
@@ -72,12 +78,40 @@ namespace LeagueOfStats.CmdGen
                     itemSection("Champion-specific", champSpecific),
                     itemSection("Jungle enchants", jungleEnchants),
 
-                    itemSection("All “normal” items", itemsSR)
+                    itemSection("All “normal” items", itemsSR),
+
+                    itemSection("SR: can buy; no buyable parents or children", srOrphans),
+                    itemSection("SR: can buy; no buyable parents", srBuyableStarts),
+                    itemSection("SR: can buy; no buyable children", srBuyableEnds)
+                    // for debugging parent/child relationships
+                    //new TABLE(
+                    //    LeagueStaticData.Items.Values.Where(item => item.MapSummonersRift && !item.ExcludeFromStandardSummonerRift).Select(item => new TR(
+                    //        new TD(item.AllFrom.Select(i => LeagueStaticData.Items[i]).Where(i => i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift).Select(i => itemIcon(i))),
+                    //        new TD(itemIcon(item)),
+                    //        new TD(item.AllInto.Select(i => LeagueStaticData.Items[i]).Where(i => i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift).Select(i => itemIcon(i)))
+                    //        ))
+                    //)
                 )
             );
 
             Directory.CreateDirectory(outputPath);
             File.WriteAllText(Path.Combine(outputPath, "Items.html"), html.ToString());
+        }
+
+        private static IEnumerable<object> makeChain(ItemInfo item)
+        {
+            yield return itemIcon(item);
+            foreach (var fr in item.AllFrom)
+                foreach (var x in makeChain(LeagueStaticData.Items[fr]))
+                    yield return x;
+        }
+
+        private static object itemIcon(ItemInfo item)
+        {
+            return new DIV { class_ = "item" }._(
+                                new IMG { src = item.Icon, title = item.Name },
+                                item.Purchasable ? new P(item.TotalPrice, new SPAN { class_ = "gold" }) : new P("n/a")
+                            );
         }
 
         private static object itemSection(string heading, IEnumerable<ItemInfo> items, Func<ItemInfo, decimal?> mainProperty = null)

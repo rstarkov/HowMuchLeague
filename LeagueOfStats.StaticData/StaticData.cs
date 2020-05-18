@@ -58,7 +58,36 @@ namespace LeagueOfStats.StaticData
                 itemData["data"].GetDict().Select(kvp => new ItemInfo(kvp.Key, kvp.Value.GetDict(), GameVersion)).ToDictionary(ch => ch.Id, ch => ch)
             );
             foreach (var item in Items.Values)
+            {
                 item.NoUnconditionalChildren = item.BuildsInto.All(ch => Items[ch].RequiredAlly != null || Items[ch].RequiredChampion != null);
+
+                var allFrom = (item.SpecialRecipeFrom == null ? item.BuildsFrom : item.BuildsFrom.Concat(item.SpecialRecipeFrom.Value)).Concat(item.AllFrom).Where(id => Items.ContainsKey(id)).Select(id => Items[id]).ToList();
+                foreach (var fr in allFrom)
+                {
+                    item.AllFrom.Add(fr.Id);
+                    fr.AllInto.Add(item.Id);
+                }
+                foreach (var into in item.BuildsInto.Concat(item.AllInto).Where(id => Items.ContainsKey(id)).Select(id => Items[id]).ToList())
+                {
+                    item.AllInto.Add(into.Id);
+                    into.AllFrom.Add(item.Id);
+                }
+            }
+            IEnumerable<int> recursiveItems(int item, bool children)
+            {
+                foreach (var child in children ? Items[item].AllInto : Items[item].AllFrom)
+                {
+                    yield return child;
+                    foreach (var sub in recursiveItems(child, children))
+                        yield return sub;
+                }
+            }
+            foreach (var item in Items.Values)
+            {
+                item.AllIntoTransitive = recursiveItems(item.Id, children: true).Distinct().Select(id => Items[id]).ToList().AsReadOnly();
+                item.AllFromTransitive = recursiveItems(item.Id, children: false).Distinct().Select(id => Items[id]).ToList().AsReadOnly();
+                item.NoPurchasableChildren = item.AllIntoTransitive.All(ch => !ch.Purchasable);
+            }
         }
     }
 }

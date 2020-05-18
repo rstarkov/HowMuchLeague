@@ -14,6 +14,11 @@ namespace LeagueOfStats.StaticData
         public string Plaintext { get; private set; }
         public IReadOnlyList<int> BuildsFrom { get; private set; }
         public IReadOnlyList<int> BuildsInto { get; private set; }
+        public int? SpecialRecipeFrom { get; private set; }
+        public HashSet<int> AllFrom { get; private set; } = new HashSet<int>();
+        public HashSet<int> AllInto { get; private set; } = new HashSet<int>();
+        public IReadOnlyList<ItemInfo> AllFromTransitive { get; internal set; }
+        public IReadOnlyList<ItemInfo> AllIntoTransitive { get; internal set; }
         private HashSet<string> _tags;
         private ReadOnlyCollection<string> _tagsRO;
         public IReadOnlyCollection<string> Tags => _tagsRO == null ? (_tagsRO = new ReadOnlyCollection<string>(_tags.ToList())) : _tagsRO;
@@ -27,11 +32,11 @@ namespace LeagueOfStats.StaticData
         public bool Consumed { get; private set; }
         public bool ConsumeOnFull { get; private set; }
         public bool InStore { get; private set; }
-        public int? SpecialRecipeId { get; private set; }
         public string RequiredChampion { get; private set; }
         public string RequiredAlly { get; private set; }
         public bool ExcludeFromStandardSummonerRift { get; private set; }
         public bool NoUnconditionalChildren { get; internal set; }
+        public bool NoPurchasableChildren { get; internal set; }
 
         public decimal? Stat_ArmorFlat { get; private set; }
         public decimal? Stat_AttackSpeedPrc { get; private set; }
@@ -64,7 +69,8 @@ namespace LeagueOfStats.StaticData
 
             ExcludeFromStandardSummonerRift = Name.Contains("Quick Charge")
                 || (Name == "Siege Ballista") || (Name == "Tower: Beam of Ruination") || (Name == "Port Pad") || (Name == "Flash Zone")
-                || (Name == "Vanguard Banner") || (Name == "Siege Refund") || (Name == "Entropy Field") || (Name == "Shield Totem") || (Name == "Tower: Storm Bulwark");
+                || (Name == "Vanguard Banner") || (Name == "Siege Refund") || (Name == "Entropy Field") || (Name == "Shield Totem") || (Name == "Tower: Storm Bulwark")
+                || (Name == "Poro-Snax") || (Name == "Diet Poro-Snax");
 
             var image = json.GetDictAndRemove("image");
             Icon = $"http://ddragon.leagueoflegends.com/cdn/{gameVersion}/img/{image["group"].GetString()}/{image["full"].GetString()}";
@@ -114,7 +120,7 @@ namespace LeagueOfStats.StaticData
             Consumed = json.GetBoolAndRemoveOrNull("consumed") ?? false;
             ConsumeOnFull = json.GetBoolAndRemoveOrNull("consumeOnFull") ?? false;
             InStore = json.GetBoolAndRemoveOrNull("inStore") ?? true;
-            SpecialRecipeId = json.GetIntAndRemoveOrNull("specialRecipe");
+            SpecialRecipeFrom = json.GetIntAndRemoveOrNull("specialRecipe");
             RequiredChampion = json.GetStringAndRemoveOrNull("requiredChampion");
             RequiredAlly = json.GetStringAndRemoveOrNull("requiredAlly");
 
@@ -142,6 +148,23 @@ namespace LeagueOfStats.StaticData
             json.GetStringAndRemove("colloq");
 
             json.EnsureEmpty();
+
+            if (Id == 2421) // broken stopwatch via stopwatch
+            {
+                Purchasable = InStore = false;
+                AllFrom.Add(2420); // stopwatch
+            }
+            if (Id == 2424) // broken stopwatch via perfectly timed stopwatch
+            {
+                Purchasable = InStore = false;
+                AllFrom.Add(2423); // perfectly timed stopwatch
+            }
+            if (RequiredAlly == "Ornn")
+            {
+                Purchasable = InStore = false;
+            }
+            if (Id == 3671 || Id == 3672 || Id == 3673 || Id == 3675)
+                MapSummonersRift = false; // not actually available on SR despite what the data says?
         }
 
         private void addStatTag(decimal? stat, string tag)

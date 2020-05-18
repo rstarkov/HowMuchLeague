@@ -43,6 +43,7 @@ namespace LeagueOfStats.CmdGen
                     counts[champ][lanerole][plr["stats"]["item3"].GetInt()]++;
                     counts[champ][lanerole][plr["stats"]["item4"].GetInt()]++;
                     counts[champ][lanerole][plr["stats"]["item5"].GetInt()]++;
+                    counts[champ][lanerole][-999]++; // number of games
                 }
             }
 
@@ -76,22 +77,57 @@ namespace LeagueOfStats.CmdGen
 
             var toprow = settings.TopRowItems.Select(name => byName[name]).ToArray();
             var boots = new[] { "Boots of Swiftness", "Boots of Mobility", "Ionian Boots of Lucidity", "Berserker's Greaves", "Sorcerer's Shoes", "Ninja Tabi", "Mercury's Treads" }
-                .Select(n => byName.TryGetValue(n, out var item) ? item : null).Where(i => i != null).ToArray();
-            var starting = new[] { "Refillable Potion", "Corrupting Potion", "The Dark Seal", "Doran's Ring", "Ancient Coin", "Relic Shield", "Spellthief's Edge", "Doran's Shield", "Doran's Blade", "Cull", "Hunter's Talisman", "Hunter's Machete" }
-                .Select(n => byName.TryGetValue(n, out var item) ? item : null).Where(i => i != null).ToArray();
+                .Select(n => byName[n]).ToArray();
+            var starting = new[] { "Refillable Potion", "Corrupting Potion", "Dark Seal", "Doran's Ring", "Steel Shoulderguards", "Spectral Sickle", "Relic Shield", "Spellthief's Edge", "Doran's Shield", "Doran's Blade", "Cull", "Hunter's Talisman", "Hunter's Machete" }
+                .Select(n => byName[n]).ToArray();
 
-            var itemsSR = LeagueStaticData.Items.Values
-                .Where(i => i.Purchasable && i.MapSummonersRift && !i.ExcludeFromStandardSummonerRift && (i.NoUnconditionalChildren || boots.Contains(i) || starting.Contains(i)))
-                .ToDictionary(i => i.Id);
-
-            var itemStats = File.ReadAllLines(itemStatsFile)
+            var itemStatsLines = File.ReadAllLines(itemStatsFile)
                 .Where(l => l != "").Select(l => l.Split(','))
-                .Select(p => (champ: p[0], role: p[1], itemId: int.Parse(p[2]), count: int.Parse(p[3])))
-                .Where(p => itemsSR.ContainsKey(p.itemId))
+                .Select(p => (champ: p[0], role: p[1], itemId: int.Parse(p[2]), count: int.Parse(p[3])));
+            var itemStats = itemStatsLines
                 .ToLookup(p => p.champ)
                 .ToDictionary(grp => grp.Key, grp => grp.ToLookup(p => p.role));
 
+            var allItems = itemStatsLines
+                .Where(l => LeagueStaticData.Items.ContainsKey(l.itemId))
+                .Select(l => (item: LeagueStaticData.Items[l.itemId], l.count))
+                .GroupBy(l => l.item)
+                .ToDictionary(grp => grp.Key, grp => grp.Sum(l => l.count));
+            var allItemsSingleFinal =
+                (from item in LeagueStaticData.Items.Values //allItems.Keys
+                 where !(item.Purchasable && item.NoPurchasableChildren)
+                 let finalChildren = item.AllIntoTransitive.Where(child => child.Purchasable && child.NoPurchasableChildren).ToList()
+                 where finalChildren.Count == 1
+                 select (item, finalChildren[0])).ToDictionary(x => x.item, x => x.Item2);
+            ItemInfo singlePurchasableParent(ItemInfo item)
+            {
+                if (item.Purchasable && item.NoPurchasableChildren)
+                    return item;
+                if (!item.Purchasable && item.AllFrom.Count == 1)
+                    return singlePurchasableParent(LeagueStaticData.Items[item.AllFrom.First()]);
+                return null;
+            }
+            var allItemsSingleParent =
+                (from item in LeagueStaticData.Items.Values //allItems.Keys
+                 let parent = singlePurchasableParent(item)
+                 where parent != null && parent != item
+                 select (item, parent)).ToDictionary(x => x.item, x => x.parent);
+            var itemCountRemap = allItems.ToDictionary(x => x.Key, x => x.Key);
+            foreach (var kvp in allItemsSingleFinal.Concat(allItemsSingleParent))
+                itemCountRemap[kvp.Key] = kvp.Value;
+            // Override some remaps which despite having a single path are not always taken
+            itemCountRemap[LeagueStaticData.Items[2031]] = LeagueStaticData.Items[2031]; // refillable potion -> corrupting potion
+            itemCountRemap[LeagueStaticData.Items[1082]] = LeagueStaticData.Items[1082]; // dark seal -> mejai's
+
             var pagesHtml = new List<object>();
+            pagesHtml.Add(new H1("All items seen"));
+            pagesHtml.Add(allItems.OrderByDescending(kvp => kvp.Value).Select(kvp => ItemHtml(kvp.Key, $"{kvp.Value:#,0}")));
+            pagesHtml.Add(new H1("Item count remap: predictable final item"));
+            pagesHtml.Add(allItemsSingleFinal.Select(kvp => new DIV(ItemHtml(kvp.Key), " => ", ItemHtml(kvp.Value))));
+            pagesHtml.Add(new H1("Item count remap: derives from a purchasable item"));
+            pagesHtml.Add(allItemsSingleParent.Select(kvp => new DIV(ItemHtml(kvp.Key), " => ", ItemHtml(kvp.Value))));
+            pagesHtml.Add(new H1("Items seen which are buyable and final"));
+            pagesHtml.Add(allItems.Where(kvp => kvp.Key.Purchasable && kvp.Key.NoPurchasableChildren).OrderByDescending(kvp => kvp.Value).Select(kvp => ItemHtml(kvp.Key, $"{kvp.Value:#,0}")));
 
             foreach (var champ in LeagueStaticData.Champions.Values.OrderBy(ch => ch.Name))
             {
@@ -99,10 +135,19 @@ namespace LeagueOfStats.CmdGen
                 {
                     if (!itemStats.ContainsKey(champ.Name) || !itemStats[champ.Name].Contains(role))
                         continue;
-                    var items = itemStats[champ.Name][role].OrderByDescending(p => p.count).Select(i => (count: i.count, item: itemsSR[i.itemId])).ToList();
-                    var total = items.Sum(i => i.count);
+                    var total = itemStats[champ.Name][role].Single(x => x.itemId == -999).count;
                     if (total < settings.MinGames)
                         continue;
+                    var itemCounts = itemStats[champ.Name][role]
+                        .Where(p => LeagueStaticData.Items.ContainsKey(p.itemId))
+                        .ToDictionary(p => LeagueStaticData.Items[p.itemId], p => p.count);
+                    foreach (var item in itemCounts.Keys.ToList())
+                        if (itemCountRemap[item] != item)
+                            itemCounts.IncSafe(itemCountRemap[item], itemCounts[item]);
+                    var items = itemCounts
+                        .Select(kvp => (count: kvp.Value, item: kvp.Key))
+                        .OrderByDescending(p => p.count)
+                        .ToList();
                     var minUsage = total * settings.UsageCutoffPercent / 100.0;
                     var sections = new List<List<(int count, ItemInfo item)>>();
                     var titles = new List<string>();
@@ -124,7 +169,7 @@ namespace LeagueOfStats.CmdGen
 
                     // Remaining items above a certain threshold of usage
                     var alreadyListed = sections.SelectMany(s => s.Select(si => si.item)).ToList();
-                    var toList = items.Where(i => i.count >= minUsage && i.item.NoUnconditionalChildren && !alreadyListed.Contains(i.item) && !starting.Contains(i.item)).ToQueue();
+                    var toList = items.Where(i => i.count >= minUsage && i.item.Purchasable && i.item.NoUnconditionalChildren && !alreadyListed.Contains(i.item) && !starting.Contains(i.item)).ToQueue();
                     var mostUsed = toList.Max(i => i.count);
                     sections.Add(new List<(int, ItemInfo)>());
                     while (toList.Count > 0)
@@ -156,9 +201,7 @@ namespace LeagueOfStats.CmdGen
                             blocks.Select(b => Ut.NewArray<object>(
                                 new H3(b.title),
                                 new DIV { class_ = "row" }._(
-                                    b.items.Select(item => new DIV { class_ = "item" }._(
-                                        new IMG { src = item.Icon, title = item.Name }, new P(item.TotalPrice, new SPAN { class_ = "gold" })
-                                    ))
+                                    b.items.Select(item => ItemHtml(item, item.TotalPrice, new SPAN { class_ = "gold" }))
                                 )
                             ))
                         )
@@ -213,6 +256,11 @@ namespace LeagueOfStats.CmdGen
             );
             Directory.CreateDirectory(settings.ReportPath);
             File.WriteAllText(Path.Combine(settings.ReportPath, "ItemSets.html"), html.ToString());
+        }
+
+        private static Tag ItemHtml(ItemInfo item, params object[] label)
+        {
+            return new DIV { class_ = "item" }._(new IMG { src = item.Icon, title = item.Name }, new P(label));
         }
     }
 }

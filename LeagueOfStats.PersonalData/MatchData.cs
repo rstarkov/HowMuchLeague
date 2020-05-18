@@ -44,6 +44,7 @@ namespace LeagueOfStats.PersonalData
         public string Champion { get { return LeagueStaticData.Champions[ChampionId].Name; } }
         public int Spell1Id { get; private set; }
         public int Spell2Id { get; private set; }
+        public int[] ItemIds { get; private set; }
         public Role Role { get; private set; }
         public Lane Lane { get; private set; }
         public int Kills { get; private set; }
@@ -118,6 +119,7 @@ namespace LeagueOfStats.PersonalData
             var lane = participant["timeline"]["lane"].GetString();
             Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : lane == "NONE" ? Lane.None : Ut.Throw<Lane>(new Exception());
             var stats = participant["stats"].GetDict();
+            ItemIds = new[] { stats["item0"].GetInt(), stats["item1"].GetInt(), stats["item2"].GetInt(), stats["item3"].GetInt(), stats["item4"].GetInt(), stats["item5"].GetInt(), stats["item6"].GetInt() }.Where(i => i != 0).ToArray();
             Kills = stats["kills"].GetInt();
             Deaths = stats["deaths"].GetInt();
             Assists = stats["assists"].GetInt();
