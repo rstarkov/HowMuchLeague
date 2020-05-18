@@ -116,7 +116,7 @@ namespace LeagueOfStats.CmdGen
                                 new TR { id = "game" + g.Id.ToString() }._(
                                     new TD { rowspan = 2, class_ = "nplr datetime" }._(new A(g.Date(TimeZone).ToString("dd/MM/yy"), new BR(), g.Date(TimeZone).ToString("HH:mm")) { href = g.DetailsUrl }),
                                     new TD { rowspan = 2, class_ = "nplr" }._(minsec(g.Duration)),
-                                    new TD { rowspan = 2, class_ = "nplr " + NullTrueFalse(g.Victory, "draw", "victory", "defeat") }._(NullTrueFalse(g.Victory, "Draw", "Victory", "Defeat")),
+                                    new TD { rowspan = 2, class_ = "nplr " + NullTrueFalse(g.Victory, "draw", "victory", "defeat") }._(NullTrueFalse(g.Victory, "Draw", "Victory", "Defeat"), new BR(), g.Queue.MicroName),
                                     new TD { rowspan = 2, class_ = "sep" },
                                     allies.Select(p => p[0]),
                                     new TD { rowspan = 2, class_ = "sep" },
