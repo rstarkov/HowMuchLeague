@@ -212,7 +212,7 @@ namespace LeagueOfStats.Downloader
             Console.WriteLine($"{Region}: {MatchCount:#,0}; {searchMin:#,0} - {searchMax:#,0}; {new DateTime(1970, 1, 1).AddSeconds(EarliestMatchDate / 1000)} - {new DateTime(1970, 1, 1).AddSeconds(LatestMatchDate / 1000)}");
             Console.WriteLine($"    Coverage: {covered:#,0} of {searchMax - searchMin:#,0} ({covered / (double) (searchMax - searchMin) * 100:0.000}%).  Gaps: min {gapstat.Min:#,0}, max: {gapstat.Max:#,0}, mean: {gapstat.Mean:#,0.000}, stdev: {gapstat.StdDev:#,0.000}");
             Console.ForegroundColor = ConsoleColor.Gray;
-            _noPrintStatsUntil = DateTime.UtcNow.AddMinutes(15);
+            _noPrintStatsUntil = DateTime.UtcNow.AddMinutes(10);
         }
 
         public void DownloadForever(bool background = false)
