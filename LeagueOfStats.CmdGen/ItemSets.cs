@@ -163,18 +163,25 @@ namespace LeagueOfStats.CmdGen
                     // Section 3: boots
                     if (champ.InternalName != "Cassiopeia")
                     {
-                        sections.Add(new[] { (0, byName["Boots of Speed"]) }.Concat(items.Where(i => boots.Contains(i.item) && i.count >= minUsage)).ToList());
-                        titles.Add("Boots:  " + relCounts(sections.Last().Skip(1)));
+                        var bootsSection = new[] { (0, byName["Boots of Speed"]) }.Concat(items.Where(i => boots.Contains(i.item) && i.count >= minUsage)).ToList();
+                        var bootsTitle = "Boots:  " + relCounts(bootsSection.Skip(1));
+                        //sections.Add(bootsSection);
+                        //titles.Add(bootsTitle);
+                        sections.Last().InsertRange(0, bootsSection);
+                        titles[titles.Count - 1] = bootsTitle + " | " + titles[titles.Count - 1];
                     }
 
                     // Remaining items above a certain threshold of usage
                     var alreadyListed = sections.SelectMany(s => s.Select(si => si.item)).ToList();
-                    var toList = items.Where(i => i.count >= minUsage && i.item.Purchasable && i.item.NoUnconditionalChildren && !alreadyListed.Contains(i.item) && !starting.Contains(i.item)).ToQueue();
-                    var components = toList.SelectMany(i => i.item.AllFromTransitive.Select(item => (i.count, item))).GroupBy(i => i.item).Select(grp => (count: grp.Sum(i => i.count), item: grp.Key))
-                        .OrderByDescending(i => i.count).ThenBy(i => i.item.TotalPrice).ToList();
-                    var mostUsed = toList.Max(i => i.count);
+                    var toList = items.Where(i => i.count >= minUsage && i.item.Purchasable && i.item.NoUnconditionalChildren && !alreadyListed.Contains(i.item) && !starting.Contains(i.item)).ToList();
+                    var components = toList.SelectMany(i => i.item.AllFromTransitive.Select(item => (i.count, item)))
+                        .Where(i => i.item.Purchasable)
+                        .GroupBy(i => i.item).Select(grp => (count: grp.Sum(i => i.count), item: grp.Key))
+                        .Take(32).OrderBy(i => i.item.TotalPrice).ThenByDescending(i => i.count).ToList();
+                    var toListQ = toList.Take(32).ToQueue();
+                    var mostUsed = toListQ.Max(i => i.count);
                     sections.Add(new List<(int, ItemInfo)>());
-                    while (toList.Count > 0)
+                    while (toListQ.Count > 0)
                     {
                         var last = sections[sections.Count - 1];
                         if (last.Count == settings.MaxItemsPerRow)
@@ -182,12 +189,12 @@ namespace LeagueOfStats.CmdGen
                             last = new List<(int, ItemInfo)>();
                             sections.Add(last);
                         }
-                        last.Add(toList.Dequeue());
+                        last.Add(toListQ.Dequeue());
                     }
                     for (int i = titles.Count; i < sections.Count; i++)
                         titles.Add("Items:  " + relCounts(sections[i], mostUsed));
-                    sections.Add(components.Take(15).ToList());
-                    titles.Add("Components:  " + relCounts(sections.Last()));
+                    sections.Add(components.ToList());
+                    titles.Add("Components:  " + relCounts(sections.Last(), sections.Last().Max(i => i.count)));
                     var blocks = sections.Zip(titles, (section, title) => (title: title, items: section.Select(s => s.item).ToList())).ToList();
                     var caption = $"LoS - {champ.InternalName.SubstringSafe(0, 4)} - {role} - {total:#,0} games";
 
