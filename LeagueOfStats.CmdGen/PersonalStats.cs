@@ -783,7 +783,7 @@ namespace LeagueOfStats.CmdGen
                 new TD{class_ = $"plr-top kp{plr.AccountId}" }._(new DIV(plr.Name) { class_="plrname" },
                     "{0}/{1}/{2}".Fmt(plr.Kills, plr.Deaths, plr.Assists)),
                 new TD{class_ = $"plr-bot kp{plr.AccountId}" }._(
-                    new DIV(plr.LargestMultiKill <= 1 ? "" : (plr.LargestMultiKill + "x")) { class_ = "multi multi" + plr.LargestMultiKill },
+                    new DIV(plr.Leaver == true? "LVR" : plr.Afk == true ? "AFK" : plr.LargestMultiKill <= 1 ? "" : (plr.LargestMultiKill + "x")) { class_ = "multi multi" + (plr.Leaver == true || plr.Afk == true ? 5 : plr.LargestMultiKill) },
                     plr.Champion,
                     " ", plr.Lane == Lane.Top ? "(top)" : plr.Lane == Lane.Middle ? "(mid)" : plr.Lane == Lane.Jungle ? "(jg)" : plr.Role == Role.DuoCarry ? "(adc)" : plr.Role == Role.DuoSupport ? "(sup)" : "(bot)")
             };
