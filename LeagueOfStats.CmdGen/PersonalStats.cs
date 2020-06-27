@@ -434,7 +434,7 @@ namespace LeagueOfStats.CmdGen
                         new TR(new TH(label) { rowspan = 2 }, new TH("Games") { rowspan = 2 }, new TH("Wins") { rowspan = 2 }, new TH("Losses") { rowspan = 2 }, new TH("Win%") { rowspan = 2 },
                             new TH("Kills/deaths/assists/particip.") { colspan = 7 }, new TH("Dmg to champs") { colspan = 4 }, new TH("Healing") { colspan = 2 },
                             new TH("CS @ 10m") { colspan = 4 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }, new TH("Wards") { colspan = 4 },
-                            new TH("Totals") { colspan = 4 }, new TH(label) { rowspan = 2 }),
+                            new TH("Totals") { colspan = 5 }, new TH(label) { rowspan = 2 }),
                         new TR(
                             new TH("Avg/30m") { colspan = 3 }, new TH("Max") { colspan = 3 }, new TH("Part."), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg/30m"), new TH("Max"),
                             new TH("Avg"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg"), new TH("Max"), new TH("5x"), new TH("4x+"), new TH("3x+"), new TH("2x+"), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %"),
