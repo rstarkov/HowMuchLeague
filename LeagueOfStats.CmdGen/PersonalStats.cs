@@ -404,7 +404,7 @@ namespace LeagueOfStats.CmdGen
                 result.Add(new P(new B("Average wards per game: "), "ally = ", games.Average(g => g.Ally.Players.Sum(p => p.WardsPlaced)).ToString("0.0"), ", enemy = ", games.Average(g => g.Enemy.Players.Sum(p => p.WardsPlaced)).ToString("0.0")));
 
             var hlTotalKills = games.Where(g => g.Duration > TimeSpan.FromMinutes(5)).Select(g => (g, k: g.AllPlayers().Sum(p => p.Kills))).OrderByDescending(x => x.k).ToList();
-            result.Add(new P(new B("Highest/lowest total kills:"), hlTotalKills.Take(10).Select(x => GetGameLink(x.g, x.k).AddClass("linelist")), new SPAN("...") {class_="linelist" }, hlTotalKills.TakeLast(10).Select(x => GetGameLink(x.g, x.k).AddClass("linelist"))));
+            result.Add(new P(new B("Highest/lowest total kills:"), hlTotalKills.Take(10).Select(x => GetGameLink(x.g, x.k).AddClass("linelist")), new SPAN("...") { class_ = "linelist" }, hlTotalKills.TakeLast(10).Select(x => GetGameLink(x.g, x.k).AddClass("linelist"))));
             var hlKillsPM = games.Where(g => g.Duration > TimeSpan.FromMinutes(5)).Select(g => (g, kpm: g.AllPlayers().Sum(p => p.Kills) / g.Duration.TotalSeconds * 60)).OrderByDescending(x => x.kpm).ToList();
             result.Add(new P(new B("Highest/lowest kills per minute:"), hlKillsPM.Take(10).Select(x => GetGameLink(x.g, $"{x.kpm:0.0}").AddClass("linelist")), new SPAN("...") { class_ = "linelist" }, hlKillsPM.TakeLast(10).Select(x => GetGameLink(x.g, $"{x.kpm:0.0}").AddClass("linelist"))));
             result.Add(new P(new B("Highest kills difference:"), games.Select(g => (g, kdiff: Math.Abs(g.Ally.Players.Sum(p => p.Kills) - g.Enemy.Players.Sum(p => p.Kills)))).OrderByDescending(x => x.kdiff).Take(20).Select(x => GetGameLink(x.g, x.kdiff).AddClass("linelist"))));
@@ -433,10 +433,12 @@ namespace LeagueOfStats.CmdGen
                     return new TABLE { class_ = "ra stats" }._(
                         new TR(new TH(label) { rowspan = 2 }, new TH("Games") { rowspan = 2 }, new TH("Wins") { rowspan = 2 }, new TH("Losses") { rowspan = 2 }, new TH("Win%") { rowspan = 2 },
                             new TH("Kills/deaths/assists/particip.") { colspan = 7 }, new TH("Dmg to champs") { colspan = 4 }, new TH("Healing") { colspan = 2 },
-                            new TH("CS @ 10m") { colspan = 4 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }, new TH("Wards") { colspan = 4 }),
+                            new TH("CS @ 10m") { colspan = 4 }, new TH("Gold @ 10m") { colspan = 2 }, new TH("Multikills every") { colspan = 4 }, new TH("Wards") { colspan = 4 },
+                            new TH("Totals") { colspan = 4 }, new TH(label) { rowspan = 2 }),
                         new TR(
                             new TH("Avg/30m") { colspan = 3 }, new TH("Max") { colspan = 3 }, new TH("Part."), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg/30m"), new TH("Max"),
-                            new TH("Avg"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg"), new TH("Max"), new TH("5x"), new TH("4x+"), new TH("3x+"), new TH("2x+"), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %")),
+                            new TH("Avg"), new TH("Max"), new TH("Rank"), new TH("#1 %"), new TH("Avg"), new TH("Max"), new TH("5x"), new TH("4x+"), new TH("3x+"), new TH("2x+"), new TH("Avg/30m"), new TH("Max"), new TH("Rank"), new TH("#1 %"),
+                            new TH("Hours"), new TH("K"), new TH("D"), new TH("Wrd"), new TH("Dmg")),
                         set.OrderByDescending(g => g.Count()).Select(g => new TR(
                             new TD(g.Key) { class_ = "la" },
                             new TD(g.Count()),
@@ -469,7 +471,13 @@ namespace LeagueOfStats.CmdGen
                             new TD("{0:0.0}".Fmt(g.Average(p => p.WardsPlaced / p.Game.Duration.TotalMinutes * 30))),
                             new TD(GetGameLink(g.MaxElement(p => p.WardsPlaced), p => p.WardsPlaced.ToString("0"))),
                             new TD("{0:0.0}".Fmt(g.Average(p => p.RankOf(pp => pp.WardsPlaced)))),
-                            new TD("{0:0}%".Fmt(g.Count(p => p.RankOf(pp => pp.WardsPlaced) == 1) / (double) g.Count() * 100))
+                            new TD("{0:0}%".Fmt(g.Count(p => p.RankOf(pp => pp.WardsPlaced) == 1) / (double) g.Count() * 100)),
+                            new TD($"{g.Sum(p => p.Game.Duration.TotalHours):#,0.0}"),
+                            new TD($"{g.Sum(p => p.Kills):#,0}"),
+                            new TD($"{g.Sum(p => p.Deaths):#,0}"),
+                            new TD($"{g.Sum(p => p.WardsPlaced):#,0}"),
+                            new TD($"{g.Sum(p => p.DamageToChampions):#,0}"),
+                            new TD(g.Key) { class_ = "la" }
                         ))
                     );
                 });
