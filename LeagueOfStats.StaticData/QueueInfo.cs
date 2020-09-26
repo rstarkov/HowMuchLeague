@@ -173,7 +173,8 @@ namespace LeagueOfStats.StaticData
             new QueueInfo(1050, MapId.CrashSite, "Odyssey Extraction", "Crewmember", pvp: false, isEvent: true),
             new QueueInfo(1060, MapId.CrashSite, "Odyssey Extraction", "Captain", pvp: false, isEvent: true),
             new QueueInfo(1070, MapId.CrashSite, "Odyssey Extraction", "Onslaught", pvp: false, isEvent: true),
-            new QueueInfo(1200, MapId.NexusBlitz, "Nexus Blitz", "", isEvent: true),
+            new QueueInfo(1200, MapId.NexusBlitz, "Nexus Blitz", "", isEvent: true, replacedBy: 1300),
+            new QueueInfo(1300, MapId.NexusBlitz, "Nexus Blitz", "", isEvent: true),
 
             new QueueInfo(67, 0, "Unknown", "Unknown"),
             new QueueInfo(860, 0, "Unknown", "Unknown"),
