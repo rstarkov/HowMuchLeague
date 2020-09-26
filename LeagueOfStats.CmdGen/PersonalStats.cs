@@ -323,6 +323,7 @@ namespace LeagueOfStats.CmdGen
             var firstWeek = firstDay.AddDays(-(((int) firstDay.DayOfWeek - 1 + 7) % 7));
             Ut.Assert(firstWeek.DayOfWeek == DayOfWeek.Monday);
             var gamesByWeek = gamesByDay.GroupBy(gbd => (int) Math.Floor((gbd.Key - firstWeek).TotalDays / 7)).ToDictionary(g => g.Key, g => g.SelectMany(gg => gg).ToList());
+            var gamesByMonth = games.GroupBy(g => { var d = g.DateDayOnly(TimeZone); return d.Year * 12 + d.Month - (firstDay.Year * 12 + firstDay.Month); }).ToDictionary(g => g.Key, g => g.ToList());
             var histoGamesPerDay = Enumerable.Range(1, 12).Select(c => (label: c == 12 ? "12+" : c.ToString(), y: gamesByDay.Count(grp => c == 12 ? grp.Count() >= 12 : grp.Count() == c))).ToList();
             result.Add(makeHistogram(histoGamesPerDay, "Games played per day")); // TODO: add 0 games
             var histoGamesByDayOfWeek = range(1, 7, 7).Select(dow => (label: ((DayOfWeek) dow).ToString().Substring(0, 2), y: games.Count(g => (int) g.Date(TimeZone).DayOfWeek == dow))).ToList();
@@ -338,13 +339,15 @@ namespace LeagueOfStats.CmdGen
             {
                 var plotWardProgress = games.Select(g => g.Enemy.Players.Sum(p => p.WardsPlaced / g.Duration.TotalMinutes * 30.0)).ToList();
                 plotWardProgress.Reverse();
-                result.Add(makePlotY("Wards over time by enemy team", plotWardProgress, runningAverage(plotWardProgress, 29).ToList()));
+                result.Add(makePlotY("Wards over time by enemy team", plotWardProgress, average(plotWardProgress, 29).ToList()));
                 var plotGameDurationProgress = games.Select(g => g.Duration.TotalMinutes).ToList();
                 plotGameDurationProgress.Reverse();
-                result.Add(makePlotY("Game duration over time", plotGameDurationProgress, runningAverage(plotGameDurationProgress, 49).ToList()));
+                result.Add(makePlotY("Game duration over time", plotGameDurationProgress, average(plotGameDurationProgress, 49).ToList()));
             }
             var plotHoursPerWeek = Enumerable.Range(0, gamesByWeek.Keys.Max() + 1).Select(wk => gamesByWeek.ContainsKey(wk) ? gamesByWeek[wk].Sum(g => g.Duration.TotalHours) : 0).ToList();
-            result.Add(makePlotY("Hours played per week", plotHoursPerWeek, runningAverage(plotHoursPerWeek, 25).ToList()));
+            result.Add(makePlotY($"Hours played per week: {median(plotHoursPerWeek.Where(n => n > 0)):0.0}", plotHoursPerWeek, average(plotHoursPerWeek, 25).ToList()));
+            var plotHoursPerMonth = Enumerable.Range(0, gamesByMonth.Keys.Max() + 1).Select(mo => gamesByMonth.ContainsKey(mo) ? gamesByMonth[mo].Sum(g => g.Duration.TotalHours) : 0).ToList();
+            result.Add(makePlotY($"Hours played per month: {median(plotHoursPerMonth.Where(n => n > 0)):0.0}", plotHoursPerMonth, average(plotHoursPerMonth, 7).ToList()));
             if (!allGames)
             {
                 result.Add(makeCsPlotOverTime("CS@20m as ADC over time", games, Role.DuoCarry, Lane.Bottom));
@@ -382,6 +385,8 @@ namespace LeagueOfStats.CmdGen
                 games.Take(count).Count(g => g.Ally.Players.Any(p => p.Leaver == true)), "/",
                 games.Take(count).Count(g => g.Enemy.Players.Any(p => p.Leaver == true)))
             { class_ = "linelist" })));
+            result.Add(new P(new B("Longest breaks from playing:"), joinWithMore(10, games.Select(g => (g, g.DateUtc)).Concat((null, DateTime.UtcNow)).OrderBy(x => x.DateUtc).ConsecutivePairs(false).Select(p => (p.Item1.g, (p.Item2.DateUtc - p.Item1.DateUtc).TotalDays)).OrderByDescending(t => t.TotalDays)
+                .Select(x => GetGameLink(x.g, $"{x.g.DateDayOnly(TimeZone):yyyy-MM-dd} ({x.TotalDays:0.00} days)").AddClass("linelist")).Take(30))));
 
             var champions = LeagueStaticData.Champions.Values.Select(ch => ch.Name).ToList();
             result.Add(new P(new B("Played 10+ times: "),
@@ -549,6 +554,17 @@ namespace LeagueOfStats.CmdGen
             return result;
         }
 
+        private double median(IEnumerable<double> values)
+        {
+            var ord = values.Order().ToList();
+            if (ord.Count == 0)
+                return 0;
+            else if (ord.Count % 2 == 1)
+                return ord[ord.Count / 2];
+            else
+                return (ord[ord.Count / 2 - 1] + ord[ord.Count / 2]) / 2;
+        }
+
         private object joinWithMore(int max, IEnumerable<object> elements)
         {
             var result = new List<object>();
@@ -657,7 +673,7 @@ namespace LeagueOfStats.CmdGen
         //        games.Select(_ => 100.0));
         //}
 
-        private IEnumerable<double> runningAverage(IEnumerable<double> series, int n)
+        private IEnumerable<double> average(IEnumerable<double> series, int n)
         {
             if (n > series.Count())
                 n = series.Count() - 1;
@@ -688,15 +704,26 @@ namespace LeagueOfStats.CmdGen
             datas = datas.Where(d => d.Count > 0).ToArray();
             double maxX = datas.Max(data => data.Max(pt => pt.x));
             double maxY = datas.Max(data => data.Max(pt => pt.y));
+            double chunk = Math.Ceiling(maxY / 4 / 5) * 5;
+            double maxData = maxY;
+            maxY = chunk * 4;
             var result = new StringBuilder();
             result.Append("<svg width='{0}' height='{1}' style='border: 1px solid #999; margin: 10px; background: #fff;' xmlns='http://www.w3.org/2000/svg'><g>".Fmt(width, height));
             result.Append("<text xml:space='preserve' text-anchor='middle' font-family='Open Sans, Arial, sans-serif' font-size='17' x='{0}' y='0' fill='#000' dominant-baseline='hanging'>{1}</text>".Fmt(width / 2, title));
-            result.Append("<text xml:space='preserve' text-anchor='left' font-family='Open Sans, Arial, sans-serif' font-size='17' x='10' y='20' fill='#000' dominant-baseline='hanging'>{0:0.#}</text>".Fmt(maxY));
+            result.Append("<text xml:space='preserve' text-anchor='left' font-family='Open Sans, Arial, sans-serif' font-size='14' x='10' y='0' fill='#000' dominant-baseline='hanging'>max {0:0.#}</text>".Fmt(maxData));
+            double calcX(double x) => x / maxX * (width - 20) + 10;
+            double calcY(double y) => (maxY - y) / maxY * (height - 45) + 35;
+            for (int i = 0; i < 5; i++)
+            {
+                var y = i * chunk;
+                result.Append($"<polyline fill='none' stroke='#ddd' points='{calcX(0):0.000},{calcY(y):0.000} {calcX(maxX):0.000},{calcY(y):0.000}' />");
+                result.Append($"<text xml:space='preserve' text-anchor='left' font-family='Open Sans, Arial, sans-serif' font-size='12' x='10' y='{calcY(y):0.000}' fill='#ccc' dominant-baseline='ideographic'>{y:0.#}</text>");
+            }
             var colors = new[] { "#921", "#14f", "#1a2" }.ToQueue();
             foreach (var data in datas)
             {
                 var color = colors.Dequeue();
-                result.Append("<polyline fill='none' stroke='{0}' points='{1}' />".Fmt(color, data.Select(d => "{0:0.000},{1:0.000}".Fmt(d.x / maxX * (width - 20) + 10, (maxY - d.y) / maxY * (height - 40) + 30)).JoinString(" ")));
+                result.Append("<polyline fill='none' stroke='{0}' points='{1}' />".Fmt(color, data.Select(d => "{0:0.000},{1:0.000}".Fmt(calcX(d.x), calcY(d.y))).JoinString(" ")));
                 colors.Enqueue(color);
             }
             result.Append("</g></svg>");
@@ -718,7 +745,7 @@ namespace LeagueOfStats.CmdGen
                 .ToList();
             if (plot.Count == 0)
                 return null;
-            return makePlotXY(title, plot, runningAverage(plot.Select(p => p.y), 25).Zip(plot, (y, p) => (x: p.x, y: y)).ToList());
+            return makePlotXY(title, plot, average(plot.Select(p => p.y), 25).Zip(plot, (y, p) => (x: p.x, y: y)).ToList());
         }
 
         private IEnumerable<int> range(int first, int count, int modulus = int.MaxValue)
