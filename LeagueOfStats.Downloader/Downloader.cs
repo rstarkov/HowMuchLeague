@@ -112,11 +112,17 @@ namespace LeagueOfStats.Downloader
         }
 
         private DateTime _needRebuildAfter = DateTime.MaxValue;
+        private DateTime _lastRebuildAt;
 
         private int _prevIdsForRebuildSize = 16;
 
         private void rebuild()
         {
+            if (_lastRebuildAt > DateTime.UtcNow.AddMinutes(-10))
+            {
+                _needRebuildAfter = _lastRebuildAt.AddMinutes(11);
+                return;
+            }
             Console.Write("Rebuilding... ");
 
             var searchMin = Math.Min(InitialMatchId, EarliestMatchId) - MatchIdRange;
@@ -165,6 +171,7 @@ namespace LeagueOfStats.Downloader
             }
             _heapLength = iHeap;
             heapifyFull();
+            _lastRebuildAt = DateTime.UtcNow;
             Console.WriteLine("done");
         }
 
