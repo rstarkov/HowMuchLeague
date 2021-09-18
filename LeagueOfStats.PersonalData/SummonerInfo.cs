@@ -5,8 +5,10 @@ using System.Linq;
 using System.Net;
 using RT.Util;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
-using RT.Util.Serialization;
+using RT.Json;
+using RT.Serialization;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace LeagueOfStats.PersonalData
 {
@@ -109,16 +111,16 @@ namespace LeagueOfStats.PersonalData
         ///     An optional function invoked to log progress.</param>
         public void LoadGamesOnline(Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
         {
-            var hClient = new HClient();
-            hClient.ReqAccept = "application/json, text/javascript, */*; q=0.01";
-            hClient.ReqAcceptLanguage = "en-GB,en;q=0.5";
-            hClient.ReqUserAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0";
-            hClient.ReqReferer = $"http://matchhistory.{Region.ToLower()}.leagueoflegends.com/en/";
-            hClient.ReqHeaders[HttpRequestHeader.Host] = "acs.leagueoflegends.com";
-            hClient.ReqHeaders["DNT"] = "1";
-            hClient.ReqHeaders["Region"] = Region.ToUpper();
-            hClient.ReqHeaders["Authorization"] = AuthorizationHeader;
-            hClient.ReqHeaders["Origin"] = $"http://matchhistory.{Region.ToLower()}.leagueoflegends.com";
+            var hClient = new HttpClient();
+            hClient.DefaultRequestHeaders.Accept.ParseAdd("application/json, text/javascript, */*; q=0.01");
+            hClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-GB,en;q=0.5");
+            hClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0");
+            hClient.DefaultRequestHeaders.Referrer = new Uri($"http://matchhistory.{Region.ToLower()}.leagueoflegends.com/en/");
+            hClient.DefaultRequestHeaders.Host = "acs.leagueoflegends.com";
+            //hClient.DefaultRequestHeaders["DNT"] = "1";
+            hClient.DefaultRequestHeaders.Add("Region", Region.ToUpper());
+            hClient.DefaultRequestHeaders.Authorization = AuthenticationHeaderValue.Parse(AuthorizationHeader);
+            hClient.DefaultRequestHeaders.Add("Origin", $"http://matchhistory.{Region.ToLower()}.leagueoflegends.com");
 
             discoverGameIds(false, hClient, getAuthHeader, logger);
 
@@ -153,11 +155,11 @@ namespace LeagueOfStats.PersonalData
             ClassifyXml.SerializeToFile(this, _filename);
         }
 
-        private HResponse retryOnAuthHeaderFail(string url, HClient hClient, Func<SummonerInfo, string> getAuthHeader)
+        private HttpResponseMessage retryOnAuthHeaderFail(string url, HttpClient hClient, Func<SummonerInfo, string> getAuthHeader)
         {
             while (true)
             {
-                var resp = hClient.Get(url);
+                var resp = hClient.GetAsync(url).GetAwaiter().GetResult();
                 if (resp.StatusCode != HttpStatusCode.Unauthorized)
                     return resp;
 
@@ -165,12 +167,12 @@ namespace LeagueOfStats.PersonalData
                 if (newHeader == null)
                     return null;
                 AuthorizationHeader = newHeader;
-                hClient.ReqHeaders["Authorization"] = newHeader;
+                hClient.DefaultRequestHeaders.Authorization = AuthenticationHeaderValue.Parse(newHeader);
                 save();
             }
         }
 
-        private JsonDict loadGameJson(string gameId, HClient hClient, Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
+        private JsonDict loadGameJson(string gameId, HttpClient hClient, Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
         {
             // If visibleAccountId isn't equal to Account ID of any of the players in the match, participantIdentities will not contain any identities at all.
             // If it is but the AuthorizationHeader isn't valid for that Account ID, only that player's info will be populated in participantIdentities.
@@ -191,7 +193,7 @@ namespace LeagueOfStats.PersonalData
                     File.WriteAllText(path, "404");
                 else
                 {
-                    rawJson = resp.Expect(HttpStatusCode.OK).DataString;
+                    rawJson = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                     var tryJson = JsonDict.Parse(rawJson);
                     assertHasParticipantIdentities(tryJson);
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
@@ -211,7 +213,7 @@ namespace LeagueOfStats.PersonalData
                 throw new Exception("Match history JSON does not contain all participant identities.");
         }
 
-        private void discoverGameIds(bool full, HClient hClient, Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
+        private void discoverGameIds(bool full, HttpClient hClient, Func<SummonerInfo, string> getAuthHeader, Action<string> logger)
         {
             int step = 15;
             int count = step;
@@ -220,7 +222,7 @@ namespace LeagueOfStats.PersonalData
             {
                 logger?.Invoke("{0}/{1}: retrieving games at {2} of {3}".Fmt(Name, Region, index, count));
                 var url = $"https://acs.leagueoflegends.com/v1/stats/player_history/auth?begIndex={index}&endIndex={index + step}&";
-                var json = retryOnAuthHeaderFail(url, hClient, getAuthHeader).Expect(HttpStatusCode.OK).DataJson;
+                var json = JsonValue.Parse(retryOnAuthHeaderFail(url, hClient, getAuthHeader).Content.ReadAsStringAsync().GetAwaiter().GetResult());
 
                 Ut.Assert(json["accountId"].GetLongLenient() == AccountId);
                 // json["platformId"] may be different to Region for accounts that have been transferred to another region

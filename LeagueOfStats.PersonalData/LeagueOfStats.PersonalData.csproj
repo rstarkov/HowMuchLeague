@@ -1,65 +1,19 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LeagueOfStats.PersonalData</RootNamespace>
-    <AssemblyName>LeagueOfStats.PersonalData</AssemblyName>
-    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
-    <OutputPath>..\Builds\$(Configuration)\</OutputPath>
-    <IntermediateOutputPath>..\Builds\$(Configuration)\obj-$(AssemblyName)\</IntermediateOutputPath>
-    <BaseIntermediateOutputPath>..\Builds\$(Configuration)\obj-$(AssemblyName)\</BaseIntermediateOutputPath>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputPath>..\Builds\$(Configuration)-$(TargetFramework)$(RuntimeIdentifier)\</OutputPath>
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)\$(Configuration)-$(TargetFramework)$(RuntimeIdentifier)\</IntermediateOutputPath>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <DefineConstants>TRACE</DefineConstants>
-  </PropertyGroup>
+
   <ItemGroup>
-    <Reference Include="RT.Util, Version=1.0.1601.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RT.Util.1.0.1601\lib\net45\RT.Util.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+    <PackageReference Include="RT.Json" Version="2.0.1653" />
+    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1653" />
+    <PackageReference Include="RT.Util.Core" Version="2.0.1653" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="SummonerInfo.cs" />
-    <Compile Include="MatchData.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <ProjectReference Include="..\LeagueOfStats.StaticData\LeagueOfStats.StaticData.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\LeagueOfStats.StaticData\LeagueOfStats.StaticData.csproj">
-      <Project>{6d5ee88c-1926-477d-abe6-388171796b3f}</Project>
-      <Name>LeagueOfStats.StaticData</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
+
 </Project>

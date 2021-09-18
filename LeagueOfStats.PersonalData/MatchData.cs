@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using LeagueOfStats.StaticData;
+using RT.Json;
 using RT.Util;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
 
 namespace LeagueOfStats.PersonalData
 {
@@ -25,7 +24,7 @@ namespace LeagueOfStats.PersonalData
             if ((Game.Queue.Map == MapId.ValoranCityPark || Game.Queue.Map == MapId.CrashSite) && !json.ContainsKey("win"))
                 Victory = true;
             else
-                Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : Ut.Throw<bool>(new Exception());
+                Victory = json["win"].GetString() == "Win" ? true : json["win"].GetString() == "Fail" ? false : throw new Exception();
             Players = participants.Values.Select(p => new Player(p, identities[p["participantId"].GetInt()], game, this))
                 .OrderBy(p => p.Lane).ThenBy(p => p.Role)
                 .ToList().AsReadOnly();
@@ -115,9 +114,9 @@ namespace LeagueOfStats.PersonalData
             Spell1Id = participant["spell1Id"].GetInt();
             Spell2Id = participant["spell2Id"].GetInt();
             var role = participant["timeline"]["role"].GetString();
-            Role = role == "DUO" ? Role.Duo : role == "DUO_CARRY" ? Role.DuoCarry : role == "DUO_SUPPORT" ? Role.DuoSupport : role == "SOLO" ? Role.Solo : role == "NONE" ? Role.None : Ut.Throw<Role>(new Exception());
+            Role = role == "DUO" ? Role.Duo : role == "DUO_CARRY" ? Role.DuoCarry : role == "DUO_SUPPORT" ? Role.DuoSupport : role == "SOLO" ? Role.Solo : role == "NONE" ? Role.None : throw new Exception();
             var lane = participant["timeline"]["lane"].GetString();
-            Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : lane == "NONE" ? Lane.None : Ut.Throw<Lane>(new Exception());
+            Lane = lane == "TOP" ? Lane.Top : lane == "JUNGLE" ? Lane.Jungle : lane == "MIDDLE" ? Lane.Middle : lane == "BOTTOM" ? Lane.Bottom : lane == "NONE" ? Lane.None : throw new Exception();
             var stats = participant["stats"].GetDict();
             ItemIds = new[] { stats["item0"].GetInt(), stats["item1"].GetInt(), stats["item2"].GetInt(), stats["item3"].GetInt(), stats["item4"].GetInt(), stats["item5"].GetInt(), stats["item6"].GetInt() }.Where(i => i != 0).ToArray();
             Kills = stats["kills"].GetInt();
