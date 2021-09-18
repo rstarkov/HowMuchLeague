@@ -76,9 +76,9 @@ namespace LeagueOfStats.CmdGen
             }
 
             var toprow = settings.TopRowItems.Select(name => byName[name]).ToArray();
-            var boots = new[] { "Boots of Swiftness", "Boots of Mobility", "Ionian Boots of Lucidity", "Berserker's Greaves", "Sorcerer's Shoes", "Ninja Tabi", "Mercury's Treads" }
+            var boots = new[] { "Boots of Swiftness", "Mobility Boots", "Ionian Boots of Lucidity", "Berserker's Greaves", "Sorcerer's Shoes", "Plated Steelcaps", "Mercury's Treads" }
                 .Select(n => byName[n]).ToArray();
-            var starting = new[] { "Refillable Potion", "Corrupting Potion", "Dark Seal", "Doran's Ring", "Steel Shoulderguards", "Spectral Sickle", "Relic Shield", "Spellthief's Edge", "Doran's Shield", "Doran's Blade", "Cull", "Hunter's Talisman", "Hunter's Machete" }
+            var starting = new[] { "Refillable Potion", "Corrupting Potion", "Dark Seal", "Doran's Ring", "Steel Shoulderguards", "Spectral Sickle", "Relic Shield", "Spellthief's Edge", "Doran's Shield", "Doran's Blade", "Cull" }
                 .Select(n => byName[n]).ToArray();
 
             var itemStatsLines = File.ReadAllLines(itemStatsFile)
@@ -163,7 +163,7 @@ namespace LeagueOfStats.CmdGen
                     // Section 3: boots
                     if (champ.InternalName != "Cassiopeia")
                     {
-                        var bootsSection = new[] { (0, byName["Boots of Speed"]) }.Concat(items.Where(i => boots.Contains(i.item) && i.count >= minUsage)).ToList();
+                        var bootsSection = new[] { (0, byName["Boots"]) }.Concat(items.Where(i => boots.Contains(i.item) && i.count >= minUsage)).ToList();
                         var bootsTitle = "Boots:  " + relCounts(bootsSection.Skip(1));
                         //sections.Add(bootsSection);
                         //titles.Add(bootsTitle);
