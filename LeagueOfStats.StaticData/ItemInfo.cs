@@ -2,7 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Linq;
 using RT.Json;
-using RT.Util.ExtensionMethods;
+using RT.Util.ExtensionMethods.Obsolete;
 
 namespace LeagueOfStats.StaticData
 {

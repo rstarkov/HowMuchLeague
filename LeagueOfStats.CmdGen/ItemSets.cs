@@ -10,7 +10,7 @@ using RT.TagSoup;
 using RT.Util;
 using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
+using RT.Json;
 using RT.Util.Paths;
 
 namespace LeagueOfStats.CmdGen

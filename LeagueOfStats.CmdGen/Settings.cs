@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using LeagueOfStats.PersonalData;
-using RT.Util.Serialization;
+using RT.Serialization;
 
 namespace LeagueOfStats.CmdGen
 {

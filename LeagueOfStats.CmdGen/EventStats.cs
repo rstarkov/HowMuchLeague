@@ -7,7 +7,7 @@ using LeagueOfStats.StaticData;
 using RT.TagSoup;
 using RT.Util.Collections;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
+using RT.Json;
 
 namespace LeagueOfStats.CmdGen
 {

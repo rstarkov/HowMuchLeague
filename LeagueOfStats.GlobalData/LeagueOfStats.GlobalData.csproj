@@ -8,8 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="lz4net" Version="1.0.15.93" />
-    <PackageReference Include="RT.Json" Version="2.0.1653" />
-    <PackageReference Include="RT.Util.Core" Version="2.0.1653" />
+    <PackageReference Include="RT.Json" Version="2.0.1697" />
+    <PackageReference Include="RT.Util.Core" Version="2.0.1697" />
   </ItemGroup>
 
 </Project>

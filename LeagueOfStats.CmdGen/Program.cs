@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using LeagueOfStats.GlobalData;
 using LeagueOfStats.StaticData;
-using RT.Util.Serialization;
+using RT.Serialization;
 
 namespace LeagueOfStats.CmdGen
 {

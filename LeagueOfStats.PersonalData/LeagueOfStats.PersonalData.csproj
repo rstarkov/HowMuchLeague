@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="RT.Json" Version="2.0.1653" />
-    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1653" />
-    <PackageReference Include="RT.Util.Core" Version="2.0.1653" />
+    <PackageReference Include="RT.Json" Version="2.0.1697" />
+    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1697" />
+    <PackageReference Include="RT.Util.Core" Version="2.0.1697" />
   </ItemGroup>
 
   <ItemGroup>

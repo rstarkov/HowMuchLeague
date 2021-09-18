@@ -7,7 +7,6 @@ using LeagueOfStats.PersonalData;
 using LeagueOfStats.StaticData;
 using RT.TagSoup;
 using RT.Util;
-using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 
 namespace LeagueOfStats.CmdGen
@@ -28,7 +27,7 @@ namespace LeagueOfStats.CmdGen
                     summoner.LoadGamesOffline();
                 else
                     summoner.LoadGamesOnline(
-                        sm => InputBox.GetLine($"Please enter Authorization header value for {sm.Region}/{sm.Name}:", sm.AuthorizationHeader, "League of Stats"),
+                        sm => throw new Exception()/*InputBox.GetLine($"Please enter Authorization header value for {sm.Region}/{sm.Name}:", sm.AuthorizationHeader, "League of Stats")*/,
                         str => Console.WriteLine(str));
             }
 
