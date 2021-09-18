@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using RT.Json;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
 
 namespace LeagueOfStats.StaticData
 {

@@ -3,9 +3,9 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net;
-using RT.Util;
+using System.Net.Http;
+using RT.Json;
 using RT.Util.ExtensionMethods;
-using RT.Util.Json;
 
 namespace LeagueOfStats.StaticData
 {
@@ -17,10 +17,10 @@ namespace LeagueOfStats.StaticData
 
         public static void Load(string path)
         {
-            var hc = new HClient();
+            var hc = new HttpClient();
 
             // Load version info
-            var versionsStr = hc.Get("https://ddragon.leagueoflegends.com/api/versions.js").Expect(HttpStatusCode.OK).DataString;
+            var versionsStr = hc.GetString("https://ddragon.leagueoflegends.com/api/versions.js");
             versionsStr = versionsStr.Replace("Riot.DDragon.versions = ", "").Replace(";", "");
             var versions = JsonList.Parse(versionsStr);
             GameVersion = versions.First().GetString();
@@ -34,7 +34,7 @@ namespace LeagueOfStats.StaticData
                 championDataStr = File.ReadAllText(championDataPath);
             else
             {
-                championDataStr = hc.Get(championDataUrl).Expect(HttpStatusCode.OK).DataString;
+                championDataStr = hc.GetString(championDataUrl);
                 File.WriteAllText(championDataPath, championDataStr);
             }
             var championData = JsonDict.Parse(championDataStr);
@@ -50,7 +50,7 @@ namespace LeagueOfStats.StaticData
                 itemDataStr = File.ReadAllText(itemDataPath);
             else
             {
-                itemDataStr = hc.Get(itemDataUrl).Expect(HttpStatusCode.OK).DataString;
+                itemDataStr = hc.GetString(itemDataUrl);
                 File.WriteAllText(itemDataPath, itemDataStr);
             }
             var itemData = JsonDict.Parse(itemDataStr);

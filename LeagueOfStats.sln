@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2010
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.CmdGen", "LeagueOfStats.CmdGen\LeagueOfStats.CmdGen.csproj", "{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}"
 EndProject
@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.Downloader", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.PersonalData", "LeagueOfStats.PersonalData\LeagueOfStats.PersonalData.csproj", "{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.StaticData", "LeagueOfStats.StaticData\LeagueOfStats.StaticData.csproj", "{6D5EE88C-1926-477D-ABE6-388171796B3F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LeagueOfStats.StaticData", "LeagueOfStats.StaticData\LeagueOfStats.StaticData.csproj", "{6D5EE88C-1926-477D-ABE6-388171796B3F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LeagueOfStats.GlobalData", "LeagueOfStats.GlobalData\LeagueOfStats.GlobalData.csproj", "{CEAC08C0-27D7-4D48-BD18-E4648EE12264}"
 EndProject
@@ -23,6 +23,10 @@ Global
 		{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18CDD37E-5EA3-4178-8B41-C02474B6BBA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F295EDDD-AE28-49D5-A6B1-B64F6CB27C6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -35,10 +39,6 @@ Global
 		{CEAC08C0-27D7-4D48-BD18-E4648EE12264}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CEAC08C0-27D7-4D48-BD18-E4648EE12264}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CEAC08C0-27D7-4D48-BD18-E4648EE12264}.Release|Any CPU.Build.0 = Release|Any CPU
-		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{05DBBACA-04A2-4CB8-AA98-1BC3BDF4421A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

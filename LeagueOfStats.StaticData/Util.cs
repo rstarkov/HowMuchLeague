@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
-using RT.Util.Json;
+using System.Net.Http;
+using RT.Json;
 
 namespace LeagueOfStats.StaticData
 {
@@ -100,6 +101,11 @@ namespace LeagueOfStats.StaticData
         {
             if (json.Count > 0)
                 throw new Exception();
+        }
+
+        public static string GetString(this HttpClient hc, string url)
+        {
+            return hc.GetStringAsync(url).GetAwaiter().GetResult();
         }
     }
 }
