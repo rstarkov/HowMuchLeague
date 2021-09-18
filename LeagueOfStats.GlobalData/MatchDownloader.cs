@@ -4,7 +4,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using RT.Util;
-using RT.Util.Json;
+using RT.Json;
+using System.Net.Http;
+using System.Linq;
 
 namespace LeagueOfStats.GlobalData
 {
@@ -17,9 +19,9 @@ namespace LeagueOfStats.GlobalData
         public int RetryCount = 10;
         public DateTime BackOffUntil;
 
-        public Action<string, HResponse> OnEveryResponse = (url, resp) => { Console.WriteLine($"{url} --- {(int) resp.StatusCode}"); };
-        public Action<HResponse> OnUnparseableJson = (resp) => { Console.WriteLine($"Download failed! JSON unparseable:\r\n" + resp.DataString); };
-        public Action<HResponse> OnRetryLimitReached = (resp) => { Console.WriteLine($"Download failed! Retry limit reached, status: {(int) resp.StatusCode}, text: {resp.DataString}"); };
+        public Action<string, HttpResponseMessage> OnEveryResponse = (url, resp) => { Console.WriteLine($"{url} --- {(int) resp.StatusCode}"); };
+        public Action<HttpResponseMessage, string> OnUnparseableJson = (resp, text) => { Console.WriteLine($"Download failed! JSON unparseable:\r\n" + text); };
+        public Action<HttpResponseMessage, string> OnRetryLimitReached = (resp, text) => { Console.WriteLine($"Download failed! Retry limit reached, status: {(int) resp.StatusCode}, text: {text}"); };
 
         public MatchDownloader(ApiKeyWrapper apiKey, Region region)
         {
@@ -41,7 +43,7 @@ namespace LeagueOfStats.GlobalData
             try
             {
                 attempts++;
-                var resp = new HClient().Get(url);
+                var resp = new HttpClient().GetAsync(url).GetAwaiter().GetResult();
                 OnEveryResponse(url, resp);
 
                 if (resp.StatusCode == (HttpStatusCode) 403)
@@ -56,7 +58,7 @@ namespace LeagueOfStats.GlobalData
                     goto retry;
                 }
 
-                if (resp.StatusCode == (HttpStatusCode) 429 && int.TryParse(resp.Headers["Retry-After"], out int retryAfter))
+                if (resp.StatusCode == (HttpStatusCode) 429 && int.TryParse(resp.Headers.GetValues("Retry-After").FirstOrDefault() ?? "1", out int retryAfter))
                 {
                     if (retryAfter < 1)
                         retryAfter = 1;
@@ -65,16 +67,17 @@ namespace LeagueOfStats.GlobalData
                     return (MatchDownloadResult.BackOff, null);
                 }
 
+                var text = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                 if (resp.StatusCode == HttpStatusCode.NotFound)
                     return (MatchDownloadResult.NonExistent, null);
                 else if (resp.StatusCode == HttpStatusCode.OK)
                 {
                     _apiKey.ReportValid(keyUsed);
                     JsonValue json;
-                    try { json = resp.DataJson; }// make sure it can be parsed as JSON
+                    try { json = JsonValue.Parse(text); }// make sure it can be parsed as JSON
                     catch
                     {
-                        OnUnparseableJson(resp);
+                        OnUnparseableJson(resp, text);
                         return (MatchDownloadResult.Failed, null);
                     }
                     json["LOS-Downloaded-By"] = _apiKey.GetDownloadedById();
@@ -82,7 +85,7 @@ namespace LeagueOfStats.GlobalData
                 }
                 if (attempts <= RetryCount)
                     goto retry;
-                OnRetryLimitReached(resp);
+                OnRetryLimitReached(resp, text);
                 return (MatchDownloadResult.Failed, null);
             }
             catch
@@ -114,11 +117,11 @@ namespace LeagueOfStats.GlobalData
             int hardErrors = 0;
             while (true)
             {
-                var resp = new HClient().Get(url);
+                var resp = new HttpClient().GetAsync(url).GetAwaiter().GetResult();
                 if ((int) resp.StatusCode == 429)
                 {
                     var sleep = 5;
-                    if (int.TryParse(resp.Headers["Retry-After"], out int retryAfter))
+                    if (int.TryParse(resp.Headers.GetValues("Retry-After").FirstOrDefault() ?? "1", out int retryAfter))
                         sleep = retryAfter;
                     Console.WriteLine($"429, sleeping for {sleep} seconds...");
                     Thread.Sleep(sleep * 1000);
@@ -132,7 +135,7 @@ namespace LeagueOfStats.GlobalData
                     Thread.Sleep(5000);
                     continue;
                 }
-                var id = resp.DataJson["id"].GetString();
+                var id = JsonValue.Parse(resp.Content.ReadAsStringAsync().GetAwaiter().GetResult())["id"].GetString();
                 var hash = new HMACSHA256(Encoding.UTF8.GetBytes(hmackey)).ComputeHash(Encoding.UTF8.GetBytes(id));
                 _downloadedById = BitConverter.ToInt64(hash, 0);
                 return;
