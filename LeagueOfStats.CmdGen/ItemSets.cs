@@ -131,11 +131,17 @@ namespace LeagueOfStats.CmdGen
 
             foreach (var champ in LeagueStaticData.Champions.Values.OrderBy(ch => ch.Name))
             {
-                foreach (var role in new[] { "mid", "top", "jungle", "adc", "sup" })
+                // Pick the most popular role and generate just a single item set, only for that role. This is to help with the rebound left click, which makes item sets impossible to switch.
+                var roles = new[] { "mid", "top", "jungle", "adc", "sup" }.Where(r => itemStats.ContainsKey(champ.Name) && itemStats[champ.Name].Contains(r)).ToDictionary(r => r, r => itemStats[champ.Name][r].Single(x => x.itemId == -999).count);
+                if (roles.Count == 0)
+                    continue;
+                var role = roles.OrderByDescending(kvp => kvp.Value).First().Key;
+                var total = roles.OrderByDescending(kvp => kvp.Value).First().Value;
+                //foreach (var role in new[] { "mid", "top", "jungle", "adc", "sup" })
                 {
-                    if (!itemStats.ContainsKey(champ.Name) || !itemStats[champ.Name].Contains(role))
-                        continue;
-                    var total = itemStats[champ.Name][role].Single(x => x.itemId == -999).count;
+                    //if (!itemStats.ContainsKey(champ.Name) || !itemStats[champ.Name].Contains(role))
+                    //    continue;
+                    //var total = itemStats[champ.Name][role].Single(x => x.itemId == -999).count;
                     if (total < settings.MinGames)
                         continue;
                     var itemCounts = itemStats[champ.Name][role]
