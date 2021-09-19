@@ -26,6 +26,7 @@ namespace LeagueOfStats.GlobalData
     public class CountThread
     {
         private Thread _t;
+        private CancellationTokenSource _cancel = new CancellationTokenSource();
         public CountResult Count = new CountResult();
         public DateTime StartedAt, EndedAt;
         public TimeSpan Duration => (EndedAt == default(DateTime) ? DateTime.UtcNow : EndedAt) - StartedAt;
@@ -38,14 +39,15 @@ namespace LeagueOfStats.GlobalData
             _t = new Thread(() =>
             {
                 int next = interval;
-                while (true)
+                var token = _cancel.Token;
+                while (!token.IsCancellationRequested)
                 {
                     if (Count.Count > next)
                     {
                         OnInterval(Count.Count);
                         next += interval;
                     }
-                    Thread.Sleep(1000);
+                    token.WaitHandle.WaitOne(1000);
                 }
             });
             _t.IsBackground = true;
@@ -56,7 +58,8 @@ namespace LeagueOfStats.GlobalData
             if (_t == null)
                 return;
             EndedAt = DateTime.UtcNow;
-            _t.Abort();
+            _cancel.Cancel();
+            _t.Interrupt();
             _t.Join();
             _t = null;
         }
