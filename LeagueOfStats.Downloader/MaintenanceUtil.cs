@@ -241,7 +241,7 @@ namespace LeagueOfStats.Downloader
         public static void RecheckNonexistent(ApiKeyWithPrompt[] apiKeys)
         {
             var threads = new List<Thread>();
-            foreach (var region in DataStore.NonexistentMatchIds.Keys)
+            foreach (var region in DataStore.LosMatchIdsNonExistent.Keys)
             {
                 var t = new Thread(() => { RecheckNonexistentRegion(region, apiKeys); });
                 t.IsBackground = true;
@@ -265,11 +265,14 @@ namespace LeagueOfStats.Downloader
 
         private static void RecheckNonexistentRegion(Region region, ApiKeyWithPrompt[] apiKeys)
         {
+            Console.WriteLine($"{region}: loading existing match IDs");
             var existing = DataStore.ExistingMatchIds[region].ToHashSet();
-            int removed = 0;
-            DataStore.LosMatchIdsNonExistent[region].Rewrite(ids => ids.Where(id => { var contains = existing.Contains(id); if (contains) removed++; return !contains; }));
-            Console.WriteLine($"{region}: removed {removed:#,0} existing IDs from the non-existent ID list");
-            if (removed > 0)
+            var existingMax = existing.Max();
+            Console.WriteLine($"{region}: filtering nonexistent match IDs");
+            int removedExisting = 0, removedLarge = 0;
+            DataStore.LosMatchIdsNonExistent[region].Rewrite(ids => ids.Where(id => { var contains = existing.Contains(id); if (contains) removedExisting++; if (id > existingMax) removedLarge++; return !contains && id < existingMax; }));
+            Console.WriteLine($"{region}: removed {removedExisting:#,0} existing IDs and {removedLarge:#,0} large IDs from the non-existent ID list");
+            if (removedExisting + removedLarge > 0)
                 DataStore.ReloadNonexistentMatchIds(region);
 
             var doneFile = Path.Combine(DataStore.LosPath, $"rechecked-nonexistent-{region}.txt");
