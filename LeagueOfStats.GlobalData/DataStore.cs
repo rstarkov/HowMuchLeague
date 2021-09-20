@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using RT.Json;
 using RT.Util;
-using RT.Util.ExtensionMethods.Obsolete;
 
 namespace LeagueOfStats.GlobalData
 {
