@@ -201,6 +201,12 @@ namespace LeagueOfStats.CmdGen
                         titles.Add("Items:  " + relCounts(sections[i], mostUsed));
                     sections.Add(components.ToList());
                     titles.Add("Components:  " + relCounts(sections.Last(), sections.Last().Max(i => i.count)));
+
+                    // Remove the consumables/trinkets row as it's no longer useful with the new shop design
+                    sections.RemoveAt(0); // (bit of a hack but we generate & remove so that none of the other sections include these even if they are popular and fit the criteria)
+                    titles.RemoveAt(0);
+
+                    // Generate!
                     var blocks = sections.Zip(titles, (section, title) => (title: title, items: section.Select(s => s.item).ToList())).ToList();
                     var caption = $"LoS - {champ.InternalName.SubstringSafe(0, 4)} - {role} - {total:#,0} games";
 
